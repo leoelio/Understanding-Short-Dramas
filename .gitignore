@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+data/*.db
+data/*.db-*
+data/*.log
+data/*.bin
+视频库/
+AI全栈项目--基于短剧剧情的即时互动激发（宣讲）.pdf
+开发文档.docx
+node_modules/
+dist/
+.DS_Store

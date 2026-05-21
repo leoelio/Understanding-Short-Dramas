@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>短剧互动激发系统</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">AI Drama Interaction</p>
+          <h1>短剧互动激发</h1>
+        </div>
+        <nav class="tabs">
+          <button id="homeTab" class="tab active" type="button">短剧</button>
+          <button id="adminTab" class="tab" type="button">统计</button>
+        </nav>
+      </header>
+
+      <main>
+        <section id="homeView" class="view active">
+          <div class="section-head">
+            <div>
+              <h2>短剧列表</h2>
+              <p>选择一部短剧，进入移动端播放互动体验。</p>
+            </div>
+            <span id="dramaCount" class="pill">加载中</span>
+          </div>
+          <div id="dramaGrid" class="drama-grid"></div>
+        </section>
+
+        <section id="watchView" class="view">
+          <button id="backButton" class="ghost-button" type="button">返回列表</button>
+          <div class="player-card">
+            <div class="player-title">
+              <div>
+                <p id="watchGenre" class="eyebrow">短剧播放</p>
+                <h2 id="watchTitle">加载中</h2>
+              </div>
+              <select id="episodeSelect" class="episode-select" aria-label="选择剧集"></select>
+            </div>
+            <div class="video-wrap">
+              <video id="player" controls playsinline preload="metadata"></video>
+              <div id="interactionLayer" class="interaction-layer hidden"></div>
+            </div>
+            <div id="timeline" class="timeline"></div>
+          </div>
+        </section>
+
+        <section id="adminView" class="view">
+          <div class="section-head">
+            <div>
+              <h2>后台统计</h2>
+              <p>查看高光点点击量、选择比例和互动榜。</p>
+            </div>
+            <button id="refreshStats" class="primary-button" type="button">刷新</button>
+          </div>
+          <div id="summaryCards" class="summary-grid"></div>
+          <div class="table-card">
+            <div class="table-title">
+              <h3>高光互动榜</h3>
+              <span id="statsHint" class="muted">按点击量排序</span>
+            </div>
+            <div id="statsList" class="stats-list"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
+

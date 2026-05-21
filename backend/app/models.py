@@ -1,0 +1,67 @@
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+
+from .database import Base
+
+
+class Drama(Base):
+    __tablename__ = "dramas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), unique=True, nullable=False)
+    genre = Column(String(64), default="未分类")
+    description = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    episodes = relationship("Episode", back_populates="drama", cascade="all, delete-orphan")
+
+
+class Episode(Base):
+    __tablename__ = "episodes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    drama_id = Column(Integer, ForeignKey("dramas.id"), nullable=False, index=True)
+    episode_no = Column(Integer, nullable=False)
+    title = Column(String(255), nullable=False)
+    video_path = Column(Text, nullable=False)
+    duration_sec = Column(Float, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    drama = relationship("Drama", back_populates="episodes")
+    highlights = relationship("Highlight", back_populates="episode", cascade="all, delete-orphan")
+
+
+class Highlight(Base):
+    __tablename__ = "highlights"
+
+    id = Column(Integer, primary_key=True, index=True)
+    episode_id = Column(Integer, ForeignKey("episodes.id"), nullable=False, index=True)
+    start_time_sec = Column(Float, nullable=False)
+    end_time_sec = Column(Float, nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, default="")
+    highlight_type = Column(String(64), nullable=False)
+    emotion = Column(String(64), nullable=False)
+    options_json = Column(Text, nullable=False)
+    source = Column(String(64), default="manual_seed")
+    confidence = Column(Float, default=0.75)
+    model_version = Column(String(64), default="seed-v1")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    episode = relationship("Episode", back_populates="highlights")
+    interactions = relationship("Interaction", back_populates="highlight", cascade="all, delete-orphan")
+
+
+class Interaction(Base):
+    __tablename__ = "interactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    highlight_id = Column(Integer, ForeignKey("highlights.id"), nullable=False, index=True)
+    option_key = Column(String(64), nullable=False)
+    session_id = Column(String(128), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    highlight = relationship("Highlight", back_populates="interactions")
+
