@@ -35,6 +35,12 @@ def validate_annotation_payload(payload: dict[str, Any]) -> list[str]:
             errors.append(f"{prefix}.emotion 不在允许范围内")
         if not item.get("title"):
             errors.append(f"{prefix}.title 不能为空")
+        evidence_ids = item.get("evidence_segment_ids")
+        if not isinstance(evidence_ids, list) or not evidence_ids:
+            errors.append(f"{prefix}.evidence_segment_ids 必须是非空数组")
+        evidence_text = item.get("evidence_text")
+        if not isinstance(evidence_text, str) or not evidence_text.strip():
+            errors.append(f"{prefix}.evidence_text 不能为空")
 
         options = item.get("options")
         if not isinstance(options, list) or not 2 <= len(options) <= 4:
@@ -57,4 +63,3 @@ def validate_annotation_payload(payload: dict[str, Any]) -> list[str]:
                     errors.append(f"{option_prefix}.label 必须是 1-8 个字")
 
     return errors
-

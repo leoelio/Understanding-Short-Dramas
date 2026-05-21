@@ -35,7 +35,12 @@ SYSTEM_PROMPT = f"""
 2. 每集建议输出 3-5 个高光点。
 3. 高光点必须落在输入片段时间范围内。
 4. 互动按钮必须短、直接、有情绪感染力，每个 label 1-8 个字。
-5. 如果信息不足，可以少标，不要硬编剧情。
+5. 只能依据 segments 里的字幕、画面描述、音频提示和人工备注标注。
+6. 剧名、文件名、题材名都不是剧情证据，不能据此推断剧情。
+7. 每个高光点必须给出 evidence_segment_ids 和 evidence_text，证明确实来自输入片段。
+8. manual_note 是人工复核者给出的可靠剧情观察，可以作为证据。
+9. 如果 manual_note 中写有“候选高光”，请优先判断它是否适合转成互动高光点。
+10. 如果信息不足，可以少标，不要硬编剧情。
 """.strip()
 
 
@@ -54,9 +59,19 @@ def extract_json(text: str) -> dict[str, Any]:
 
 
 def build_user_prompt(annotation_input: dict[str, Any]) -> str:
+    episode_context = {
+        "episode_id": annotation_input["episode_id"],
+        "duration_sec": annotation_input.get("duration_sec"),
+        "segments": annotation_input.get("segments", []),
+    }
     return json.dumps(
         {
             "task": "请输出短剧高光点标注 JSON。",
+            "important_rules": [
+                "只能依据 episode.segments 中的内容标注。",
+                "不要使用剧名、文件名或题材名推断剧情。",
+                "如果没有明确证据，不要标注该高光点。",
+            ],
             "schema": {
                 "episode_id": "number",
                 "prompt_version": PROMPT_VERSION,
@@ -70,14 +85,24 @@ def build_user_prompt(annotation_input: dict[str, Any]) -> str:
                         "emotion": "爽/震惊/心疼/愤怒/好笑/心动/紧张/期待",
                         "confidence": "0-1 number",
                         "reason": "string",
+                        "evidence_segment_ids": ["number"],
+                        "evidence_text": "来自输入片段的字幕/画面/备注证据",
                         "options": [{"key": "string", "label": "string"}],
                     }
                 ],
             },
-            "episode": annotation_input,
+            "episode": episode_context,
         },
         ensure_ascii=False,
     )
+
+
+def has_episode_context(annotation_input: dict[str, Any]) -> bool:
+    context_fields = ("subtitle_text", "visual_note", "audio_note", "manual_note")
+    for segment in annotation_input.get("segments", []):
+        if any(str(segment.get(field, "")).strip() for field in context_fields):
+            return True
+    return False
 
 
 def call_chat_completion(prompt: str) -> dict[str, Any]:
@@ -130,6 +155,8 @@ def dry_run_annotation(annotation_input: dict[str, Any]) -> dict[str, Any]:
                 "emotion": "爽",
                 "confidence": 0.5,
                 "reason": "未调用大模型，仅用于测试 JSON 格式和入库链路。",
+                "evidence_segment_ids": [1],
+                "evidence_text": "dry-run 占位证据。",
                 "options": [
                     {"key": "shuang", "label": "爽"},
                     {"key": "again", "label": "再来"},
@@ -145,12 +172,18 @@ def main() -> None:
     parser.add_argument("--input", type=Path, required=True, help="prepare_annotation_input.py 生成的输入 JSON。")
     parser.add_argument("--output", type=Path, default=None, help="输出标注 JSON。")
     parser.add_argument("--dry-run", action="store_true", help="不调用大模型，只生成占位标注验证链路。")
+    parser.add_argument("--allow-empty-context", action="store_true", help="允许在没有字幕/画面备注时调用模型，仅用于连通性测试。")
     args = parser.parse_args()
 
     annotation_input = json.loads(args.input.read_text(encoding="utf-8"))
     if args.dry_run:
         payload = dry_run_annotation(annotation_input)
     else:
+        if not args.allow_empty_context and not has_episode_context(annotation_input):
+            raise SystemExit(
+                "当前输入没有字幕、画面描述、音频提示或人工备注。"
+                "为避免模型根据剧名脑补剧情，请先补充 context，或仅在连通性测试时添加 --allow-empty-context。"
+            )
         payload = call_chat_completion(build_user_prompt(annotation_input))
         payload.setdefault("episode_id", annotation_input["episode_id"])
         payload.setdefault("prompt_version", PROMPT_VERSION)

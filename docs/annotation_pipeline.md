@@ -40,7 +40,19 @@ ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 data/annotation_inputs/episode_1.json
 ```
 
-2. 人工补充片段信息：
+2. 生成关键帧复核图：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\extract_review_frames.py --episode-id 1 --interval 5
+```
+
+输出位置类似：
+
+```text
+data/context/episode_1/contact_sheet_5s.jpg
+```
+
+3. 人工补充片段信息：
 
 打开输入 JSON，给每个 segment 补充：
 
@@ -49,11 +61,13 @@ data/annotation_inputs/episode_1.json
 - `audio_note`：音乐、尖叫、沉默、重音等提示
 - `manual_note`：你作为产品负责人的补充判断
 
-3. 调用大模型生成候选标注：
+4. 调用大模型生成候选标注：
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\annotate_with_llm.py --input data\annotation_inputs\episode_1.json
 ```
+
+如果输入里没有字幕、画面描述、音频提示或人工备注，脚本会拒绝真实调用，防止模型只根据剧名脑补剧情。
 
 如果只是验证链路，不调用模型：
 
@@ -61,7 +75,15 @@ data/annotation_inputs/episode_1.json
 .\.venv\Scripts\python.exe scripts\annotate_with_llm.py --input data\annotation_inputs\episode_1.json --dry-run
 ```
 
-4. 人工复核输出：
+如果只是测试大模型接口连通性，可以显式允许空上下文：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\annotate_with_llm.py --input data\annotation_inputs\episode_1.json --allow-empty-context
+```
+
+连通性测试结果不能直接入库。
+
+5. 人工复核输出：
 
 检查 `data/annotations/episode_1_llm.json`，重点确认：
 
@@ -70,7 +92,7 @@ data/annotation_inputs/episode_1.json
 - 按钮文案是否短、准、有情绪
 - 是否会打断关键剧情
 
-5. 写回数据库：
+6. 写回数据库：
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\apply_annotations.py --file data\annotations\episode_1_llm.json --replace --source human_review
@@ -92,6 +114,8 @@ data/annotation_inputs/episode_1.json
       "emotion": "震惊",
       "confidence": 0.86,
       "reason": "用户通常会在反转出现时产生强表达欲。",
+      "evidence_segment_ids": [3],
+      "evidence_text": "来自第 3 段字幕或画面描述的证据。",
       "options": [
         { "key": "shock", "label": "震惊" },
         { "key": "unexpected", "label": "还能这样" },
@@ -108,4 +132,3 @@ data/annotation_inputs/episode_1.json
 - 支持关键帧描述，提升画面理解能力。
 - 增加后台复核页面，避免直接编辑 JSON。
 - 积累复核数据后，再训练小模型。
-
