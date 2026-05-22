@@ -15,11 +15,19 @@
           "source": "human_review",
           "model_version": "highlight-annotation-v1",
           "annotation_reason": "该片段明确呈现门房阻拦身份不明的女子探视病重老爷的冲突场景，符合冲突类高光特征。",
-          "evidence_segment_ids": [2],
+          "evidence_segment_ids": [
+            2
+          ],
           "evidence_text": "女子被劝退但坚持要见人，透露老爷病重三个月；白衣女子被门房劝退却坚持见病重老爷。",
           "options": [
-            { "key": "support_enter", "label": "支持她进去" },
-            { "key": "persuade_leave", "label": "劝她离开" }
+            {
+              "key": "support_enter",
+              "label": "支持她进去"
+            },
+            {
+              "key": "persuade_leave",
+              "label": "劝她离开"
+            }
           ]
         },
         {
@@ -33,11 +41,19 @@
           "source": "human_review",
           "model_version": "highlight-annotation-v1",
           "annotation_reason": "片段明确呈现亲人对病危老人依依不舍的悲伤场景，属于典型虐点高光。",
-          "evidence_segment_ids": [4],
+          "evidence_segment_ids": [
+            4
+          ],
           "evidence_text": "家人对病危老人依依不舍；病危老人吊着一口气三个月，亲人哭诉不愿放手。",
           "options": [
-            { "key": "cry", "label": "太好哭了" },
-            { "key": "pray", "label": "祈祷好转" }
+            {
+              "key": "cry",
+              "label": "太好哭了"
+            },
+            {
+              "key": "pray",
+              "label": "祈祷好转"
+            }
           ]
         },
         {
@@ -51,11 +67,19 @@
           "source": "human_review",
           "model_version": "highlight-annotation-v1",
           "annotation_reason": "该片段是悲伤情绪的峰值，亲人穷尽办法仍无效的崩溃状态，符合虐点高光特征。",
-          "evidence_segment_ids": [5],
+          "evidence_segment_ids": [
+            5
+          ],
           "evidence_text": "亲人说已经把所有相关故人请来但仍无用，情绪崩溃达到峰值。",
           "options": [
-            { "key": "pity", "label": "太心疼了" },
-            { "key": "hope", "label": "盼奇迹出现" }
+            {
+              "key": "pity",
+              "label": "太心疼了"
+            },
+            {
+              "key": "hope",
+              "label": "盼奇迹出现"
+            }
           ]
         },
         {
@@ -69,11 +93,155 @@
           "source": "human_review",
           "model_version": "highlight-annotation-v1",
           "annotation_reason": "片段明确给出神秘访客的反常表述，身份悬念极强，符合悬念类高光特征。",
-          "evidence_segment_ids": [6],
+          "evidence_segment_ids": [
+            6
+          ],
           "evidence_text": "来访女子说老爷看不到她，暗示她身份超常或不是普通故人。",
           "options": [
-            { "key": "who", "label": "她是谁？" },
-            { "key": "weird", "label": "太诡异了" }
+            {
+              "key": "who",
+              "label": "她是谁？"
+            },
+            {
+              "key": "weird",
+              "label": "太诡异了"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "drama_title": "云渺1：我修仙多年强亿点怎么了",
+      "episode_no": 2,
+      "highlights": [
+        {
+          "start_time_sec": 0,
+          "end_time_sec": 30,
+          "title": "众人追问神秘女子下落",
+          "description": "周家众人在厅堂议事，围绕病危老爷非要见的神秘女子身份展开追问，悬念持续发酵",
+          "highlight_type": "悬念",
+          "emotion": "紧张",
+          "confidence": 0.95,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v1",
+          "annotation_reason": "属于人工标注的候选高光，是上集神秘访客悬念的延续，观众对神秘女子身份充满好奇",
+          "evidence_segment_ids": [
+            1
+          ],
+          "evidence_text": "周家众人坐在厅堂里议事，黑衣男子询问神秘女子在哪里；两名女性围绕神秘女子和病危老爷是否见面产生争执。候选高光：上集神秘访客引发的悬念延续，周家人开始追问她是谁、为什么老爷非见不可，适合悬念/紧张互动",
+          "options": [
+            {
+              "key": "a",
+              "label": "猜她是谁"
+            },
+            {
+              "key": "b",
+              "label": "等后续揭秘"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 30,
+          "end_time_sec": 60,
+          "title": "亲属当众互相讥讽",
+          "description": "周家亲属在病危老人面前还互相拆台，黑衣女性嘲笑老太太找大师，厅堂火药味渐浓",
+          "highlight_type": "冲突",
+          "emotion": "愤怒",
+          "confidence": 0.92,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v1",
+          "annotation_reason": "人工标注候选高光明确指出亲属在病危老人面前互相讥讽，冲突和讽刺感强烈，适合吐槽互动",
+          "evidence_segment_ids": [
+            2
+          ],
+          "evidence_text": "黑衣女性语气尖锐地议论老爷和老太太，绿色衣服女子不满反驳；一群人在厅堂中火药味渐浓。候选高光：亲属在病危老人面前还互相讥讽，黑衣女性嘲笑老太太找大师，冲突和讽刺感明显，适合愤怒/吐槽互动",
+          "options": [
+            {
+              "key": "a",
+              "label": "太气人了"
+            },
+            {
+              "key": "b",
+              "label": "快别吵了"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 60,
+          "end_time_sec": 90,
+          "title": "老爷子临终不肯闭眼",
+          "description": "九十二岁病危的老爷子迟迟不肯咽气，就为了见神秘女子一面",
+          "highlight_type": "虐点",
+          "emotion": "心疼",
+          "confidence": 0.93,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v1",
+          "annotation_reason": "人工标注候选高光提到病危老人临终不肯闭眼只为见神秘女子，自带虐感，适合心疼向互动",
+          "evidence_segment_ids": [
+            3
+          ],
+          "evidence_text": "众人继续议论病危老人迟迟不咽气的原因，话题集中到他临终还执意要见那个神秘女子。候选高光：病危老人临终不肯闭眼，只为见神秘女子一面，情绪上带悬念和虐感，适合心疼/好奇互动",
+          "options": [
+            {
+              "key": "a",
+              "label": "太好哭了"
+            },
+            {
+              "key": "b",
+              "label": "想见谁啊"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 90,
+          "end_time_sec": 120,
+          "title": "老太太要见老爷心上人",
+          "description": "老太太手持念珠表情严肃，放话要亲自看看让老爷临终惦记的心上人是谁",
+          "highlight_type": "冲突",
+          "emotion": "震惊",
+          "confidence": 0.94,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v1",
+          "annotation_reason": "人工标注候选高光指出此处身份悬念和家庭情感冲突同时升级，适合震惊期待向互动",
+          "evidence_segment_ids": [
+            4
+          ],
+          "evidence_text": "老太太手里拿着佛珠或念珠，表情严肃，说自己倒想看看让老爷临终惦记的人到底是谁。候选高光：老太太决定亲自看看老爷临终惦记的“心上人”，身份悬念和家庭情感冲突同时升级，适合震惊/期待互动",
+          "options": [
+            {
+              "key": "a",
+              "label": "太敢说了"
+            },
+            {
+              "key": "b",
+              "label": "坐等吃瓜"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 120,
+          "end_time_sec": 148.01,
+          "title": "剧情戛然而止留悬念",
+          "description": "剧集结尾卡在老太太即将见到神秘女子的节点，弹出未完待续字样",
+          "highlight_type": "悬念",
+          "emotion": "期待",
+          "confidence": 0.96,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v1",
+          "annotation_reason": "人工标注候选高光说明此处卡在关键剧情节点，适合做剧尾悬念互动和追更引导",
+          "evidence_segment_ids": [
+            5
+          ],
+          "evidence_text": "老太太表情凝重，画面出现未完待续字样，悬念停在她要见神秘女子之前。候选高光：剧集结尾卡在老太太即将见神秘女子的节点，适合作为剧尾悬念互动或追更引导",
+          "options": [
+            {
+              "key": "a",
+              "label": "快看下一集"
+            },
+            {
+              "key": "b",
+              "label": "蹲后续更新"
+            }
           ]
         }
       ]

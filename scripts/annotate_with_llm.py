@@ -58,6 +58,50 @@ def extract_json(text: str) -> dict[str, Any]:
         return json.loads(match.group(0))
 
 
+def slugify_option(label: str, index: int) -> str:
+    ascii_key = re.sub(r"[^a-zA-Z0-9]+", "_", label).strip("_").lower()
+    return ascii_key or f"option_{index + 1}"
+
+
+def normalize_options(item: dict[str, Any]) -> None:
+    options = item.get("options")
+    if options is None:
+        for alias in ("interaction_options", "buttons", "button_texts", "labels"):
+            if alias in item:
+                options = item[alias]
+                break
+
+    if isinstance(options, dict):
+        options = [{"key": str(key), "label": str(value)} for key, value in options.items()]
+    elif isinstance(options, list):
+        normalized = []
+        for index, option in enumerate(options):
+            if isinstance(option, dict):
+                key = option.get("key") or option.get("id") or slugify_option(str(option.get("label", "")), index)
+                label = option.get("label") or option.get("text") or option.get("name") or key
+                normalized.append({"key": str(key), "label": str(label)})
+            else:
+                label = str(option)
+                normalized.append({"key": slugify_option(label, index), "label": label})
+        options = normalized
+
+    if not isinstance(options, list) or not options:
+        emotion = item.get("emotion", "表达")
+        options = [
+            {"key": "react", "label": str(emotion)[:8]},
+            {"key": "again", "label": "再看一遍"},
+        ]
+
+    item["options"] = options[:4]
+
+
+def normalize_annotation_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    for item in payload.get("highlights", []):
+        if isinstance(item, dict):
+            normalize_options(item)
+    return payload
+
+
 def build_user_prompt(annotation_input: dict[str, Any]) -> str:
     episode_context = {
         "episode_id": annotation_input["episode_id"],
@@ -187,6 +231,7 @@ def main() -> None:
         payload = call_chat_completion(build_user_prompt(annotation_input))
         payload.setdefault("episode_id", annotation_input["episode_id"])
         payload.setdefault("prompt_version", PROMPT_VERSION)
+    payload = normalize_annotation_payload(payload)
 
     errors = validate_annotation_payload(payload)
     if errors:
