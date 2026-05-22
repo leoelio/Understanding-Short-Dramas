@@ -16,6 +16,7 @@
         <nav class="tabs">
           <button id="homeTab" class="tab active" type="button">短剧</button>
           <button id="adminTab" class="tab" type="button">统计</button>
+          <button id="reviewTab" class="tab" type="button">复核</button>
         </nav>
       </header>
 
@@ -66,10 +67,31 @@
             <div id="statsList" class="stats-list"></div>
           </div>
         </section>
+
+        <section id="reviewView" class="view">
+          <div class="section-head">
+            <div>
+              <h2>标注复核</h2>
+              <p>编辑高光点 JSON，保存后立即更新播放页和统计页。</p>
+            </div>
+            <button id="saveReview" class="primary-button" type="button">保存</button>
+          </div>
+          <div class="review-toolbar">
+            <select id="reviewEpisodeSelect" class="episode-select" aria-label="选择复核剧集"></select>
+            <button id="reloadReview" class="ghost-button" type="button">重新加载</button>
+            <button id="formatReview" class="ghost-button" type="button">格式化</button>
+          </div>
+          <div class="review-layout">
+            <textarea id="reviewJson" spellcheck="false" aria-label="高光点 JSON"></textarea>
+            <div>
+              <div id="reviewStatus" class="review-status">请选择剧集</div>
+              <div id="reviewPreview" class="review-preview"></div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
 
     <script type="module" src="/app.js"></script>
   </body>
 </html>
-

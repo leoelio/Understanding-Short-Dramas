@@ -15,6 +15,7 @@ from .migrations import ensure_database_schema
 from .models import Drama, Episode, Highlight, Interaction
 from .schemas import InteractionCreate
 from .seed import seed_from_video_library
+from .annotation_schema import validate_annotation_payload
 
 
 app = FastAPI(title=APP_NAME)
@@ -58,6 +59,23 @@ def highlight_payload(highlight: Highlight) -> dict:
         "annotation_reason": highlight.annotation_reason,
         "evidence_segment_ids": parse_evidence_segment_ids(highlight),
         "evidence_text": highlight.evidence_text,
+    }
+
+
+def annotation_item_payload(highlight: Highlight) -> dict:
+    payload = highlight_payload(highlight)
+    return {
+        "start_time_sec": payload["start_time_sec"],
+        "end_time_sec": payload["end_time_sec"],
+        "title": payload["title"],
+        "description": payload["description"],
+        "highlight_type": payload["highlight_type"],
+        "emotion": payload["emotion"],
+        "confidence": payload["confidence"],
+        "reason": payload["annotation_reason"],
+        "evidence_segment_ids": payload["evidence_segment_ids"],
+        "evidence_text": payload["evidence_text"],
+        "options": payload["options"],
     }
 
 
@@ -207,6 +225,92 @@ def stats_highlights(db: Session = Depends(get_db)) -> list[dict]:
             }
         )
     return rows
+
+
+@app.get("/api/admin/episodes")
+def admin_list_episodes(db: Session = Depends(get_db)) -> list[dict]:
+    episodes = db.query(Episode).join(Drama).order_by(Drama.id.asc(), Episode.episode_no.asc()).all()
+    rows = []
+    for episode in episodes:
+        source_counts = Counter(highlight.source for highlight in episode.highlights)
+        rows.append(
+            {
+                "id": episode.id,
+                "drama_title": episode.drama.title,
+                "episode_title": episode.title,
+                "episode_no": episode.episode_no,
+                "duration_sec": episode.duration_sec,
+                "highlight_count": len(episode.highlights),
+                "sources": dict(source_counts),
+            }
+        )
+    return rows
+
+
+@app.get("/api/admin/episodes/{episode_id}/highlights")
+def admin_get_episode_highlights(episode_id: int, db: Session = Depends(get_db)) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    highlights = (
+        db.query(Highlight)
+        .filter(Highlight.episode_id == episode_id)
+        .order_by(Highlight.start_time_sec.asc())
+        .all()
+    )
+    return {
+        "episode_id": episode.id,
+        "drama_title": episode.drama.title,
+        "episode_title": episode.title,
+        "duration_sec": episode.duration_sec,
+        "prompt_version": "admin-review-v1",
+        "highlights": [annotation_item_payload(highlight) for highlight in highlights],
+    }
+
+
+@app.put("/api/admin/episodes/{episode_id}/highlights")
+def admin_replace_episode_highlights(episode_id: int, payload: dict, db: Session = Depends(get_db)) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+
+    normalized_payload = {
+        "episode_id": episode_id,
+        "highlights": payload.get("highlights", []),
+    }
+    errors = validate_annotation_payload(normalized_payload)
+    if errors:
+        raise HTTPException(status_code=400, detail={"errors": errors})
+
+    source = payload.get("source", "human_review")
+    model_version = payload.get("model_version", payload.get("prompt_version", "admin-review-v1"))
+    existing_ids = [row[0] for row in db.query(Highlight.id).filter(Highlight.episode_id == episode.id).all()]
+    if existing_ids:
+        db.query(Interaction).filter(Interaction.highlight_id.in_(existing_ids)).delete(synchronize_session=False)
+    db.query(Highlight).filter(Highlight.episode_id == episode.id).delete(synchronize_session=False)
+
+    for item in normalized_payload["highlights"]:
+        db.add(
+            Highlight(
+                episode_id=episode.id,
+                start_time_sec=float(item["start_time_sec"]),
+                end_time_sec=float(item["end_time_sec"]),
+                title=item["title"],
+                description=item.get("description", ""),
+                highlight_type=item["highlight_type"],
+                emotion=item["emotion"],
+                options_json=json.dumps(item["options"], ensure_ascii=False),
+                source=source,
+                confidence=float(item.get("confidence", 0.7)),
+                model_version=model_version,
+                annotation_reason=item.get("reason", ""),
+                evidence_segment_ids_json=json.dumps(item.get("evidence_segment_ids", []), ensure_ascii=False),
+                evidence_text=item.get("evidence_text", ""),
+            )
+        )
+
+    db.commit()
+    return {"ok": True, "episode_id": episode.id, "highlight_count": len(normalized_payload["highlights"])}
 
 
 if FRONTEND_DIR.exists():

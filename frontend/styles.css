@@ -222,7 +222,7 @@ main {
 }
 
 .episode-select {
-  max-width: 112px;
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px;
@@ -450,6 +450,77 @@ main {
   font-size: 22px;
 }
 
+.review-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 12px;
+}
+
+#reviewJson {
+  min-height: 62vh;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--text);
+  background: #080c12;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.review-status {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--accent-2);
+  background: var(--panel);
+  font-size: 13px;
+}
+
+.review-status.error {
+  color: #ff8a98;
+}
+
+.review-preview {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.review-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--panel);
+}
+
+.review-card p,
+.review-card span,
+.review-card small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-card h4 {
+  margin: 5px 0;
+  font-size: 15px;
+}
+
+.review-card small {
+  display: block;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
 .empty-state {
   border: 1px dashed var(--line);
   border-radius: 8px;
@@ -465,5 +536,12 @@ main {
 
   .drama-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .review-toolbar,
+  .review-layout {
+    grid-template-columns: 1fr;
   }
 }

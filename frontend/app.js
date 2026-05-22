@@ -16,10 +16,12 @@ const views = {
   home: $("#homeView"),
   watch: $("#watchView"),
   admin: $("#adminView"),
+  review: $("#reviewView"),
 };
 
 const homeTab = $("#homeTab");
 const adminTab = $("#adminTab");
+const reviewTab = $("#reviewTab");
 const player = $("#player");
 const interactionLayer = $("#interactionLayer");
 
@@ -39,8 +41,12 @@ function setView(name) {
   Object.entries(views).forEach(([key, element]) => element.classList.toggle("active", key === name));
   homeTab.classList.toggle("active", name === "home");
   adminTab.classList.toggle("active", name === "admin");
+  reviewTab.classList.toggle("active", name === "review");
   if (name === "admin") {
     loadStats();
+  }
+  if (name === "review") {
+    loadReviewEpisodes();
   }
 }
 
@@ -249,6 +255,91 @@ async function loadStats() {
     .join("");
 }
 
+async function loadReviewEpisodes() {
+  const episodes = await fetchJSON("/api/admin/episodes");
+  const select = $("#reviewEpisodeSelect");
+  const currentValue = select.value;
+  select.innerHTML = episodes
+    .map(
+      (episode) => `
+        <option value="${episode.id}">
+          ${episode.drama_title} · ${episode.episode_title} · ${episode.highlight_count} 个高光
+        </option>
+      `
+    )
+    .join("");
+  if (currentValue && [...select.options].some((option) => option.value === currentValue)) {
+    select.value = currentValue;
+  }
+  if (select.value) {
+    await loadReviewPayload(Number(select.value));
+  }
+}
+
+async function loadReviewPayload(episodeId) {
+  const payload = await fetchJSON(`/api/admin/episodes/${episodeId}/highlights`);
+  $("#reviewJson").value = JSON.stringify(payload, null, 2);
+  renderReviewPreview(payload);
+  setReviewStatus(`已加载：${payload.drama_title} · ${payload.episode_title}`);
+}
+
+function parseReviewJson() {
+  return JSON.parse($("#reviewJson").value);
+}
+
+function setReviewStatus(message, isError = false) {
+  const status = $("#reviewStatus");
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function renderReviewPreview(payload) {
+  const highlights = payload.highlights || [];
+  $("#reviewPreview").innerHTML = highlights
+    .map(
+      (item) => `
+        <article class="review-card">
+          <p>${formatTime(item.start_time_sec)}-${formatTime(item.end_time_sec)} · ${item.highlight_type} · ${item.emotion}</p>
+          <h4>${item.title}</h4>
+          <span>${(item.options || []).map((option) => option.label).join(" / ")}</span>
+          ${item.evidence_text ? `<small>${item.evidence_text}</small>` : ""}
+        </article>
+      `
+    )
+    .join("");
+}
+
+function formatReviewJson() {
+  try {
+    const payload = parseReviewJson();
+    $("#reviewJson").value = JSON.stringify(payload, null, 2);
+    renderReviewPreview(payload);
+    setReviewStatus("格式化完成");
+  } catch (error) {
+    setReviewStatus(`JSON 格式错误：${error.message}`, true);
+  }
+}
+
+async function saveReviewPayload() {
+  try {
+    const payload = parseReviewJson();
+    const episodeId = Number($("#reviewEpisodeSelect").value || payload.episode_id);
+    const result = await fetchJSON(`/api/admin/episodes/${episodeId}/highlights`, {
+      method: "PUT",
+      body: JSON.stringify({
+        ...payload,
+        source: "human_review",
+        model_version: payload.prompt_version || "admin-review-v1",
+      }),
+    });
+    renderReviewPreview(payload);
+    setReviewStatus(`已保存 ${result.highlight_count} 个高光点`);
+    await loadStats();
+  } catch (error) {
+    setReviewStatus(`保存失败：${error.message}`, true);
+  }
+}
+
 player.addEventListener("timeupdate", () => {
   const highlight = findDueHighlight(player.currentTime);
   if (highlight) showInteraction(highlight);
@@ -256,11 +347,18 @@ player.addEventListener("timeupdate", () => {
 
 homeTab.addEventListener("click", () => setView("home"));
 adminTab.addEventListener("click", () => setView("admin"));
+reviewTab.addEventListener("click", () => setView("review"));
 $("#backButton").addEventListener("click", () => setView("home"));
 $("#refreshStats").addEventListener("click", loadStats);
+$("#reviewEpisodeSelect").addEventListener("change", (event) => loadReviewPayload(Number(event.target.value)));
+$("#reloadReview").addEventListener("click", () => loadReviewPayload(Number($("#reviewEpisodeSelect").value)));
+$("#formatReview").addEventListener("click", formatReviewJson);
+$("#saveReview").addEventListener("click", saveReviewPayload);
 
 if (location.hash === "#admin") {
   setView("admin");
+} else if (location.hash === "#review") {
+  setView("review");
 } else {
   setView("home");
 }
