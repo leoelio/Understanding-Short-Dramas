@@ -424,6 +424,22 @@ main {
   font-size: 15px;
 }
 
+.evidence-box {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.evidence-box summary {
+  cursor: pointer;
+  color: var(--accent-2);
+}
+
+.evidence-box p {
+  margin-top: 6px;
+  line-height: 1.55;
+}
+
 .stats-metric {
   text-align: right;
 }
@@ -451,4 +467,3 @@ main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-

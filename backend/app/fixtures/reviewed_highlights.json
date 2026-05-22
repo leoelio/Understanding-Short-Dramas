@@ -1,0 +1,82 @@
+{
+  "episodes": [
+    {
+      "drama_title": "云渺1：我修仙多年强亿点怎么了",
+      "episode_no": 1,
+      "highlights": [
+        {
+          "start_time_sec": 30,
+          "end_time_sec": 60,
+          "title": "女子坚持要见病重老爷",
+          "description": "白衣女子被门房劝退仍执意要见卧病三月的周家老爷，双方发生对峙冲突，女子身份不明引发好奇。",
+          "highlight_type": "冲突",
+          "emotion": "紧张",
+          "confidence": 0.95,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v1",
+          "annotation_reason": "该片段明确呈现门房阻拦身份不明的女子探视病重老爷的冲突场景，符合冲突类高光特征。",
+          "evidence_segment_ids": [2],
+          "evidence_text": "女子被劝退但坚持要见人，透露老爷病重三个月；白衣女子被门房劝退却坚持见病重老爷。",
+          "options": [
+            { "key": "support_enter", "label": "支持她进去" },
+            { "key": "persuade_leave", "label": "劝她离开" }
+          ]
+        },
+        {
+          "start_time_sec": 90,
+          "end_time_sec": 120,
+          "title": "亲人哭诉不舍病危老人",
+          "description": "守在病床边的亲人对着吊了三个月气的病危老人倾诉不舍，情绪极度悲伤。",
+          "highlight_type": "虐点",
+          "emotion": "心疼",
+          "confidence": 0.98,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v1",
+          "annotation_reason": "片段明确呈现亲人对病危老人依依不舍的悲伤场景，属于典型虐点高光。",
+          "evidence_segment_ids": [4],
+          "evidence_text": "家人对病危老人依依不舍；病危老人吊着一口气三个月，亲人哭诉不愿放手。",
+          "options": [
+            { "key": "cry", "label": "太好哭了" },
+            { "key": "pray", "label": "祈祷好转" }
+          ]
+        },
+        {
+          "start_time_sec": 120,
+          "end_time_sec": 150,
+          "title": "亲人求助无门崩溃",
+          "description": "亲人坦言已经请遍所有和老人相关的亲朋旧故，仍没能唤醒病危老人，情绪彻底崩溃。",
+          "highlight_type": "虐点",
+          "emotion": "心疼",
+          "confidence": 0.97,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v1",
+          "annotation_reason": "该片段是悲伤情绪的峰值，亲人穷尽办法仍无效的崩溃状态，符合虐点高光特征。",
+          "evidence_segment_ids": [5],
+          "evidence_text": "亲人说已经把所有相关故人请来但仍无用，情绪崩溃达到峰值。",
+          "options": [
+            { "key": "pity", "label": "太心疼了" },
+            { "key": "hope", "label": "盼奇迹出现" }
+          ]
+        },
+        {
+          "start_time_sec": 150,
+          "end_time_sec": 173.55,
+          "title": "神秘访客身份反常",
+          "description": "门房禀报有位特殊客人上门，对方声称老爷看不到她，瞬间拉满悬念。",
+          "highlight_type": "悬念",
+          "emotion": "震惊",
+          "confidence": 0.96,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v1",
+          "annotation_reason": "片段明确给出神秘访客的反常表述，身份悬念极强，符合悬念类高光特征。",
+          "evidence_segment_ids": [6],
+          "evidence_text": "来访女子说老爷看不到她，暗示她身份超常或不是普通故人。",
+          "options": [
+            { "key": "who", "label": "她是谁？" },
+            { "key": "weird", "label": "太诡异了" }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -10,6 +10,7 @@ from .models import Drama, Episode, Highlight
 
 
 EPISODE_RE = re.compile(r"第(\d+)集")
+FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "reviewed_highlights.json"
 
 TYPE_PRESETS = [
     {
@@ -118,6 +119,45 @@ def build_demo_highlights(episode: Episode, preset_offset: int) -> list[Highligh
     return highlights
 
 
+def apply_reviewed_fixtures(db: Session) -> None:
+    if not FIXTURE_PATH.exists():
+        return
+
+    payload = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+    for fixture in payload.get("episodes", []):
+        drama = db.query(Drama).filter(Drama.title == fixture["drama_title"]).first()
+        if not drama:
+            continue
+        episode = (
+            db.query(Episode)
+            .filter(Episode.drama_id == drama.id, Episode.episode_no == int(fixture["episode_no"]))
+            .first()
+        )
+        if not episode:
+            continue
+
+        db.query(Highlight).filter(Highlight.episode_id == episode.id).delete(synchronize_session=False)
+        for item in fixture.get("highlights", []):
+            db.add(
+                Highlight(
+                    episode_id=episode.id,
+                    start_time_sec=float(item["start_time_sec"]),
+                    end_time_sec=float(item["end_time_sec"]),
+                    title=item["title"],
+                    description=item.get("description", ""),
+                    highlight_type=item["highlight_type"],
+                    emotion=item["emotion"],
+                    options_json=json.dumps(item["options"], ensure_ascii=False),
+                    source=item.get("source", "human_review"),
+                    confidence=float(item.get("confidence", 0.8)),
+                    model_version=item.get("model_version", "highlight-annotation-v1"),
+                    annotation_reason=item.get("annotation_reason", ""),
+                    evidence_segment_ids_json=json.dumps(item.get("evidence_segment_ids", []), ensure_ascii=False),
+                    evidence_text=item.get("evidence_text", ""),
+                )
+            )
+
+
 def seed_from_video_library(db: Session) -> None:
     if db.query(Drama).count() > 0:
         return
@@ -148,5 +188,5 @@ def seed_from_video_library(db: Session) -> None:
             for highlight in build_demo_highlights(episode, drama_index):
                 db.add(highlight)
 
+    apply_reviewed_fixtures(db)
     db.commit()
-

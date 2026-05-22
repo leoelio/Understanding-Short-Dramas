@@ -10,7 +10,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .config import APP_NAME, FRONTEND_DIR
-from .database import Base, SessionLocal, engine, get_db
+from .database import SessionLocal, get_db
+from .migrations import ensure_database_schema
 from .models import Drama, Episode, Highlight, Interaction
 from .schemas import InteractionCreate
 from .seed import seed_from_video_library
@@ -21,7 +22,7 @@ app = FastAPI(title=APP_NAME)
 
 @app.on_event("startup")
 def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
+    ensure_database_schema()
     with SessionLocal() as db:
         seed_from_video_library(db)
 
@@ -31,6 +32,14 @@ def parse_options(highlight: Highlight) -> list[dict]:
         return json.loads(highlight.options_json)
     except json.JSONDecodeError:
         return []
+
+
+def parse_evidence_segment_ids(highlight: Highlight) -> list[int]:
+    try:
+        values = json.loads(highlight.evidence_segment_ids_json or "[]")
+    except json.JSONDecodeError:
+        return []
+    return [int(value) for value in values if isinstance(value, (int, float, str)) and str(value).isdigit()]
 
 
 def highlight_payload(highlight: Highlight) -> dict:
@@ -46,6 +55,9 @@ def highlight_payload(highlight: Highlight) -> dict:
         "source": highlight.source,
         "confidence": highlight.confidence,
         "model_version": highlight.model_version,
+        "annotation_reason": highlight.annotation_reason,
+        "evidence_segment_ids": parse_evidence_segment_ids(highlight),
+        "evidence_text": highlight.evidence_text,
     }
 
 

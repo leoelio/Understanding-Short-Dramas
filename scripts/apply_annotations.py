@@ -8,7 +8,8 @@ sys.path.insert(0, str(ROOT))
 
 from backend.app.annotation_schema import validate_annotation_payload
 from backend.app.database import SessionLocal
-from backend.app.models import Episode, Highlight
+from backend.app.migrations import ensure_database_schema
+from backend.app.models import Episode, Highlight, Interaction
 
 
 def main() -> None:
@@ -24,13 +25,21 @@ def main() -> None:
     if errors:
         raise SystemExit("标注 JSON 校验失败：\n" + "\n".join(f"- {error}" for error in errors))
 
+    ensure_database_schema()
     with SessionLocal() as db:
         episode = db.get(Episode, int(payload["episode_id"]))
         if not episode:
             raise SystemExit(f"剧集不存在：{payload['episode_id']}")
 
         if args.replace:
-            db.query(Highlight).filter(Highlight.episode_id == episode.id).delete()
+            existing_highlight_ids = [
+                row[0] for row in db.query(Highlight.id).filter(Highlight.episode_id == episode.id).all()
+            ]
+            if existing_highlight_ids:
+                db.query(Interaction).filter(Interaction.highlight_id.in_(existing_highlight_ids)).delete(
+                    synchronize_session=False
+                )
+            db.query(Highlight).filter(Highlight.episode_id == episode.id).delete(synchronize_session=False)
 
         for item in payload["highlights"]:
             db.add(
@@ -46,6 +55,9 @@ def main() -> None:
                     source=args.source,
                     confidence=float(item.get("confidence", 0.7)),
                     model_version=args.model_version,
+                    annotation_reason=item.get("reason", ""),
+                    evidence_segment_ids_json=json.dumps(item.get("evidence_segment_ids", []), ensure_ascii=False),
+                    evidence_text=item.get("evidence_text", ""),
                 )
             )
         db.commit()

@@ -48,6 +48,9 @@ class Highlight(Base):
     source = Column(String(64), default="manual_seed")
     confidence = Column(Float, default=0.75)
     model_version = Column(String(64), default="seed-v1")
+    annotation_reason = Column(Text, default="")
+    evidence_segment_ids_json = Column(Text, default="[]")
+    evidence_text = Column(Text, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     episode = relationship("Episode", back_populates="highlights")
@@ -64,4 +67,3 @@ class Interaction(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     highlight = relationship("Highlight", back_populates="interactions")
-

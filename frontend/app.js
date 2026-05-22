@@ -200,6 +200,20 @@ function renderInteractionResult(stats) {
   state.hideTimer = window.setTimeout(hideInteraction, 5000);
 }
 
+function renderEvidence(item) {
+  if (!item.evidence_text && !item.annotation_reason) {
+    return "";
+  }
+  const evidenceIds = item.evidence_segment_ids?.length ? `片段 ${item.evidence_segment_ids.join(", ")}` : "证据";
+  return `
+    <details class="evidence-box">
+      <summary>${evidenceIds} · 标注依据</summary>
+      ${item.evidence_text ? `<p>${item.evidence_text}</p>` : ""}
+      ${item.annotation_reason ? `<p>${item.annotation_reason}</p>` : ""}
+    </details>
+  `;
+}
+
 async function loadStats() {
   const [summary, highlights] = await Promise.all([
     fetchJSON("/api/stats/summary"),
@@ -223,6 +237,7 @@ async function loadStats() {
             <p>${item.drama_title} · ${item.episode_title} · ${formatTime(item.start_time_sec)}</p>
             <h4>${item.title}</h4>
             <span>${item.highlight_type} / ${item.source} / 置信度 ${item.confidence}</span>
+            ${renderEvidence(item)}
           </div>
           <div class="stats-metric">
             <strong>${item.stats.total}</strong>
@@ -253,4 +268,3 @@ if (location.hash === "#admin") {
 loadDramas().catch((error) => {
   $("#dramaGrid").innerHTML = `<div class="empty-state">加载失败：${error.message}</div>`;
 });
-
