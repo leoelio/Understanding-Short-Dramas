@@ -243,6 +243,134 @@ main {
   background: #000;
 }
 
+.danmaku-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: var(--danmaku-opacity, 0.82);
+}
+
+.danmaku-layer.disabled {
+  display: none;
+}
+
+.danmaku-item {
+  position: absolute;
+  top: calc(10px + var(--lane) * 28px);
+  left: 100%;
+  max-width: 80%;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.82);
+  animation: danmaku-move var(--duration) linear forwards;
+}
+
+.danmaku-layer.size-small .danmaku-item {
+  font-size: 12px;
+}
+
+.danmaku-layer.size-large .danmaku-item {
+  font-size: 17px;
+}
+
+.danmaku-layer.area-middle .danmaku-item {
+  top: calc(32% + var(--lane) * 30px);
+}
+
+.danmaku-layer.area-full .danmaku-item {
+  top: calc(8px + var(--lane) * 10.5%);
+}
+
+@keyframes danmaku-move {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-140vw);
+  }
+}
+
+.watch-tools {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 12px 14px 0;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mode-button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.mode-button.active {
+  color: #071012;
+  background: var(--accent-2);
+  font-weight: 800;
+}
+
+.icon-button {
+  min-width: 68px;
+}
+
+.danmaku-settings {
+  display: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px 14px 0;
+}
+
+.danmaku-settings.open {
+  display: grid;
+}
+
+.danmaku-settings label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.danmaku-settings input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent-2);
+}
+
+.danmaku-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 12px 14px 0;
+}
+
+.danmaku-form.disabled {
+  opacity: 0.5;
+}
+
+.danmaku-form input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: #0b1018;
+}
+
 .interaction-layer {
   position: absolute;
   inset: 0;
@@ -258,14 +386,47 @@ main {
 }
 
 .interaction-panel {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
   padding: 14px;
-  background: rgba(12, 16, 22, 0.88);
+  background: rgba(12, 16, 22, 0.9);
   box-shadow: 0 16px 60px rgba(0, 0, 0, 0.36);
   pointer-events: auto;
   animation: rise 260ms ease-out;
+}
+
+.interaction-panel.pulse {
+  animation: hit-pulse 420ms ease-out;
+}
+
+.interaction-aura {
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+  background: linear-gradient(120deg, var(--type-accent), transparent 52%, var(--type-soft));
+  pointer-events: none;
+}
+
+.interaction-meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.interaction-meta b {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: #071012;
+  background: var(--type-accent);
+  font-size: 13px;
 }
 
 @keyframes rise {
@@ -284,14 +445,26 @@ main {
   padding-right: 30px;
 }
 
-.interaction-copy span {
-  color: var(--accent-2);
+.interaction-copy span,
+.interaction-copy p {
+  color: var(--muted);
   font-size: 12px;
+}
+
+.interaction-copy span {
+  color: var(--type-accent);
   font-weight: 700;
 }
 
 .interaction-copy h3 {
   margin-top: 5px;
+}
+
+.interaction-copy p {
+  position: relative;
+  z-index: 1;
+  margin-top: 6px;
+  line-height: 1.45;
 }
 
 .interaction-options {
@@ -305,9 +478,26 @@ main {
   min-height: 42px;
   border: 0;
   border-radius: 8px;
-  color: white;
-  background: linear-gradient(135deg, var(--accent), #f6a34f);
+  color: #081016;
+  background: linear-gradient(135deg, var(--type-accent), var(--type-soft));
   font-weight: 800;
+}
+
+.interaction-meter {
+  height: 4px;
+  overflow: hidden;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.interaction-meter i {
+  display: block;
+  width: 68%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--type-accent);
+  animation: meter-live 1300ms ease-in-out infinite alternate;
 }
 
 .close-button {
@@ -343,7 +533,77 @@ main {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--accent-2);
+  background: var(--type-accent, var(--accent-2));
+}
+
+.reaction-particle {
+  position: absolute;
+  z-index: 2;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--type-accent);
+  pointer-events: none;
+  animation: particle-pop 680ms ease-out forwards;
+}
+
+.type-conflict {
+  --type-accent: #ff6a3d;
+  --type-soft: #ffd166;
+}
+
+.type-reveal {
+  --type-accent: #8bd3ff;
+  --type-soft: #e7c6ff;
+}
+
+.type-power {
+  --type-accent: #ff4f64;
+  --type-soft: #f6bc4f;
+}
+
+.type-sweet {
+  --type-accent: #ff8fc7;
+  --type-soft: #b8f7d4;
+}
+
+.type-tear {
+  --type-accent: #8fb8ff;
+  --type-soft: #d8e2ff;
+}
+
+.type-suspense {
+  --type-accent: #b6f36b;
+  --type-soft: #50e3c2;
+}
+
+.type-comedy {
+  --type-accent: #f7e36d;
+  --type-soft: #ff9f7a;
+}
+
+.type-danger {
+  --type-accent: #ff3d7f;
+  --type-soft: #7bdff2;
+}
+
+@keyframes hit-pulse {
+  50% {
+    transform: scale(1.018);
+  }
+}
+
+@keyframes meter-live {
+  to {
+    width: 92%;
+  }
+}
+
+@keyframes particle-pop {
+  to {
+    opacity: 0;
+    transform: translate(var(--x), var(--y)) scale(0.2);
+  }
 }
 
 .timeline {
@@ -371,6 +631,10 @@ main {
   color: var(--muted);
   font-size: 12px;
   font-style: normal;
+}
+
+.timeline-item strong {
+  color: var(--type-accent, var(--text));
 }
 
 .summary-grid {
@@ -544,6 +808,12 @@ main {
 }
 
 @media (max-width: 720px) {
+  .watch-tools,
+  .danmaku-form,
+  .danmaku-settings {
+    grid-template-columns: 1fr;
+  }
+
   .review-toolbar,
   .review-layout {
     grid-template-columns: 1fr;

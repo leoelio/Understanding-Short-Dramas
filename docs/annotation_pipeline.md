@@ -91,6 +91,7 @@ data/context/episode_1/contact_sheet_5s.jpg
 - 类型和情绪是否合理
 - 按钮文案是否短、准、有情绪
 - 是否会打断关键剧情
+- 是否保持“稀疏高光”：一集通常 3-5 个强峰值，两个高光点尽量间隔 25 秒以上
 
 6. 写回数据库：
 
@@ -100,17 +101,21 @@ data/context/episode_1/contact_sheet_5s.jpg
 
 ## 输出 JSON 格式
 
+`highlight_type` 使用固定 8 类：`冲突对抗`、`反转揭秘`、`爽点逆袭`、`甜蜜心动`、`虐心共情`、`悬念钩子`、`搞笑解压`、`危机紧张`。
+
+“名场面”只作为强动效或展示标签理解，不作为一级分类，避免和爽点、反转、冲突重复。
+
 ```json
 {
   "episode_id": 1,
-  "prompt_version": "highlight-annotation-v1",
+  "prompt_version": "highlight-annotation-v2",
   "highlights": [
     {
       "start_time_sec": 38.2,
       "end_time_sec": 46.2,
       "title": "剧情突然反转",
       "description": "主角身份或局势发生反转，适合触发震惊类互动。",
-      "highlight_type": "反转",
+      "highlight_type": "反转揭秘",
       "emotion": "震惊",
       "confidence": 0.86,
       "reason": "用户通常会在反转出现时产生强表达欲。",

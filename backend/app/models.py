@@ -67,3 +67,17 @@ class Interaction(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     highlight = relationship("Highlight", back_populates="interactions")
+
+
+class DanmakuComment(Base):
+    __tablename__ = "danmaku_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    episode_id = Column(Integer, ForeignKey("episodes.id"), nullable=False, index=True)
+    time_sec = Column(Float, nullable=False, index=True)
+    text = Column(String(80), nullable=False)
+    mode = Column(String(32), default="light")
+    session_id = Column(String(128), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    episode = relationship("Episode")

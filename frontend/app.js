@@ -1,11 +1,98 @@
+const DEFAULT_DANMAKU_SETTINGS = {
+  mode: "light",
+  fontSize: "medium",
+  speed: "normal",
+  area: "top",
+  opacity: 82,
+};
+
+const MIN_INTERACTION_GAP_SEC = 18;
+
+const DANMAKU_MODES = {
+  light: { label: "轻聊", enabled: true, density: 0.62 },
+  carnival: { label: "狂欢", enabled: true, density: 1 },
+  immerse: { label: "沉浸", enabled: false, density: 0 },
+};
+
+const HIGHLIGHT_UI = {
+  conflict: {
+    label: "冲突对抗",
+    aliases: ["冲突", "冲突对抗", "对抗", "争执", "打斗"],
+    badge: "站",
+    action: "实时站队",
+    className: "type-conflict",
+  },
+  reveal: {
+    label: "反转揭秘",
+    aliases: ["反转", "反转揭秘", "揭秘", "真相"],
+    badge: "惊",
+    action: "震惊反应",
+    className: "type-reveal",
+  },
+  power: {
+    label: "爽点逆袭",
+    aliases: ["爽点", "爽点逆袭", "逆袭", "打脸", "名场面", "高能名场面"],
+    badge: "燃",
+    action: "爽值连击",
+    className: "type-power",
+  },
+  sweet: {
+    label: "甜蜜心动",
+    aliases: ["甜蜜", "甜蜜心动", "撒糖", "心动"],
+    badge: "甜",
+    action: "心动反应",
+    className: "type-sweet",
+  },
+  tear: {
+    label: "虐心共情",
+    aliases: ["虐点", "虐心", "虐心共情", "悲伤感动", "共情"],
+    badge: "泪",
+    action: "情绪共情",
+    className: "type-tear",
+  },
+  suspense: {
+    label: "悬念钩子",
+    aliases: ["悬念", "悬念钩子", "悬疑反转", "线索", "钩子"],
+    badge: "猜",
+    action: "剧情预测",
+    className: "type-suspense",
+  },
+  comedy: {
+    label: "搞笑解压",
+    aliases: ["搞笑", "搞笑解压", "笑点", "喜剧"],
+    badge: "哈",
+    action: "一起笑",
+    className: "type-comedy",
+  },
+  danger: {
+    label: "危机紧张",
+    aliases: ["危机", "危机紧张", "危险", "紧张"],
+    badge: "急",
+    action: "紧张值",
+    className: "type-danger",
+  },
+};
+
+function loadDanmakuSettings() {
+  try {
+    return { ...DEFAULT_DANMAKU_SETTINGS, ...JSON.parse(localStorage.getItem("danmaku_settings") || "{}") };
+  } catch {
+    return { ...DEFAULT_DANMAKU_SETTINGS };
+  }
+}
+
 const state = {
   dramas: [],
   episodes: [],
   currentEpisode: null,
   sessionId: localStorage.getItem("session_id") || crypto.randomUUID(),
   firedHighlights: new Set(),
+  firedDanmaku: new Set(),
   activeHighlight: null,
   hideTimer: null,
+  lastInteractionTime: -Infinity,
+  danmaku: [],
+  danmakuSettings: loadDanmakuSettings(),
   reviewEpisodes: [],
   reviewFilter: "all",
 };
@@ -26,6 +113,33 @@ const adminTab = $("#adminTab");
 const reviewTab = $("#reviewTab");
 const player = $("#player");
 const interactionLayer = $("#interactionLayer");
+const danmakuLayer = $("#danmakuLayer");
+
+const HIGHLIGHT_ALIAS_TO_KEY = Object.fromEntries(
+  Object.entries(HIGHLIGHT_UI).flatMap(([key, config]) => config.aliases.map((alias) => [alias, key]))
+);
+
+function escapeHTML(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function getHighlightUI(type) {
+  const key = HIGHLIGHT_ALIAS_TO_KEY[type] || "power";
+  return HIGHLIGHT_UI[key];
+}
+
+function getDanmakuMode() {
+  return DANMAKU_MODES[state.danmakuSettings.mode] || DANMAKU_MODES.light;
+}
+
+function saveDanmakuSettings() {
+  localStorage.setItem("danmaku_settings", JSON.stringify(state.danmakuSettings));
+}
 
 async function fetchJSON(url, options = {}) {
   const response = await fetch(url, {
@@ -59,6 +173,83 @@ function formatTime(seconds) {
   return `${min}:${sec}`;
 }
 
+function stableRatio(value) {
+  const text = String(value);
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash * 31 + text.charCodeAt(index)) % 997;
+  }
+  return hash / 997;
+}
+
+function applyDanmakuSettings() {
+  const settings = state.danmakuSettings;
+  const mode = getDanmakuMode();
+  document.querySelectorAll(".mode-button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === settings.mode);
+  });
+  $("#danmakuFontSize").value = settings.fontSize;
+  $("#danmakuSpeed").value = settings.speed;
+  $("#danmakuArea").value = settings.area;
+  $("#danmakuOpacity").value = settings.opacity;
+  danmakuLayer.className = `danmaku-layer area-${settings.area} size-${settings.fontSize}`;
+  danmakuLayer.style.setProperty("--danmaku-opacity", String(settings.opacity / 100));
+  danmakuLayer.classList.toggle("disabled", !mode.enabled);
+  if (!mode.enabled) danmakuLayer.innerHTML = "";
+  $("#danmakuInput").disabled = !mode.enabled;
+  $("#danmakuForm").classList.toggle("disabled", !mode.enabled);
+  saveDanmakuSettings();
+}
+
+function clearDanmakuLayer() {
+  state.firedDanmaku.clear();
+  danmakuLayer.innerHTML = "";
+}
+
+function shouldShowDanmaku(comment) {
+  const mode = getDanmakuMode();
+  return mode.enabled && stableRatio(comment.id || `${comment.time_sec}-${comment.text}`) <= mode.density;
+}
+
+function danmakuDuration() {
+  if (state.danmakuSettings.speed === "slow") return 9800;
+  if (state.danmakuSettings.speed === "fast") return 5200;
+  return 7400;
+}
+
+function emitDanmaku(comment) {
+  if (!shouldShowDanmaku(comment)) return;
+  const bubble = document.createElement("span");
+  bubble.className = "danmaku-item";
+  bubble.textContent = comment.text;
+  const lanes = state.danmakuSettings.area === "full" ? 8 : state.danmakuSettings.area === "middle" ? 4 : 3;
+  const lane = Math.floor(stableRatio(`${comment.id}-${comment.text}`) * lanes);
+  bubble.style.setProperty("--lane", lane);
+  bubble.style.setProperty("--duration", `${danmakuDuration()}ms`);
+  danmakuLayer.appendChild(bubble);
+  window.setTimeout(() => bubble.remove(), danmakuDuration() + 400);
+}
+
+async function loadDanmaku(episodeId) {
+  state.danmaku = await fetchJSON(`/api/episodes/${episodeId}/danmaku`);
+  clearDanmakuLayer();
+}
+
+function renderDanmakuHint() {
+  const mode = getDanmakuMode();
+  $("#danmakuInput").placeholder = mode.enabled ? `${mode.label}：发一条弹幕` : "沉浸模式已关闭弹幕";
+}
+
+function checkDanmaku(currentTime) {
+  for (const comment of state.danmaku) {
+    const due = currentTime >= comment.time_sec && currentTime <= comment.time_sec + 2.4;
+    if (due && !state.firedDanmaku.has(comment.id)) {
+      state.firedDanmaku.add(comment.id);
+      emitDanmaku(comment);
+    }
+  }
+}
+
 function renderDramas() {
   $("#dramaCount").textContent = `${state.dramas.length} 部短剧`;
   $("#dramaGrid").innerHTML = state.dramas
@@ -71,10 +262,10 @@ function renderDramas() {
                 ? `<video src="${drama.preview_video_url}" muted playsinline preload="metadata"></video>`
                 : `<div class="thumb-empty">暂无视频</div>`
             }
-            <span>${drama.genre}</span>
+            <span>${escapeHTML(drama.genre)}</span>
           </div>
           <div class="drama-info">
-            <h3>${drama.title}</h3>
+            <h3>${escapeHTML(drama.title)}</h3>
             <p>${drama.episode_count} 集已导入</p>
           </div>
         </article>
@@ -106,26 +297,37 @@ async function openDrama(dramaId) {
 
 async function openEpisode(episodeId) {
   state.firedHighlights.clear();
+  state.lastInteractionTime = -Infinity;
+  clearDanmakuLayer();
   hideInteraction();
-  state.currentEpisode = await fetchJSON(`/api/episodes/${episodeId}`);
+  const [episode, danmaku] = await Promise.all([
+    fetchJSON(`/api/episodes/${episodeId}`),
+    fetchJSON(`/api/episodes/${episodeId}/danmaku`),
+  ]);
+  state.currentEpisode = episode;
+  state.danmaku = danmaku;
   $("#watchGenre").textContent = state.currentEpisode.drama.genre || "短剧播放";
   $("#watchTitle").textContent = `${state.currentEpisode.drama.title} · ${state.currentEpisode.title}`;
   $("#episodeSelect").value = String(episodeId);
   player.src = state.currentEpisode.video_url;
   renderTimeline();
+  renderDanmakuHint();
 }
 
 function renderTimeline() {
   const highlights = state.currentEpisode?.highlights || [];
   $("#timeline").innerHTML = highlights
     .map(
-      (item) => `
-        <button class="timeline-item" type="button" data-time="${item.start_time_sec}">
+      (item) => {
+        const ui = getHighlightUI(item.highlight_type);
+        return `
+        <button class="timeline-item ${ui.className}" type="button" data-time="${item.start_time_sec}">
           <span>${formatTime(item.start_time_sec)}</span>
-          <strong>${item.highlight_type}</strong>
-          <em>${item.emotion}</em>
+          <strong>${escapeHTML(ui.label)}</strong>
+          <em>${escapeHTML(item.emotion)}</em>
         </button>
-      `
+      `;
+      }
     )
     .join("");
 
@@ -138,6 +340,9 @@ function renderTimeline() {
 }
 
 function findDueHighlight(currentTime) {
+  if (state.activeHighlight || currentTime - state.lastInteractionTime < MIN_INTERACTION_GAP_SEC) {
+    return null;
+  }
   const highlights = state.currentEpisode?.highlights || [];
   return highlights.find((item) => {
     const due = currentTime >= item.start_time_sec && currentTime <= item.end_time_sec + 2;
@@ -146,27 +351,40 @@ function findDueHighlight(currentTime) {
 }
 
 function showInteraction(highlight) {
+  const ui = getHighlightUI(highlight.highlight_type);
   state.activeHighlight = highlight;
   state.firedHighlights.add(highlight.id);
+  state.lastInteractionTime = highlight.start_time_sec;
   window.clearTimeout(state.hideTimer);
-  interactionLayer.className = `interaction-layer type-${highlight.highlight_type}`;
+  interactionLayer.className = `interaction-layer ${ui.className}`;
   interactionLayer.innerHTML = `
     <div class="interaction-panel">
+      <div class="interaction-aura"></div>
       <div class="interaction-copy">
-        <span>${highlight.highlight_type} · ${highlight.emotion}</span>
-        <h3>${highlight.title}</h3>
+        <div class="interaction-meta">
+          <b>${escapeHTML(ui.badge)}</b>
+          <span>${escapeHTML(ui.label)} · ${escapeHTML(ui.action)} · ${escapeHTML(highlight.emotion)}</span>
+        </div>
+        <h3>${escapeHTML(highlight.title)}</h3>
+        <p>${escapeHTML(highlight.description || "")}</p>
       </div>
       <div class="interaction-options">
         ${highlight.options
-          .map((option) => `<button type="button" data-key="${option.key}">${option.label}</button>`)
+          .map(
+            (option) =>
+              `<button class="reaction-button" type="button" data-key="${escapeHTML(option.key)}">${escapeHTML(
+                option.label
+              )}</button>`
+          )
           .join("")}
       </div>
+      <div class="interaction-meter"><i></i></div>
       <button class="close-button" type="button" aria-label="关闭">×</button>
     </div>
   `;
   interactionLayer.querySelector(".close-button").addEventListener("click", hideInteraction);
   interactionLayer.querySelectorAll(".interaction-options button").forEach((button) => {
-    button.addEventListener("click", () => submitInteraction(button.dataset.key));
+    button.addEventListener("click", () => submitInteraction(button.dataset.key, button));
   });
   state.hideTimer = window.setTimeout(hideInteraction, 9000);
 }
@@ -178,8 +396,26 @@ function hideInteraction() {
   interactionLayer.innerHTML = "";
 }
 
-async function submitInteraction(optionKey) {
+function burstReaction(anchor) {
+  const panel = interactionLayer.querySelector(".interaction-panel");
+  if (!panel) return;
+  panel.classList.add("pulse");
+  window.setTimeout(() => panel.classList.remove("pulse"), 420);
+  for (let index = 0; index < 14; index += 1) {
+    const particle = document.createElement("i");
+    particle.className = "reaction-particle";
+    particle.style.setProperty("--x", `${Math.cos(index) * (34 + index * 2)}px`);
+    particle.style.setProperty("--y", `${Math.sin(index * 1.7) * (26 + index)}px`);
+    particle.style.left = `${anchor.offsetLeft + anchor.offsetWidth / 2}px`;
+    particle.style.top = `${anchor.offsetTop + anchor.offsetHeight / 2}px`;
+    panel.appendChild(particle);
+    window.setTimeout(() => particle.remove(), 680);
+  }
+}
+
+async function submitInteraction(optionKey, anchor) {
   if (!state.activeHighlight) return;
+  if (anchor) burstReaction(anchor);
   const result = await fetchJSON("/api/interactions", {
     method: "POST",
     body: JSON.stringify({
@@ -197,7 +433,7 @@ function renderInteractionResult(stats) {
     .map(
       (option) => `
         <div class="result-row">
-          <span>${option.label}</span>
+          <span>${escapeHTML(option.label)}</span>
           <div class="bar"><i style="width:${option.percent}%"></i></div>
           <strong>${option.percent}%</strong>
         </div>
@@ -232,6 +468,7 @@ async function loadStats() {
     ["剧集", summary.episode_count],
     ["高光点", summary.highlight_count],
     ["互动次数", summary.interaction_count],
+    ["弹幕", summary.danmaku_count || 0],
   ]
     .map(([label, value]) => `<div class="summary-card"><span>${label}</span><strong>${value}</strong></div>`)
     .join("");
@@ -390,9 +627,35 @@ async function saveReviewPayload() {
   }
 }
 
+async function sendDanmaku(event) {
+  event.preventDefault();
+  const input = $("#danmakuInput");
+  const text = input.value.trim();
+  if (!text || !state.currentEpisode || !getDanmakuMode().enabled) return;
+  const comment = await fetchJSON("/api/danmaku", {
+    method: "POST",
+    body: JSON.stringify({
+      episode_id: state.currentEpisode.id,
+      time_sec: player.currentTime || 0,
+      text,
+      session_id: state.sessionId,
+      mode: state.danmakuSettings.mode,
+    }),
+  });
+  state.danmaku.push(comment);
+  state.firedDanmaku.add(comment.id);
+  emitDanmaku(comment);
+  input.value = "";
+}
+
 player.addEventListener("timeupdate", () => {
   const highlight = findDueHighlight(player.currentTime);
   if (highlight) showInteraction(highlight);
+  checkDanmaku(player.currentTime);
+});
+
+player.addEventListener("seeked", () => {
+  clearDanmakuLayer();
 });
 
 homeTab.addEventListener("click", () => setView("home"));
@@ -408,6 +671,29 @@ $("#reviewEpisodeSelect").addEventListener("change", (event) => loadReviewPayloa
 $("#reloadReview").addEventListener("click", () => loadReviewPayload(Number($("#reviewEpisodeSelect").value)));
 $("#formatReview").addEventListener("click", formatReviewJson);
 $("#saveReview").addEventListener("click", saveReviewPayload);
+$("#danmakuForm").addEventListener("submit", sendDanmaku);
+$("#danmakuSettingsToggle").addEventListener("click", () => {
+  $("#danmakuSettings").classList.toggle("open");
+});
+document.querySelectorAll(".mode-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.danmakuSettings.mode = button.dataset.mode;
+    applyDanmakuSettings();
+    renderDanmakuHint();
+  });
+});
+["danmakuFontSize", "danmakuSpeed", "danmakuArea"].forEach((id) => {
+  $(`#${id}`).addEventListener("change", (event) => {
+    const key = id.replace("danmaku", "");
+    const settingKey = key.charAt(0).toLowerCase() + key.slice(1);
+    state.danmakuSettings[settingKey] = event.target.value;
+    applyDanmakuSettings();
+  });
+});
+$("#danmakuOpacity").addEventListener("input", (event) => {
+  state.danmakuSettings.opacity = Number(event.target.value);
+  applyDanmakuSettings();
+});
 
 if (location.hash === "#admin") {
   setView("admin");
@@ -416,6 +702,9 @@ if (location.hash === "#admin") {
 } else {
   setView("home");
 }
+
+applyDanmakuSettings();
+renderDanmakuHint();
 
 loadDramas().catch((error) => {
   $("#dramaGrid").innerHTML = `<div class="empty-state">加载失败：${error.message}</div>`;

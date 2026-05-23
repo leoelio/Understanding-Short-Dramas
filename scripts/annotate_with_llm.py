@@ -20,7 +20,7 @@ from backend.app.config import ROOT_DIR
 load_dotenv(ROOT_DIR / ".env")
 
 
-PROMPT_VERSION = "highlight-annotation-v1"
+PROMPT_VERSION = "highlight-annotation-v2"
 
 
 SYSTEM_PROMPT = f"""
@@ -32,15 +32,16 @@ SYSTEM_PROMPT = f"""
 
 输出要求：
 1. 只输出一个 JSON 对象，不要 Markdown，不要解释。
-2. 每集建议输出 3-5 个高光点。
-3. 高光点必须落在输入片段时间范围内。
-4. 互动按钮必须短、直接、有情绪感染力，每个 label 1-8 个字。
-5. 只能依据 segments 里的字幕、画面描述、音频提示和人工备注标注。
-6. 剧名、文件名、题材名都不是剧情证据，不能据此推断剧情。
-7. 每个高光点必须给出 evidence_segment_ids 和 evidence_text，证明确实来自输入片段。
-8. manual_note 是人工复核者给出的可靠剧情观察，可以作为证据。
-9. 如果 manual_note 中写有“候选高光”，请优先判断它是否适合转成互动高光点。
-10. 如果信息不足，可以少标，不要硬编剧情。
+2. 每集建议输出 3-5 个高光点；短集不能处处都是高光，普通铺垫和过场不要强行标。
+3. 两个高光点之间尽量间隔 25 秒以上，除非连续剧情确实发生强反转。
+4. 高光点必须落在输入片段时间范围内。
+5. 互动按钮必须短、直接、有情绪感染力，每个 label 1-8 个字。
+6. 只能依据 segments 里的字幕、画面描述、音频提示和人工备注标注。
+7. 剧名、文件名、题材名都不是剧情证据，不能据此推断剧情。
+8. 每个高光点必须给出 evidence_segment_ids 和 evidence_text，证明确实来自输入片段。
+9. manual_note 是人工复核者给出的可靠剧情观察，可以作为证据。
+10. 如果 manual_note 中写有“候选高光”，请优先判断它是否适合转成互动高光点。
+11. 如果信息不足，可以少标，不要硬编剧情。
 """.strip()
 
 
@@ -115,6 +116,7 @@ def build_user_prompt(annotation_input: dict[str, Any]) -> str:
                 "只能依据 episode.segments 中的内容标注。",
                 "不要使用剧名、文件名或题材名推断剧情。",
                 "如果没有明确证据，不要标注该高光点。",
+                "保持高光稀疏：短剧一集通常只保留 3-5 个最强情绪峰值。",
             ],
             "schema": {
                 "episode_id": "number",
@@ -125,8 +127,8 @@ def build_user_prompt(annotation_input: dict[str, Any]) -> str:
                         "end_time_sec": "number",
                         "title": "string",
                         "description": "string",
-                        "highlight_type": "冲突/反转/爽点/甜蜜/虐点/搞笑/悬念/名场面",
-                        "emotion": "爽/震惊/心疼/愤怒/好笑/心动/紧张/期待",
+                        "highlight_type": "冲突对抗/反转揭秘/爽点逆袭/甜蜜心动/虐心共情/悬念钩子/搞笑解压/危机紧张",
+                        "emotion": "爽/震惊/心疼/愤怒/好笑/心动/紧张/期待/站队/解气/破防等",
                         "confidence": "0-1 number",
                         "reason": "string",
                         "evidence_segment_ids": ["number"],
@@ -195,7 +197,7 @@ def dry_run_annotation(annotation_input: dict[str, Any]) -> dict[str, Any]:
                 "end_time_sec": round(duration * 0.25 + 8, 2),
                 "title": "演示高光候选",
                 "description": "dry-run 生成的占位标注，用于验证链路。",
-                "highlight_type": "爽点",
+                "highlight_type": "爽点逆袭",
                 "emotion": "爽",
                 "confidence": 0.5,
                 "reason": "未调用大模型，仅用于测试 JSON 格式和入库链路。",

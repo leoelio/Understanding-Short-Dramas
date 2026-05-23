@@ -1,8 +1,16 @@
 from typing import Any
 
+from .taxonomy import (
+    ALLOWED_EMOTIONS,
+    HIGHLIGHT_TYPE_ALIASES,
+    HIGHLIGHT_TYPE_LABELS,
+    MAX_HIGHLIGHTS_PER_EPISODE,
+    MIN_HIGHLIGHT_GAP_SEC,
+    normalize_highlight_type,
+)
 
-ALLOWED_HIGHLIGHT_TYPES = {"冲突", "反转", "爽点", "甜蜜", "虐点", "搞笑", "悬念", "名场面"}
-ALLOWED_EMOTIONS = {"爽", "震惊", "心疼", "愤怒", "好笑", "心动", "紧张", "期待"}
+
+ALLOWED_HIGHLIGHT_TYPES = HIGHLIGHT_TYPE_LABELS
 
 
 def validate_annotation_payload(payload: dict[str, Any]) -> list[str]:
@@ -13,7 +21,10 @@ def validate_annotation_payload(payload: dict[str, Any]) -> list[str]:
     highlights = payload.get("highlights")
     if not isinstance(highlights, list):
         return ["字段 highlights 必须是数组"]
+    if len(highlights) > MAX_HIGHLIGHTS_PER_EPISODE:
+        errors.append(f"单集高光点建议不超过 {MAX_HIGHLIGHTS_PER_EPISODE} 个，避免互动过密")
 
+    normalized_times: list[float] = []
     for index, item in enumerate(highlights):
         prefix = f"highlights[{index}]"
         if not isinstance(item, dict):
@@ -28,8 +39,13 @@ def validate_annotation_payload(payload: dict[str, Any]) -> list[str]:
             errors.append(f"{prefix}.end_time_sec 必须是数字")
         if isinstance(start, (int, float)) and isinstance(end, (int, float)) and end <= start:
             errors.append(f"{prefix}.end_time_sec 必须大于 start_time_sec")
+        if isinstance(start, (int, float)):
+            normalized_times.append(float(start))
 
-        if item.get("highlight_type") not in ALLOWED_HIGHLIGHT_TYPES:
+        highlight_type = item.get("highlight_type")
+        if isinstance(highlight_type, str) and highlight_type in HIGHLIGHT_TYPE_ALIASES:
+            item["highlight_type"] = normalize_highlight_type(highlight_type)
+        elif highlight_type not in ALLOWED_HIGHLIGHT_TYPES:
             errors.append(f"{prefix}.highlight_type 不在允许范围内")
         if item.get("emotion") not in ALLOWED_EMOTIONS:
             errors.append(f"{prefix}.emotion 不在允许范围内")
@@ -61,5 +77,10 @@ def validate_annotation_payload(payload: dict[str, Any]) -> list[str]:
                 seen.add(key)
                 if not isinstance(label, str) or not label or len(label) > 8:
                     errors.append(f"{option_prefix}.label 必须是 1-8 个字")
+
+    sorted_times = sorted(normalized_times)
+    for previous, current in zip(sorted_times, sorted_times[1:]):
+        if current - previous < MIN_HIGHLIGHT_GAP_SEC:
+            errors.append(f"高光触发过密：{previous:.0f}s 与 {current:.0f}s 间隔不足 {MIN_HIGHLIGHT_GAP_SEC}s")
 
     return errors

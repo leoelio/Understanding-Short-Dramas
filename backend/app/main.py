@@ -12,10 +12,11 @@ from sqlalchemy.orm import Session
 from .config import APP_NAME, FRONTEND_DIR
 from .database import SessionLocal, get_db
 from .migrations import ensure_database_schema
-from .models import Drama, Episode, Highlight, Interaction
-from .schemas import InteractionCreate
+from .models import DanmakuComment, Drama, Episode, Highlight, Interaction
+from .schemas import DanmakuCreate, InteractionCreate
 from .seed import seed_from_video_library
 from .annotation_schema import validate_annotation_payload
+from .taxonomy import normalize_highlight_type, taxonomy_payload
 
 
 app = FastAPI(title=APP_NAME)
@@ -44,13 +45,15 @@ def parse_evidence_segment_ids(highlight: Highlight) -> list[int]:
 
 
 def highlight_payload(highlight: Highlight) -> dict:
+    normalized_type = normalize_highlight_type(highlight.highlight_type)
     return {
         "id": highlight.id,
         "start_time_sec": highlight.start_time_sec,
         "end_time_sec": highlight.end_time_sec,
         "title": highlight.title,
         "description": highlight.description,
-        "highlight_type": highlight.highlight_type,
+        "highlight_type": normalized_type,
+        "raw_highlight_type": highlight.highlight_type,
         "emotion": highlight.emotion,
         "options": parse_options(highlight),
         "source": highlight.source,
@@ -114,6 +117,11 @@ def option_stats(db: Session, highlight: Highlight) -> dict:
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True, "request_id": str(uuid4())}
+
+
+@app.get("/api/taxonomy/highlights")
+def highlight_taxonomy() -> list[dict]:
+    return taxonomy_payload()
 
 
 @app.get("/api/dramas")
@@ -207,6 +215,59 @@ def create_interaction(payload: InteractionCreate, db: Session = Depends(get_db)
     return {"ok": True, "highlight_id": highlight.id, "stats": option_stats(db, highlight)}
 
 
+@app.get("/api/episodes/{episode_id}/danmaku")
+def list_danmaku(episode_id: int, db: Session = Depends(get_db)) -> list[dict]:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    rows = (
+        db.query(DanmakuComment)
+        .filter(DanmakuComment.episode_id == episode_id)
+        .order_by(DanmakuComment.time_sec.asc(), DanmakuComment.id.asc())
+        .all()
+    )
+    return [
+        {
+            "id": row.id,
+            "episode_id": row.episode_id,
+            "time_sec": row.time_sec,
+            "text": row.text,
+            "mode": row.mode,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+        }
+        for row in rows
+    ]
+
+
+@app.post("/api/danmaku")
+def create_danmaku(payload: DanmakuCreate, db: Session = Depends(get_db)) -> dict:
+    episode = db.get(Episode, payload.episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="弹幕不能为空")
+    safe_time = min(float(payload.time_sec), float(episode.duration_sec or payload.time_sec))
+    comment = DanmakuComment(
+        episode_id=episode.id,
+        time_sec=round(max(0, safe_time), 2),
+        text=text,
+        session_id=payload.session_id,
+        mode=payload.mode,
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return {
+        "id": comment.id,
+        "episode_id": comment.episode_id,
+        "time_sec": comment.time_sec,
+        "text": comment.text,
+        "mode": comment.mode,
+        "created_at": comment.created_at.isoformat() if comment.created_at else None,
+    }
+
+
 @app.get("/api/stats/summary")
 def stats_summary(db: Session = Depends(get_db)) -> dict:
     return {
@@ -214,6 +275,7 @@ def stats_summary(db: Session = Depends(get_db)) -> dict:
         "episode_count": db.query(Episode).count(),
         "highlight_count": db.query(Highlight).count(),
         "interaction_count": db.query(Interaction).count(),
+        "danmaku_count": db.query(DanmakuComment).count(),
     }
 
 

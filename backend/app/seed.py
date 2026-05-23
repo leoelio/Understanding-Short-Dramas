@@ -6,7 +6,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from .config import SEED_EPISODES_PER_DRAMA, VIDEO_LIBRARY_PATH
-from .models import Drama, Episode, Highlight
+from .models import DanmakuComment, Drama, Episode, Highlight
 
 
 EPISODE_RE = re.compile(r"第(\d+)集")
@@ -14,7 +14,7 @@ FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "reviewed_highligh
 
 TYPE_PRESETS = [
     {
-        "type": "爽点",
+        "type": "爽点逆袭",
         "emotion": "爽",
         "title": "剧情爽点来袭",
         "options": [
@@ -24,7 +24,7 @@ TYPE_PRESETS = [
         ],
     },
     {
-        "type": "反转",
+        "type": "反转揭秘",
         "emotion": "震惊",
         "title": "剧情突然反转",
         "options": [
@@ -34,7 +34,7 @@ TYPE_PRESETS = [
         ],
     },
     {
-        "type": "冲突",
+        "type": "冲突对抗",
         "emotion": "愤怒",
         "title": "冲突升级",
         "options": [
@@ -44,7 +44,7 @@ TYPE_PRESETS = [
         ],
     },
     {
-        "type": "甜蜜",
+        "type": "甜蜜心动",
         "emotion": "心动",
         "title": "甜蜜瞬间",
         "options": [
@@ -54,7 +54,7 @@ TYPE_PRESETS = [
         ],
     },
     {
-        "type": "虐点",
+        "type": "虐心共情",
         "emotion": "心疼",
         "title": "虐心时刻",
         "options": [
@@ -158,8 +158,44 @@ def apply_reviewed_fixtures(db: Session) -> None:
             )
 
 
+def seed_demo_danmaku(db: Session) -> None:
+    if db.query(DanmakuComment).count() > 0:
+        return
+
+    comments = ["来了来了", "这段有点东西", "别眨眼", "前方高能", "这反应真实", "我站主角"]
+    episodes = db.query(Episode).order_by(Episode.id.asc()).all()
+    for episode in episodes:
+        if not episode.duration_sec:
+            continue
+        baseline_times = [episode.duration_sec * 0.12, episode.duration_sec * 0.38, episode.duration_sec * 0.68]
+        for index, time_sec in enumerate(baseline_times):
+            db.add(
+                DanmakuComment(
+                    episode_id=episode.id,
+                    time_sec=round(time_sec, 2),
+                    text=comments[(episode.id + index) % len(comments)],
+                    mode="seed",
+                    session_id="seed",
+                )
+            )
+
+        highlights = sorted(episode.highlights, key=lambda item: item.start_time_sec)[:3]
+        for index, highlight in enumerate(highlights):
+            db.add(
+                DanmakuComment(
+                    episode_id=episode.id,
+                    time_sec=max(0, round(highlight.start_time_sec - 1.5, 2)),
+                    text=["要来了", "这就是高光", "情绪到了"][index % 3],
+                    mode="seed",
+                    session_id="seed",
+                )
+            )
+
+
 def seed_from_video_library(db: Session) -> None:
     if db.query(Drama).count() > 0:
+        seed_demo_danmaku(db)
+        db.commit()
         return
 
     if not VIDEO_LIBRARY_PATH.exists():
@@ -189,4 +225,5 @@ def seed_from_video_library(db: Session) -> None:
                 db.add(highlight)
 
     apply_reviewed_fixtures(db)
+    seed_demo_danmaku(db)
     db.commit()
