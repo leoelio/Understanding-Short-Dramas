@@ -21,6 +21,9 @@ const HIGHLIGHT_UI = {
     badge: "站",
     action: "实时站队",
     className: "type-conflict",
+    effect: "split",
+    padText: "站队开麦",
+    burstWords: ["站左边", "站右边", "别怂", "正面刚"],
   },
   reveal: {
     label: "反转揭秘",
@@ -28,6 +31,9 @@ const HIGHLIGHT_UI = {
     badge: "惊",
     action: "震惊反应",
     className: "type-reveal",
+    effect: "tapstorm",
+    padText: "牛逼！狂点",
+    burstWords: ["牛逼", "我天", "反转了", "还能这样"],
   },
   power: {
     label: "爽点逆袭",
@@ -35,6 +41,9 @@ const HIGHLIGHT_UI = {
     badge: "燃",
     action: "爽值连击",
     className: "type-power",
+    effect: "tapstorm",
+    padText: "爽！连击",
+    burstWords: ["爽", "解气", "继续", "打脸"],
   },
   sweet: {
     label: "甜蜜心动",
@@ -42,6 +51,9 @@ const HIGHLIGHT_UI = {
     badge: "甜",
     action: "心动反应",
     className: "type-sweet",
+    effect: "hearts",
+    padText: "心动冒泡",
+    burstWords: ["磕到了", "心动", "好甜", "在一起"],
   },
   tear: {
     label: "虐心共情",
@@ -49,6 +61,9 @@ const HIGHLIGHT_UI = {
     badge: "泪",
     action: "情绪共情",
     className: "type-tear",
+    effect: "drops",
+    padText: "抱抱一下",
+    burstWords: ["心疼", "破防", "抱抱", "别哭"],
   },
   suspense: {
     label: "悬念钩子",
@@ -56,6 +71,9 @@ const HIGHLIGHT_UI = {
     badge: "猜",
     action: "剧情预测",
     className: "type-suspense",
+    effect: "clue",
+    padText: "展开线索",
+    burstWords: ["有线索", "要反转", "接下来呢", "别断"],
   },
   comedy: {
     label: "搞笑解压",
@@ -63,6 +81,9 @@ const HIGHLIGHT_UI = {
     badge: "哈",
     action: "一起笑",
     className: "type-comedy",
+    effect: "laugh",
+    padText: "鹅鹅鹅",
+    burstWords: ["鹅鹅鹅", "笑死", "绷不住", "太离谱"],
   },
   danger: {
     label: "危机紧张",
@@ -70,6 +91,9 @@ const HIGHLIGHT_UI = {
     badge: "急",
     action: "紧张值",
     className: "type-danger",
+    effect: "heartbeat",
+    padText: "心跳加速",
+    burstWords: ["快跑", "小心", "别过去", "屏住"],
   },
 };
 
@@ -129,12 +153,15 @@ function escapeHTML(value) {
 }
 
 function getHighlightUI(type) {
-  const key = HIGHLIGHT_ALIAS_TO_KEY[type] || "power";
-  return HIGHLIGHT_UI[key];
+  return HIGHLIGHT_UI[getHighlightKey(type)];
 }
 
 function getDanmakuMode() {
   return DANMAKU_MODES[state.danmakuSettings.mode] || DANMAKU_MODES.light;
+}
+
+function getHighlightKey(type) {
+  return HIGHLIGHT_ALIAS_TO_KEY[type] || "power";
 }
 
 function saveDanmakuSettings() {
@@ -220,7 +247,7 @@ function danmakuDuration() {
 function emitDanmaku(comment) {
   if (!shouldShowDanmaku(comment)) return;
   const bubble = document.createElement("span");
-  bubble.className = "danmaku-item";
+  bubble.className = `danmaku-item ${comment.className || ""}`;
   bubble.textContent = comment.text;
   const lanes = state.danmakuSettings.area === "full" ? 8 : state.danmakuSettings.area === "middle" ? 4 : 3;
   const lane = Math.floor(stableRatio(`${comment.id}-${comment.text}`) * lanes);
@@ -228,6 +255,18 @@ function emitDanmaku(comment) {
   bubble.style.setProperty("--duration", `${danmakuDuration()}ms`);
   danmakuLayer.appendChild(bubble);
   window.setTimeout(() => bubble.remove(), danmakuDuration() + 400);
+}
+
+function emitHighlightDanmaku(highlight, ui) {
+  const words = ui.burstWords || [ui.label];
+  words.slice(0, getDanmakuMode().density >= 1 ? 4 : 2).forEach((text, index) => {
+    emitDanmaku({
+      id: `highlight-${highlight.id}-${index}`,
+      text,
+      time_sec: highlight.start_time_sec,
+      className: `danmaku-impact ${ui.className}`,
+    });
+  });
 }
 
 async function loadDanmaku(episodeId) {
@@ -238,6 +277,33 @@ async function loadDanmaku(episodeId) {
 function renderDanmakuHint() {
   const mode = getDanmakuMode();
   $("#danmakuInput").placeholder = mode.enabled ? `${mode.label}：发一条弹幕` : "沉浸模式已关闭弹幕";
+}
+
+function extractSceneMotifs(highlight) {
+  const source = `${highlight.title || ""} ${highlight.description || ""} ${highlight.evidence_text || ""}`;
+  const candidates = [
+    "门房",
+    "病床",
+    "老爷",
+    "白衣女子",
+    "家族",
+    "线索",
+    "身份",
+    "电话",
+    "戒指",
+    "合同",
+    "钥匙",
+    "车",
+    "雨",
+    "酒",
+    "灯",
+    "房间",
+    "医院",
+    "婚礼",
+    "剑",
+    "系统",
+  ];
+  return candidates.filter((word) => source.includes(word)).slice(0, 3);
 }
 
 function checkDanmaku(currentTime) {
@@ -350,16 +416,89 @@ function findDueHighlight(currentTime) {
   });
 }
 
+function renderEffectStage(ui) {
+  if (ui.effect === "laugh") {
+    return `
+      <div class="laugh-sticker">
+        <i></i>
+        <span>鹅鹅鹅</span>
+      </div>
+    `;
+  }
+  if (ui.effect === "tapstorm") {
+    return `<div class="tapstorm-ring"><span>牛逼</span></div>`;
+  }
+  if (ui.effect === "heartbeat") {
+    return `<div class="heartbeat-line"><i></i><i></i><i></i></div>`;
+  }
+  if (ui.effect === "clue") {
+    return `<div class="clue-card"><span>线索浮现</span></div>`;
+  }
+  return `<div class="soft-spark"></div>`;
+}
+
+function renderSceneCaptions(ui, motifs) {
+  const captions = motifs.length ? motifs : [ui.label, ui.action];
+  return `
+    <div class="scene-captions">
+      ${captions.map((caption) => `<span>${escapeHTML(caption)}</span>`).join("")}
+    </div>
+  `;
+}
+
+function floatingWord(text, ui, anchor) {
+  const panel = interactionLayer.querySelector(".interaction-panel");
+  if (!panel) return;
+  const word = document.createElement("span");
+  word.className = `floating-word ${ui.className}`;
+  word.textContent = text;
+  const left = anchor ? anchor.offsetLeft + anchor.offsetWidth / 2 : panel.clientWidth * (0.35 + stableRatio(text) * 0.35);
+  const top = anchor ? anchor.offsetTop : panel.clientHeight * 0.45;
+  word.style.left = `${left}px`;
+  word.style.top = `${top}px`;
+  panel.appendChild(word);
+  window.setTimeout(() => word.remove(), 820);
+}
+
+function tapImpactPad(button, ui) {
+  const counter = button.querySelector("strong");
+  const next = Number(counter.textContent || "0") + 1;
+  counter.textContent = String(next);
+  button.classList.add("hit");
+  window.setTimeout(() => button.classList.remove("hit"), 180);
+  const words = ui.burstWords || [ui.label];
+  floatingWord(words[next % words.length], ui, button);
+  burstReaction(button);
+  if (ui.effect === "laugh") {
+    spawnLaughSticker(button);
+  }
+}
+
+function spawnLaughSticker(anchor) {
+  const panel = interactionLayer.querySelector(".interaction-panel");
+  if (!panel) return;
+  const sticker = document.createElement("span");
+  sticker.className = "mini-laugh-sticker";
+  sticker.textContent = "鹅鹅鹅";
+  sticker.style.left = `${anchor.offsetLeft + anchor.offsetWidth * stableRatio(anchor.textContent)}px`;
+  sticker.style.top = `${Math.max(8, anchor.offsetTop - 24)}px`;
+  panel.appendChild(sticker);
+  window.setTimeout(() => sticker.remove(), 920);
+}
+
 function showInteraction(highlight) {
   const ui = getHighlightUI(highlight.highlight_type);
+  const key = getHighlightKey(highlight.highlight_type);
+  const motifs = extractSceneMotifs(highlight);
   state.activeHighlight = highlight;
   state.firedHighlights.add(highlight.id);
   state.lastInteractionTime = highlight.start_time_sec;
   window.clearTimeout(state.hideTimer);
-  interactionLayer.className = `interaction-layer ${ui.className}`;
+  interactionLayer.className = `interaction-layer ${ui.className} effect-${ui.effect}`;
   interactionLayer.innerHTML = `
-    <div class="interaction-panel">
+    <div class="interaction-panel" data-effect="${escapeHTML(ui.effect)}">
       <div class="interaction-aura"></div>
+      <div class="effect-stage" aria-hidden="true">${renderEffectStage(ui)}</div>
       <div class="interaction-copy">
         <div class="interaction-meta">
           <b>${escapeHTML(ui.badge)}</b>
@@ -368,6 +507,11 @@ function showInteraction(highlight) {
         <h3>${escapeHTML(highlight.title)}</h3>
         <p>${escapeHTML(highlight.description || "")}</p>
       </div>
+      ${renderSceneCaptions(ui, motifs)}
+      <button class="impact-pad" type="button">
+        <span>${escapeHTML(ui.padText)}</span>
+        <strong>0</strong>
+      </button>
       <div class="interaction-options">
         ${highlight.options
           .map(
@@ -383,9 +527,15 @@ function showInteraction(highlight) {
     </div>
   `;
   interactionLayer.querySelector(".close-button").addEventListener("click", hideInteraction);
+  const impactPad = interactionLayer.querySelector(".impact-pad");
+  impactPad.addEventListener("click", () => tapImpactPad(impactPad, ui));
   interactionLayer.querySelectorAll(".interaction-options button").forEach((button) => {
     button.addEventListener("click", () => submitInteraction(button.dataset.key, button));
   });
+  emitHighlightDanmaku(highlight, ui);
+  if (key === "comedy") {
+    window.setTimeout(() => tapImpactPad(impactPad, ui), 120);
+  }
   state.hideTimer = window.setTimeout(hideInteraction, 9000);
 }
 
