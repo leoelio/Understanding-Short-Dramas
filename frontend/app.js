@@ -6,6 +6,8 @@ const state = {
   firedHighlights: new Set(),
   activeHighlight: null,
   hideTimer: null,
+  reviewEpisodes: [],
+  reviewFilter: "all",
 };
 
 localStorage.setItem("session_id", state.sessionId);
@@ -255,32 +257,79 @@ async function loadStats() {
     .join("");
 }
 
-async function loadReviewEpisodes() {
-  const episodes = await fetchJSON("/api/admin/episodes");
+function getFilteredReviewEpisodes() {
+  if (state.reviewFilter === "reviewed") {
+    return state.reviewEpisodes.filter((episode) => episode.review_status === "reviewed");
+  }
+  if (state.reviewFilter === "pending") {
+    return state.reviewEpisodes.filter((episode) => episode.review_status !== "reviewed");
+  }
+  return state.reviewEpisodes;
+}
+
+function renderReviewSummary() {
+  const total = state.reviewEpisodes.length;
+  const reviewed = state.reviewEpisodes.filter((episode) => episode.review_status === "reviewed").length;
+  const reviewedHighlights = state.reviewEpisodes.reduce(
+    (sum, episode) => sum + (episode.reviewed_highlight_count || 0),
+    0
+  );
+  const totalHighlights = state.reviewEpisodes.reduce((sum, episode) => sum + (episode.highlight_count || 0), 0);
+  $("#reviewSummaryCards").innerHTML = [
+    ["全部剧集", total],
+    ["已复核", reviewed],
+    ["待复核", total - reviewed],
+    ["人工高光", `${reviewedHighlights}/${totalHighlights}`],
+  ]
+    .map(([label, value]) => `<div class="summary-card"><span>${label}</span><strong>${value}</strong></div>`)
+    .join("");
+}
+
+async function renderReviewEpisodeOptions(preferredEpisodeId) {
+  const episodes = getFilteredReviewEpisodes();
   const select = $("#reviewEpisodeSelect");
-  const currentValue = select.value;
+  const currentValue = preferredEpisodeId ? String(preferredEpisodeId) : select.value;
+
+  if (!episodes.length) {
+    select.innerHTML = `<option value="">当前筛选没有剧集</option>`;
+    $("#reviewJson").value = "";
+    $("#reviewPreview").innerHTML = "";
+    setReviewStatus("当前筛选没有剧集");
+    return;
+  }
+
   select.innerHTML = episodes
     .map(
       (episode) => `
         <option value="${episode.id}">
-          ${episode.drama_title} · ${episode.episode_title} · ${episode.highlight_count} 个高光
+          ${episode.review_status_label} · ${episode.drama_title} · ${episode.episode_title} · ${episode.highlight_count} 个高光
         </option>
       `
     )
     .join("");
+
   if (currentValue && [...select.options].some((option) => option.value === currentValue)) {
     select.value = currentValue;
   }
-  if (select.value) {
-    await loadReviewPayload(Number(select.value));
-  }
+  await loadReviewPayload(Number(select.value));
+}
+
+async function loadReviewEpisodes() {
+  state.reviewEpisodes = await fetchJSON("/api/admin/episodes");
+  renderReviewSummary();
+  await renderReviewEpisodeOptions(Number($("#reviewEpisodeSelect").value));
 }
 
 async function loadReviewPayload(episodeId) {
+  if (!episodeId) return;
   const payload = await fetchJSON(`/api/admin/episodes/${episodeId}/highlights`);
+  const meta = state.reviewEpisodes.find((episode) => episode.id === episodeId);
   $("#reviewJson").value = JSON.stringify(payload, null, 2);
   renderReviewPreview(payload);
-  setReviewStatus(`已加载：${payload.drama_title} · ${payload.episode_title}`);
+  const status = meta
+    ? `${meta.review_status_label} · 人工 ${meta.reviewed_highlight_count || 0}/${meta.highlight_count || 0}`
+    : "已加载";
+  setReviewStatus(`已加载：${payload.drama_title} · ${payload.episode_title} · ${status}`);
 }
 
 function parseReviewJson() {
@@ -333,8 +382,9 @@ async function saveReviewPayload() {
       }),
     });
     renderReviewPreview(payload);
-    setReviewStatus(`已保存 ${result.highlight_count} 个高光点`);
     await loadStats();
+    await loadReviewEpisodes();
+    setReviewStatus(`已保存 ${result.highlight_count} 个高光点，复核状态已更新`);
   } catch (error) {
     setReviewStatus(`保存失败：${error.message}`, true);
   }
@@ -350,6 +400,10 @@ adminTab.addEventListener("click", () => setView("admin"));
 reviewTab.addEventListener("click", () => setView("review"));
 $("#backButton").addEventListener("click", () => setView("home"));
 $("#refreshStats").addEventListener("click", loadStats);
+$("#reviewStatusFilter").addEventListener("change", async (event) => {
+  state.reviewFilter = event.target.value;
+  await renderReviewEpisodeOptions(Number($("#reviewEpisodeSelect").value));
+});
 $("#reviewEpisodeSelect").addEventListener("change", (event) => loadReviewPayload(Number(event.target.value)));
 $("#reloadReview").addEventListener("click", () => loadReviewPayload(Number($("#reviewEpisodeSelect").value)));
 $("#formatReview").addEventListener("click", formatReviewJson);

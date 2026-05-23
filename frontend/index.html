@@ -76,7 +76,13 @@
             </div>
             <button id="saveReview" class="primary-button" type="button">保存</button>
           </div>
+          <div id="reviewSummaryCards" class="summary-grid review-summary"></div>
           <div class="review-toolbar">
+            <select id="reviewStatusFilter" class="episode-select" aria-label="筛选复核状态">
+              <option value="all">全部剧集</option>
+              <option value="pending">待复核</option>
+              <option value="reviewed">已复核</option>
+            </select>
             <select id="reviewEpisodeSelect" class="episode-select" aria-label="选择复核剧集"></select>
             <button id="reloadReview" class="ghost-button" type="button">重新加载</button>
             <button id="formatReview" class="ghost-button" type="button">格式化</button>

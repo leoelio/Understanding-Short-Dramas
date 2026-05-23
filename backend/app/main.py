@@ -79,6 +79,20 @@ def annotation_item_payload(highlight: Highlight) -> dict:
     }
 
 
+def episode_review_meta(episode: Episode) -> dict:
+    source_counts = Counter(highlight.source for highlight in episode.highlights)
+    reviewed_highlight_count = source_counts.get("human_review", 0)
+    review_status = "reviewed" if reviewed_highlight_count else "pending"
+    return {
+        "highlight_count": len(episode.highlights),
+        "reviewed_highlight_count": reviewed_highlight_count,
+        "seed_highlight_count": source_counts.get("manual_seed", 0),
+        "review_status": review_status,
+        "review_status_label": "已复核" if review_status == "reviewed" else "待复核",
+        "sources": dict(source_counts),
+    }
+
+
 def option_stats(db: Session, highlight: Highlight) -> dict:
     interactions = db.query(Interaction).filter(Interaction.highlight_id == highlight.id).all()
     counts = Counter(item.option_key for item in interactions)
@@ -232,7 +246,7 @@ def admin_list_episodes(db: Session = Depends(get_db)) -> list[dict]:
     episodes = db.query(Episode).join(Drama).order_by(Drama.id.asc(), Episode.episode_no.asc()).all()
     rows = []
     for episode in episodes:
-        source_counts = Counter(highlight.source for highlight in episode.highlights)
+        review_meta = episode_review_meta(episode)
         rows.append(
             {
                 "id": episode.id,
@@ -240,11 +254,25 @@ def admin_list_episodes(db: Session = Depends(get_db)) -> list[dict]:
                 "episode_title": episode.title,
                 "episode_no": episode.episode_no,
                 "duration_sec": episode.duration_sec,
-                "highlight_count": len(episode.highlights),
-                "sources": dict(source_counts),
+                **review_meta,
             }
         )
     return rows
+
+
+@app.get("/api/admin/review-status")
+def admin_review_status(db: Session = Depends(get_db)) -> dict:
+    episodes = db.query(Episode).all()
+    metas = [episode_review_meta(episode) for episode in episodes]
+    reviewed_episode_count = sum(1 for meta in metas if meta["review_status"] == "reviewed")
+    return {
+        "episode_count": len(episodes),
+        "reviewed_episode_count": reviewed_episode_count,
+        "pending_episode_count": len(episodes) - reviewed_episode_count,
+        "highlight_count": sum(meta["highlight_count"] for meta in metas),
+        "reviewed_highlight_count": sum(meta["reviewed_highlight_count"] for meta in metas),
+        "seed_highlight_count": sum(meta["seed_highlight_count"] for meta in metas),
+    }
 
 
 @app.get("/api/admin/episodes/{episode_id}/highlights")

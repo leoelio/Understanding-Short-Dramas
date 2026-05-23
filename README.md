@@ -10,6 +10,7 @@
 - 播放进度触发互动组件
 - 用户点击互动并上报
 - 后台统计总点击量、选项比例和高光排行榜
+- 标注复核工作台：筛选待复核剧集、编辑高光 JSON、保存人工复核结果
 - 预留大模型标注字段：来源、置信度、模型版本
 - 大模型离线标注链路：生成输入、模型标注、人工复核、写回数据库
 
@@ -23,6 +24,7 @@
 
 - 客户端：http://127.0.0.1:8000/
 - 后台统计：http://127.0.0.1:8000/#admin
+- 标注复核：http://127.0.0.1:8000/#review
 - API 文档：http://127.0.0.1:8000/docs
 
 首次启动会扫描 `视频库`，每部短剧导入前 2 集，并生成演示高光点。
@@ -41,6 +43,13 @@
 ```
 
 真实调用大模型前，需要把 `.env.example` 复制为 `.env`，并填写 `ARK_API_KEY` 与 `ARK_MODEL`。
+
+## 复核进度接口
+
+- `GET /api/admin/review-status`：返回已复核剧集数、待复核剧集数、人工复核高光数等总览数据。
+- `GET /api/admin/episodes`：返回每集的 `review_status`、`review_status_label`、`reviewed_highlight_count` 和来源分布。
+- `GET /api/admin/episodes/{episode_id}/highlights`：读取单集高光 JSON，供人工复核编辑。
+- `PUT /api/admin/episodes/{episode_id}/highlights`：保存人工复核后的高光点，并清理该集旧互动统计。
 
 ## 项目结构
 

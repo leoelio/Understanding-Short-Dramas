@@ -452,8 +452,12 @@ main {
 
 .review-toolbar {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 132px minmax(0, 1fr) auto auto;
   gap: 8px;
+  margin-bottom: 12px;
+}
+
+.review-summary {
   margin-bottom: 12px;
 }
 
