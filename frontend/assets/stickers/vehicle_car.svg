@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="140" viewBox="0 0 180 140" role="img" aria-label="小车贴图">
+  <rect width="180" height="140" rx="28" fill="#fff7dc"/>
+  <path d="M38 70 54 42h72l18 28 6 7v24H30V78l8-8Z" fill="#ffb72b"/>
+  <path d="M62 50h26v20H50l12-20Zm36 0h24l13 20H98V50Z" fill="#dff5ff"/>
+  <path d="M30 85h120v16H30z" fill="#f47d24"/>
+  <circle cx="58" cy="104" r="13" fill="#1e2638"/>
+  <circle cx="122" cy="104" r="13" fill="#1e2638"/>
+  <circle cx="58" cy="104" r="5" fill="#f5f7ff"/>
+  <circle cx="122" cy="104" r="5" fill="#f5f7ff"/>
+  <path d="M24 58h15M142 58h15M18 72h12M150 72h12" stroke="#1e2638" stroke-width="5" stroke-linecap="round"/>
+  <text x="90" y="29" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#1e2638">小车接送</text>
+</svg>

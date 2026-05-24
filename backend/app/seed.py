@@ -11,6 +11,7 @@ from .models import DanmakuComment, Drama, Episode, Highlight
 
 EPISODE_RE = re.compile(r"第(\d+)集")
 FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "reviewed_highlights.json"
+DANMAKU_FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "danmaku_comments.json"
 
 TYPE_PRESETS = [
     {
@@ -192,8 +193,42 @@ def seed_demo_danmaku(db: Session) -> None:
             )
 
 
+def apply_danmaku_fixtures(db: Session) -> None:
+    if not DANMAKU_FIXTURE_PATH.exists():
+        return
+
+    payload = json.loads(DANMAKU_FIXTURE_PATH.read_text(encoding="utf-8"))
+    for fixture in payload.get("episodes", []):
+        drama = db.query(Drama).filter(Drama.title == fixture["drama_title"]).first()
+        if not drama:
+            continue
+        episode = (
+            db.query(Episode)
+            .filter(Episode.drama_id == drama.id, Episode.episode_no == int(fixture["episode_no"]))
+            .first()
+        )
+        if not episode:
+            continue
+
+        db.query(DanmakuComment).filter(
+            DanmakuComment.episode_id == episode.id,
+            DanmakuComment.mode.in_(["seed", "curated"]),
+        ).delete(synchronize_session=False)
+        for item in fixture.get("comments", []):
+            db.add(
+                DanmakuComment(
+                    episode_id=episode.id,
+                    time_sec=float(item["time_sec"]),
+                    text=item["text"],
+                    mode=item.get("mode", "curated"),
+                    session_id="fixture",
+                )
+            )
+
+
 def seed_from_video_library(db: Session) -> None:
     if db.query(Drama).count() > 0:
+        apply_danmaku_fixtures(db)
         seed_demo_danmaku(db)
         db.commit()
         return
@@ -226,4 +261,5 @@ def seed_from_video_library(db: Session) -> None:
 
     apply_reviewed_fixtures(db)
     seed_demo_danmaku(db)
+    apply_danmaku_fixtures(db)
     db.commit()

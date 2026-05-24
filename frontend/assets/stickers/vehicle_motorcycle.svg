@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="140" viewBox="0 0 180 140" role="img" aria-label="摩托车贴图">
+  <rect width="180" height="140" rx="28" fill="#eafff2"/>
+  <path d="M56 90h46l18-24h18" fill="none" stroke="#1d9a63" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M78 70h28l13 20H86L68 58h24" fill="none" stroke="#111827" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M115 65h25l8 10" fill="none" stroke="#111827" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="48" cy="98" r="18" fill="none" stroke="#111827" stroke-width="8"/>
+  <circle cx="132" cy="98" r="18" fill="none" stroke="#111827" stroke-width="8"/>
+  <path d="M34 44c18-10 35-10 54 0M42 31c14-8 27-8 42 0" stroke="#ff5b5b" stroke-width="6" stroke-linecap="round"/>
+  <text x="90" y="29" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="#111827">贼摇滚！</text>
+</svg>

@@ -381,6 +381,17 @@ main {
   background: #0b1018;
 }
 
+.danmaku-feedback {
+  min-height: 20px;
+  padding: 6px 14px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.danmaku-feedback.error {
+  color: #ffb4a9;
+}
+
 .interaction-layer {
   position: absolute;
   inset: 0;
@@ -552,6 +563,21 @@ main {
   }
 }
 
+@keyframes vehicle-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.72) rotate(-5deg);
+  }
+  26% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.08) rotate(3deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-54px) scale(0.92) rotate(-2deg);
+  }
+}
+
 .interaction-copy {
   position: relative;
   z-index: 1;
@@ -652,6 +678,51 @@ main {
   color: #081016;
   background: linear-gradient(135deg, var(--type-accent), var(--type-soft));
   font-weight: 800;
+}
+
+.vehicle-choice-panel {
+  background:
+    linear-gradient(180deg, rgba(13, 18, 29, 0.94), rgba(18, 23, 33, 0.96)),
+    radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--type-accent) 28%, transparent), transparent 42%);
+}
+
+.vehicle-choice-panel .interaction-copy h3::after {
+  content: " 先猜再揭晓";
+  color: var(--type-accent);
+  font-size: 12px;
+}
+
+.vehicle-choice-panel .interaction-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.vehicle-option {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  min-height: 88px;
+  padding: 7px 6px;
+}
+
+.vehicle-option img {
+  width: 58px;
+  height: 46px;
+  object-fit: contain;
+  filter: drop-shadow(0 7px 10px rgba(0, 0, 0, 0.28));
+}
+
+.vehicle-option span {
+  color: #081016;
+  font-size: 13px;
+}
+
+.vehicle-float-sticker {
+  position: absolute;
+  z-index: 4;
+  width: 96px;
+  height: 74px;
+  pointer-events: none;
+  animation: vehicle-pop 1300ms ease-out forwards;
 }
 
 .interaction-meter {

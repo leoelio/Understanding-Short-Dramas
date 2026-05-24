@@ -119,6 +119,7 @@ const state = {
   danmakuSettings: loadDanmakuSettings(),
   reviewEpisodes: [],
   reviewFilter: "all",
+  danmakuFeedbackTimer: null,
 };
 
 localStorage.setItem("session_id", state.sessionId);
@@ -178,6 +179,29 @@ async function fetchJSON(url, options = {}) {
     throw new Error(message || `请求失败：${response.status}`);
   }
   return response.json();
+}
+
+function errorMessage(error) {
+  try {
+    const payload = JSON.parse(error.message);
+    return payload?.detail?.message || payload?.detail || error.message;
+  } catch {
+    return error.message;
+  }
+}
+
+function setDanmakuFeedback(message, isError = false) {
+  const feedback = $("#danmakuFeedback");
+  if (!feedback) return;
+  window.clearTimeout(state.danmakuFeedbackTimer);
+  feedback.textContent = message;
+  feedback.classList.toggle("error", isError);
+  if (message) {
+    state.danmakuFeedbackTimer = window.setTimeout(() => {
+      feedback.textContent = "";
+      feedback.classList.remove("error");
+    }, 3600);
+  }
 }
 
 function setView(name) {
@@ -500,17 +524,61 @@ function spawnLaughSticker(anchor) {
   window.setTimeout(() => sticker.remove(), 920);
 }
 
+const VEHICLE_STICKERS = {
+  vehicle_train: "/assets/stickers/vehicle_train.svg",
+  vehicle_car: "/assets/stickers/vehicle_car.svg",
+  vehicle_motorcycle: "/assets/stickers/vehicle_motorcycle.svg",
+};
+
+function isVehicleChoice(highlight) {
+  return Boolean(highlight?.options?.some((option) => option.key in VEHICLE_STICKERS));
+}
+
+function renderReactionButton(option, vehicleChoice) {
+  const sticker = VEHICLE_STICKERS[option.key];
+  return `
+    <button class="reaction-button ${vehicleChoice ? "vehicle-option" : ""}" type="button" data-key="${escapeHTML(
+      option.key
+    )}">
+      ${sticker ? `<img src="${sticker}" alt="" />` : ""}
+      <span>${escapeHTML(option.label)}</span>
+    </button>
+  `;
+}
+
+function spawnVehicleSticker(optionKey, anchor) {
+  const sticker = VEHICLE_STICKERS[optionKey];
+  const panel = interactionLayer.querySelector(".interaction-panel");
+  if (!sticker || !panel || !anchor) return;
+  const image = document.createElement("img");
+  image.className = "vehicle-float-sticker";
+  image.src = sticker;
+  image.alt = "";
+  image.style.left = `${anchor.offsetLeft + anchor.offsetWidth / 2 - 48}px`;
+  image.style.top = `${Math.max(8, anchor.offsetTop - 94)}px`;
+  panel.appendChild(image);
+  window.setTimeout(() => image.remove(), 1400);
+}
+
 function showInteraction(highlight) {
   const ui = getHighlightUI(highlight.highlight_type);
   const key = getHighlightKey(highlight.highlight_type);
   const motifs = extractSceneMotifs(highlight);
+  const vehicleChoice = isVehicleChoice(highlight);
   state.activeHighlight = highlight;
   state.firedHighlights.add(highlight.id);
   state.lastInteractionTime = highlight.start_time_sec;
+  if (vehicleChoice) {
+    player.pause();
+  }
   window.clearTimeout(state.hideTimer);
-  interactionLayer.className = `interaction-layer ${ui.className} effect-${ui.effect}`;
+  interactionLayer.className = `interaction-layer ${ui.className} effect-${ui.effect} ${
+    vehicleChoice ? "vehicle-choice-layer" : ""
+  }`;
   interactionLayer.innerHTML = `
-    <div class="interaction-panel" data-effect="${escapeHTML(ui.effect)}">
+    <div class="interaction-panel ${vehicleChoice ? "vehicle-choice-panel" : ""}" data-effect="${escapeHTML(
+      ui.effect
+    )}">
       <div class="interaction-aura"></div>
       <div class="effect-stage" aria-hidden="true">${renderEffectStage(ui)}</div>
       <div class="interaction-copy">
@@ -528,12 +596,7 @@ function showInteraction(highlight) {
       </button>
       <div class="interaction-options">
         ${highlight.options
-          .map(
-            (option) =>
-              `<button class="reaction-button" type="button" data-key="${escapeHTML(option.key)}">${escapeHTML(
-                option.label
-              )}</button>`
-          )
+          .map((option) => renderReactionButton(option, vehicleChoice))
           .join("")}
       </div>
       <div class="interaction-meter"><i></i></div>
@@ -550,7 +613,7 @@ function showInteraction(highlight) {
   if (key === "comedy") {
     window.setTimeout(() => tapImpactPad(impactPad, ui), 120);
   }
-  state.hideTimer = window.setTimeout(hideInteraction, 9000);
+  state.hideTimer = window.setTimeout(hideInteraction, vehicleChoice ? 13000 : 9000);
 }
 
 function hideInteraction() {
@@ -580,6 +643,7 @@ function burstReaction(anchor) {
 async function submitInteraction(optionKey, anchor) {
   if (!state.activeHighlight) return;
   if (anchor) burstReaction(anchor);
+  spawnVehicleSticker(optionKey, anchor);
   const result = await fetchJSON("/api/interactions", {
     method: "POST",
     body: JSON.stringify({
@@ -796,20 +860,25 @@ async function sendDanmaku(event) {
   const input = $("#danmakuInput");
   const text = input.value.trim();
   if (!text || !state.currentEpisode || !getDanmakuMode().enabled) return;
-  const comment = await fetchJSON("/api/danmaku", {
-    method: "POST",
-    body: JSON.stringify({
-      episode_id: state.currentEpisode.id,
-      time_sec: player.currentTime || 0,
-      text,
-      session_id: state.sessionId,
-      mode: state.danmakuSettings.mode,
-    }),
-  });
-  state.danmaku.push(comment);
-  state.firedDanmaku.add(comment.id);
-  emitDanmaku(comment);
-  input.value = "";
+  try {
+    const comment = await fetchJSON("/api/danmaku", {
+      method: "POST",
+      body: JSON.stringify({
+        episode_id: state.currentEpisode.id,
+        time_sec: player.currentTime || 0,
+        text,
+        session_id: state.sessionId,
+        mode: state.danmakuSettings.mode,
+      }),
+    });
+    state.danmaku.push(comment);
+    state.firedDanmaku.add(comment.id);
+    emitDanmaku(comment);
+    input.value = "";
+    setDanmakuFeedback("已发送");
+  } catch (error) {
+    setDanmakuFeedback(errorMessage(error), true);
+  }
 }
 
 player.addEventListener("timeupdate", () => {

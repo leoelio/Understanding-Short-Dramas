@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from .config import APP_NAME, FRONTEND_DIR
 from .database import SessionLocal, get_db
+from .danmaku_moderation import moderate_danmaku, moderation_rules_payload
 from .migrations import ensure_database_schema
 from .models import DanmakuComment, Drama, Episode, Highlight, Interaction
 from .schemas import DanmakuCreate, InteractionCreate
@@ -239,6 +240,11 @@ def list_danmaku(episode_id: int, db: Session = Depends(get_db)) -> list[dict]:
     ]
 
 
+@app.get("/api/danmaku/moderation-rules")
+def danmaku_moderation_rules() -> dict:
+    return moderation_rules_payload()
+
+
 @app.post("/api/danmaku")
 def create_danmaku(payload: DanmakuCreate, db: Session = Depends(get_db)) -> dict:
     episode = db.get(Episode, payload.episode_id)
@@ -248,10 +254,16 @@ def create_danmaku(payload: DanmakuCreate, db: Session = Depends(get_db)) -> dic
     if not text:
         raise HTTPException(status_code=400, detail="弹幕不能为空")
     safe_time = min(float(payload.time_sec), float(episode.duration_sec or payload.time_sec))
+    moderation = moderate_danmaku(text, episode.id, safe_time)
+    if not moderation.allowed:
+        raise HTTPException(
+            status_code=400,
+            detail={"category": moderation.category, "message": moderation.message},
+        )
     comment = DanmakuComment(
         episode_id=episode.id,
         time_sec=round(max(0, safe_time), 2),
-        text=text,
+        text=moderation.text,
         session_id=payload.session_id,
         mode=payload.mode,
     )

@@ -251,124 +251,131 @@
       "episode_no": 1,
       "highlights": [
         {
-          "start_time_sec": 22.0,
-          "end_time_sec": 60.0,
-          "title": "讨薪对峙当场全额结清",
-          "description": "工友上门找负责人讨要欠薪，当场和紫衣管理者正面碰上，男主被点名后神色紧张疑惑，现场气氛紧绷，没想到对方当众解释刚凑够钱，男主接过装着薪资的信封，从委屈瞬间放松露出笑容，冲突直接落地成顺利拿到欠薪的爽感转折",
-          "highlight_type": "爽点逆袭",
-          "emotion": "爽",
-          "confidence": 0.95,
+          "start_time_sec": 16.0,
+          "end_time_sec": 62.0,
+          "title": "工友开头上门要债",
+          "description": "男主和工友从饭桌直接转到上门讨薪，欠了一年的钱还没结，情绪从生活窘迫推到正面对峙。",
+          "highlight_type": "冲突对抗",
+          "emotion": "愤怒",
+          "confidence": 0.96,
           "source": "human_review",
-          "model_version": "highlight-annotation-v2",
-          "annotation_reason": "合并了间隔不足25秒的讨薪对峙和结清欠薪两段强关联剧情，完整呈现从冲突紧绷到情绪释放的完整爽点，情绪张力充足",
+          "model_version": "product-review-v3",
+          "annotation_reason": "产品复核后明确把开头高光收敛为要债/讨薪冲突，作为本集第一段情绪入口。",
           "evidence_segment_ids": [
+            1,
             2,
             3
           ],
-          "evidence_text": "工友们来到院门/楼下，带头者拿着长杆，和一个穿紫色上衣的管理者或老板当面对峙；男主被点名后表情紧张、疑惑。随后紫衣男人当众表达歉意/解释刚把钱凑够，男主接过一叠钱/信封，工友围观；男主从委屈转为放松并露出笑。字幕内容：“门没锁啊”“许成名”“你这是干什么”“我可受不起啊”“我呢”“刚把钱凑够”",
+          "evidence_text": "字幕和画面包含“一年到头一分没结呢”“走”“门没锁啊”“你这是干什么”，工友带着长杆上门，与管理者正面对峙，随后拿到钱。",
           "options": [
             {
-              "key": "opt1",
-              "label": "支持讨薪"
+              "key": "debt_pay",
+              "label": "欠薪得还"
             },
             {
-              "key": "opt2",
-              "label": "终于拿到钱了"
+              "key": "stand_workers",
+              "label": "站工友"
             },
             {
-              "key": "opt3",
-              "label": "太解气了"
+              "key": "stop_delay",
+              "label": "别拖了"
             }
           ]
         },
         {
-          "start_time_sec": 122.0,
-          "end_time_sec": 158.0,
-          "title": "男主承诺回家团圆",
-          "description": "视频通话里父母怕拖累儿子，劝他过年别回来，男主郑重许下承诺，年三十一定到家陪家人过年",
+          "start_time_sec": 112.0,
+          "end_time_sec": 180.0,
+          "title": "没钱也想回家过年",
+          "description": "男主和家里视频，父母怕给他添麻烦劝他别回来，但他还是说有钱没钱都要回家过年。",
           "highlight_type": "虐心共情",
           "emotion": "心疼",
-          "confidence": 0.93,
+          "confidence": 0.97,
           "source": "human_review",
-          "model_version": "highlight-annotation-v2",
-          "annotation_reason": "打工人和家人互相体谅的亲情情节，极易引发普通观众的共情，情绪浓度足够",
+          "model_version": "product-review-v3",
+          "annotation_reason": "用户明确希望第二个高光聚焦“没钱回家的虐心”，这段亲情和现实压力最强。",
           "evidence_segment_ids": [
+            6,
             7,
-            8
+            8,
+            9
           ],
-          "evidence_text": "母亲在视频里表情担心、压抑，旁边男性也低落；男主凑近手机安慰，试图说服家人过年要团圆。字幕内容：“不回来过年”“给我和你爸添麻烦”“有钱没钱回家过年嘛”“年三十我指定到家啦”",
+          "evidence_text": "字幕包含“啥时候回来呀”“不回来过年”“给我和你爸添麻烦”“有钱没钱回家过年嘛”“年三十我指定到家啦”，母亲含泪叮嘱，男主笑里带苦。",
           "options": [
             {
-              "key": "opt1",
-              "label": "看哭了"
+              "key": "miss_home",
+              "label": "想家了"
             },
             {
-              "key": "opt2",
-              "label": "回家过年"
+              "key": "heart_hurt",
+              "label": "太心疼"
             },
             {
-              "key": "opt3",
-              "label": "太戳人了"
+              "key": "hug_him",
+              "label": "抱抱他"
             }
           ]
         },
         {
-          "start_time_sec": 242.0,
-          "end_time_sec": 258.0,
-          "title": "美女调侃男主行李",
-          "description": "路边车内的女性看到男主抱着的铺盖行李，用调侃的语气吐槽他的东西叫摇滚，氛围轻松诙谐",
-          "highlight_type": "搞笑解压",
-          "emotion": "好笑",
-          "confidence": 0.87,
-          "source": "human_review",
-          "model_version": "highlight-annotation-v2",
-          "annotation_reason": "这段是轻喜剧互动桥段，反差感强，能让观众放松发笑，符合搞笑解压类高光属性",
-          "evidence_segment_ids": [
-            13
-          ],
-          "evidence_text": "车内女性/乘客与男主发生对话，男主抱着行李或铺盖，被对方用调侃语气评价外形/物品。字幕内容：“你这玩意叫摇滚啊”",
-          "options": [
-            {
-              "key": "opt1",
-              "label": "太好笑了"
-            },
-            {
-              "key": "opt2",
-              "label": "这也太损了"
-            },
-            {
-              "key": "opt3",
-              "label": "尴尬住了"
-            }
-          ]
-        },
-        {
-          "start_time_sec": 282.0,
-          "end_time_sec": 299.0,
-          "title": "男主踏上返乡旅途",
-          "description": "男主收拾好全部行李，站在路边准备出发，正式踏上回家过年的远行路程",
+          "start_time_sec": 198.0,
+          "end_time_sec": 244.0,
+          "title": "到底还能不能回去",
+          "description": "通话结束后，男主坐在银行外抽烟，回家的愿望还在，但钱、路和现实都让这趟返乡变成悬念。",
           "highlight_type": "悬念钩子",
           "emotion": "期待",
-          "confidence": 0.85,
+          "confidence": 0.9,
           "source": "human_review",
-          "model_version": "highlight-annotation-v2",
-          "annotation_reason": "本集结尾停在男主出发的节点，观众会自然期待后续返乡路上的各类故事，属于合格的收尾悬念钩子",
+          "model_version": "product-review-v3",
+          "annotation_reason": "第三个高光从“到底回不去”的疑问出发，承接亲情虐点，给后面的交通工具揭晓留空间。",
           "evidence_segment_ids": [
-            15
+            10,
+            11,
+            12
           ],
-          "evidence_text": "男主带着行李准备出发，出现路边/车辆/标题画面，像是踏上返乡或远行旅程。",
+          "evidence_text": "通话后男主和工友在银行外聊天抽烟，画面节奏变缓，新人物和车辆进入，形成返乡方式和能否回家的疑问。",
           "options": [
             {
-              "key": "opt1",
-              "label": "一路顺风"
+              "key": "can_go_home",
+              "label": "能回去吗"
             },
             {
-              "key": "opt2",
-              "label": "期待后续"
+              "key": "still_hanging",
+              "label": "悬着了"
             },
             {
-              "key": "opt3",
-              "label": "平安到家"
+              "key": "dont_stop",
+              "label": "别骗我"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 258.0,
+          "end_time_sec": 300.0,
+          "title": "贼摇滚的回家方式",
+          "description": "车里人调侃男主这玩意儿叫摇滚，系统暂停让用户先猜交通工具，最后揭晓男主带着行李骑摩托踏上返乡路。",
+          "highlight_type": "反转揭秘",
+          "emotion": "震惊",
+          "confidence": 0.94,
+          "source": "human_review",
+          "model_version": "product-review-v3",
+          "annotation_reason": "第四个高光按产品反馈做成“怎么回去”的选择互动：先猜火车/小车/摩托车，再用贴图强化揭晓。",
+          "evidence_segment_ids": [
+            13,
+            14,
+            15
+          ],
+          "evidence_text": "字幕包含“你这玩意叫摇滚啊”“啦啦掉的呀”，随后男主带着大包行李出发，画面揭示摩托车返乡。",
+          "options": [
+            {
+              "key": "vehicle_train",
+              "label": "火车"
+            },
+            {
+              "key": "vehicle_car",
+              "label": "小车"
+            },
+            {
+              "key": "vehicle_motorcycle",
+              "label": "摩托车"
             }
           ]
         }

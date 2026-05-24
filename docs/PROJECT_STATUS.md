@@ -1,19 +1,27 @@
 # Project Status
 
-更新时间：2026-05-25 06:20:43
+更新时间：2026-05-25 07:11:48
 
 ## 当前目标
 
-完成《北往》第1集大模型标注、复核写库、播放端验证与可复现 fixture 导出；当前已复核 3/20 集。
+按产品反馈重做《北往》第1集回家主线互动：四段高光、交通工具选择贴图、弹幕种子与审核规则已完成。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`d390436`
+- 最新提交：`2b568a1`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M backend/app/fixtures/reviewed_highlights.json`
-- `?? scripts/export_reviewed_highlights.py`
+- `M backend/app/main.py`
+- `M backend/app/seed.py`
+- `M frontend/app.js`
+- `M frontend/index.html`
+- `M frontend/styles.css`
+- `?? backend/app/danmaku_moderation.py`
+- `?? backend/app/fixtures/danmaku_comments.json`
+- `?? docs/future_ai_extensions.md`
+- `?? frontend/assets/`
 
 ## 数据状态
 
@@ -24,7 +32,7 @@
 - 已复核剧集：3
 - 待复核剧集：17
 - 互动记录：5
-- 弹幕记录：120
+- 弹幕记录：127
 
 ## 高光来源
 
@@ -43,15 +51,16 @@
 
 ## 本次变更摘要
 
-- 增强 scripts/annotate_with_llm.py：模型输出不合规时自动带校验错误重试一次，并加入按钮与情绪标签归一化。
-- 新增 scripts/export_reviewed_highlights.py，可将本地 human_review 高光导出到仓库 fixture，避免只存在本地数据库。
-- 《北往》第1集写入并导出 4 个 human_review 高光：爽点逆袭、虐心共情、搞笑解压、悬念钩子。
-- 播放页验证通过：时间轴可见，互动卡可触发，用户点击可上报统计。
+- 《北往》第1集高光改为：开头要债、没钱回家虐心、能否回去疑问、交通工具揭晓摩托返乡。
+- 新增弹幕审核模块：辱骂黑名单、通用剧透拦截、按播放时间判断交通工具剧透。
+- 新增精选弹幕 fixture，针对第1集生成 13 条不剧透、贴剧情节奏的弹幕。
+- 新增火车/小车/摩托车贴图素材，并在 04:18 高光暂停视频展示交通工具选择。
+- 新增未来 AI 延展文档，预留片尾生成、用户上传漫画化和登录体系。
 
 ## 下一步建议
 
-- 继续按同一模板处理《北往》第2集，形成同题材连续两集样本。
-- 每完成一集后运行 fixture 导出并提交，保证 GitHub 可复现演示数据。
+- 继续观察《北往》第1集播放体验，确认四个高光的触发时机是否要微调到更贴字幕。
+- 下一步处理《北往》第2集，保持同题材连续体验一致。
 
 ## 安全提醒
 
