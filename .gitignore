@@ -9,6 +9,7 @@ data/*.bin
 data/annotation_inputs/*.json
 data/annotations/*.json
 data/context/
+data/screenshots/
 *.pdf
 *.docx
 视频库/

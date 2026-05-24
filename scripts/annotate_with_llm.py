@@ -42,6 +42,7 @@ SYSTEM_PROMPT = f"""
 9. manual_note 是人工复核者给出的可靠剧情观察，可以作为证据。
 10. 如果 manual_note 中写有“候选高光”，请优先判断它是否适合转成互动高光点。
 11. 如果信息不足，可以少标，不要硬编剧情。
+12. 每个高光点必须输出 2-4 个互动按钮 options；如果两个候选时间太近，请合并成一个更强高光。
 """.strip()
 
 
@@ -64,6 +65,34 @@ def slugify_option(label: str, index: int) -> str:
     return ascii_key or f"option_{index + 1}"
 
 
+def default_option_labels(emotion: str) -> list[str]:
+    mapping = {
+        "爽": ["爽到了", "再来"],
+        "解气": ["解气", "再来"],
+        "燃": ["燃起来", "再来"],
+        "震惊": ["震惊", "还能这样"],
+        "意外": ["没想到", "再看"],
+        "恍然大悟": ["懂了", "再看"],
+        "心疼": ["心疼", "抱抱"],
+        "难过": ["破防了", "抱抱"],
+        "破防": ["破防了", "抱抱"],
+        "愤怒": ["气到了", "站他"],
+        "站队": ["站他", "站她"],
+        "好笑": ["笑死", "鹅鹅鹅"],
+        "离谱": ["离谱", "再看"],
+        "欢乐": ["哈哈哈", "再来"],
+        "心动": ["心动", "磕到了"],
+        "磕到了": ["磕到了", "甜晕"],
+        "甜": ["好甜", "磕到了"],
+        "紧张": ["紧张", "屏住"],
+        "担心": ["担心", "别出事"],
+        "屏息": ["屏住", "别停"],
+        "期待": ["期待", "下一集"],
+        "好奇": ["想知道", "下一集"],
+    }
+    return mapping.get(emotion, [emotion[:8] or "表达", "再看"])
+
+
 def normalize_options(item: dict[str, Any]) -> None:
     options = item.get("options")
     if options is None:
@@ -79,10 +108,10 @@ def normalize_options(item: dict[str, Any]) -> None:
         for index, option in enumerate(options):
             if isinstance(option, dict):
                 key = option.get("key") or option.get("id") or slugify_option(str(option.get("label", "")), index)
-                label = option.get("label") or option.get("text") or option.get("name") or key
-                normalized.append({"key": str(key), "label": str(label)})
+                label = str(option.get("label") or option.get("text") or option.get("name") or key).strip()[:8]
+                normalized.append({"key": str(key), "label": label})
             else:
-                label = str(option)
+                label = str(option).strip()[:8]
                 normalized.append({"key": slugify_option(label, index), "label": label})
         options = normalized
 
@@ -93,12 +122,69 @@ def normalize_options(item: dict[str, Any]) -> None:
             {"key": "again", "label": "再看一遍"},
         ]
 
-    item["options"] = options[:4]
+    seen_keys = set()
+    deduped = []
+    for index, option in enumerate(options):
+        key = str(option.get("key") or slugify_option(str(option.get("label", "")), index)).strip()
+        label = str(option.get("label") or key).strip()[:8]
+        if not key or key in seen_keys or not label:
+            continue
+        seen_keys.add(key)
+        deduped.append({"key": key, "label": label})
+
+    for label in default_option_labels(str(item.get("emotion", ""))):
+        if len(deduped) >= 2:
+            break
+        key = slugify_option(label, len(deduped))
+        if key not in seen_keys:
+            seen_keys.add(key)
+            deduped.append({"key": key, "label": label[:8]})
+
+    item["options"] = deduped[:4]
+
+
+def normalize_emotion(item: dict[str, Any]) -> None:
+    emotion = str(item.get("emotion", "")).strip()
+    alias_map = {
+        "感动": "心疼",
+        "想家": "心疼",
+        "共情": "心疼",
+        "委屈": "心疼",
+        "伤感": "难过",
+        "心酸": "破防",
+        "温暖": "心动",
+        "温情": "心动",
+        "开心": "欢乐",
+        "爆笑": "好笑",
+        "惊讶": "震惊",
+        "惊喜": "意外",
+        "反转": "震惊",
+        "悬念": "期待",
+        "爽点": "爽",
+    }
+    if emotion in ALLOWED_EMOTIONS:
+        return
+    if emotion in alias_map:
+        item["emotion"] = alias_map[emotion]
+        return
+
+    fallback_by_type = {
+        "冲突对抗": "站队",
+        "反转揭秘": "震惊",
+        "爽点逆袭": "爽",
+        "甜蜜心动": "心动",
+        "虐心共情": "心疼",
+        "悬念钩子": "期待",
+        "搞笑解压": "好笑",
+        "危机紧张": "紧张",
+    }
+    item["emotion"] = fallback_by_type.get(str(item.get("highlight_type", "")), "期待")
 
 
 def normalize_annotation_payload(payload: dict[str, Any]) -> dict[str, Any]:
     for item in payload.get("highlights", []):
         if isinstance(item, dict):
+            normalize_emotion(item)
             normalize_options(item)
     return payload
 
@@ -138,6 +224,28 @@ def build_user_prompt(annotation_input: dict[str, Any]) -> str:
                 ],
             },
             "episode": episode_context,
+        },
+        ensure_ascii=False,
+    )
+
+
+def build_retry_prompt(annotation_input: dict[str, Any], errors: list[str], previous_payload: dict[str, Any]) -> str:
+    return json.dumps(
+        {
+            "task": "上一次输出未通过校验，请根据错误修正并重新输出完整 JSON。",
+            "validation_errors": errors,
+            "fix_rules": [
+                "每个 highpoint 的 options 必须是 2-4 个按钮。",
+                "相邻高光 start_time_sec 必须至少间隔 25 秒；太近时保留更强的一个或合并。",
+                "仍然只能依据 episode.segments，不要补编新剧情。",
+                "请输出完整 JSON 对象，不要只输出差异。",
+            ],
+            "previous_payload": previous_payload,
+            "episode": {
+                "episode_id": annotation_input["episode_id"],
+                "duration_sec": annotation_input.get("duration_sec"),
+                "segments": annotation_input.get("segments", []),
+            },
         },
         ensure_ascii=False,
     )
@@ -236,6 +344,12 @@ def main() -> None:
     payload = normalize_annotation_payload(payload)
 
     errors = validate_annotation_payload(payload)
+    if errors and not args.dry_run:
+        payload = call_chat_completion(build_retry_prompt(annotation_input, errors, payload))
+        payload.setdefault("episode_id", annotation_input["episode_id"])
+        payload.setdefault("prompt_version", PROMPT_VERSION)
+        payload = normalize_annotation_payload(payload)
+        errors = validate_annotation_payload(payload)
     if errors:
         raise SystemExit("标注 JSON 校验失败：\n" + "\n".join(f"- {error}" for error in errors))
 
