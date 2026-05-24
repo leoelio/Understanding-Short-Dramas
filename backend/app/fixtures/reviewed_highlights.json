@@ -5,20 +5,20 @@
       "episode_no": 1,
       "highlights": [
         {
-          "start_time_sec": 30,
-          "end_time_sec": 60,
+          "start_time_sec": 30.0,
+          "end_time_sec": 60.0,
           "title": "女子坚持要见病重老爷",
-          "description": "白衣女子被门房劝退仍执意要见卧病三月的周家老爷，双方发生对峙冲突，女子身份不明引发好奇。",
+          "description": "白衣女子被门房劝退仍执意要见卧病三月的周家老爷，双方发生对峙冲突，女子身份不明引发好奇",
           "highlight_type": "冲突",
           "emotion": "紧张",
           "confidence": 0.95,
           "source": "human_review",
-          "model_version": "highlight-annotation-v1",
-          "annotation_reason": "该片段明确呈现门房阻拦身份不明的女子探视病重老爷的冲突场景，符合冲突类高光特征。",
+          "model_version": "admin-review-v1",
+          "annotation_reason": "该片段明确呈现门房阻拦身份不明的女子探视病重老爷的冲突场景，符合冲突类高光特征",
           "evidence_segment_ids": [
             2
           ],
-          "evidence_text": "女子被劝退但坚持要见人，透露老爷病重三个月；白衣女子被门房劝退却坚持见病重老爷。",
+          "evidence_text": "冲突点：女子被劝退但坚持要见人，透露老爷病重三个月。候选高光：白衣女子被门房劝退却坚持见病重老爷，冲突来自身份不明与门房阻拦，适合悬念/冲突互动。",
           "options": [
             {
               "key": "support_enter",
@@ -31,20 +31,20 @@
           ]
         },
         {
-          "start_time_sec": 90,
-          "end_time_sec": 120,
+          "start_time_sec": 90.0,
+          "end_time_sec": 120.0,
           "title": "亲人哭诉不舍病危老人",
-          "description": "守在病床边的亲人对着吊了三个月气的病危老人倾诉不舍，情绪极度悲伤。",
+          "description": "守在病床边的亲人对着吊了三个月气的病危老人倾诉不舍，情绪极度悲伤",
           "highlight_type": "虐点",
           "emotion": "心疼",
           "confidence": 0.98,
           "source": "human_review",
-          "model_version": "highlight-annotation-v1",
-          "annotation_reason": "片段明确呈现亲人对病危老人依依不舍的悲伤场景，属于典型虐点高光。",
+          "model_version": "admin-review-v1",
+          "annotation_reason": "片段明确呈现亲人对病危老人依依不舍的悲伤场景，属于典型虐点高光",
           "evidence_segment_ids": [
             4
           ],
-          "evidence_text": "家人对病危老人依依不舍；病危老人吊着一口气三个月，亲人哭诉不愿放手。",
+          "evidence_text": "虐点：家人对病危老人依依不舍，适合心疼/破防类互动。候选高光：病危老人吊着一口气三个月，亲人哭诉不愿放手，情绪很虐。",
           "options": [
             {
               "key": "cry",
@@ -57,20 +57,20 @@
           ]
         },
         {
-          "start_time_sec": 120,
-          "end_time_sec": 150,
+          "start_time_sec": 120.0,
+          "end_time_sec": 150.0,
           "title": "亲人求助无门崩溃",
-          "description": "亲人坦言已经请遍所有和老人相关的亲朋旧故，仍没能唤醒病危老人，情绪彻底崩溃。",
+          "description": "亲人坦言已经请遍所有和老人相关的亲朋旧故，仍没能唤醒病危老人，情绪彻底崩溃",
           "highlight_type": "虐点",
           "emotion": "心疼",
           "confidence": 0.97,
           "source": "human_review",
-          "model_version": "highlight-annotation-v1",
-          "annotation_reason": "该片段是悲伤情绪的峰值，亲人穷尽办法仍无效的崩溃状态，符合虐点高光特征。",
+          "model_version": "admin-review-v1",
+          "annotation_reason": "该片段是悲伤情绪的峰值，亲人穷尽办法仍无效的崩溃状态，符合虐点高光特征",
           "evidence_segment_ids": [
             5
           ],
-          "evidence_text": "亲人说已经把所有相关故人请来但仍无用，情绪崩溃达到峰值。",
+          "evidence_text": "情绪峰值：亲人崩溃，强调已经请遍故人仍无效。候选高光：亲人说已经把所有相关故人请来但仍无用，情绪崩溃达到峰值。",
           "options": [
             {
               "key": "pity",
@@ -83,20 +83,20 @@
           ]
         },
         {
-          "start_time_sec": 150,
+          "start_time_sec": 150.0,
           "end_time_sec": 173.55,
           "title": "神秘访客身份反常",
-          "description": "门房禀报有位特殊客人上门，对方声称老爷看不到她，瞬间拉满悬念。",
+          "description": "门房禀报有位特殊客人上门，对方声称老爷看不到她，瞬间拉满悬念",
           "highlight_type": "悬念",
           "emotion": "震惊",
           "confidence": 0.96,
           "source": "human_review",
-          "model_version": "highlight-annotation-v1",
-          "annotation_reason": "片段明确给出神秘访客的反常表述，身份悬念极强，符合悬念类高光特征。",
+          "model_version": "admin-review-v1",
+          "annotation_reason": "片段明确给出神秘访客的反常表述，身份悬念极强，符合悬念类高光特征",
           "evidence_segment_ids": [
             6
           ],
-          "evidence_text": "来访女子说老爷看不到她，暗示她身份超常或不是普通故人。",
+          "evidence_text": "反转/悬念点：来访女子说老爷看不到她，暗示她身份超常或不是普通故人。候选高光：门房禀报神秘客人上门，而且她说老爷看不到她，身份悬念强。",
           "options": [
             {
               "key": "who",
@@ -115,8 +115,8 @@
       "episode_no": 2,
       "highlights": [
         {
-          "start_time_sec": 0,
-          "end_time_sec": 30,
+          "start_time_sec": 0.0,
+          "end_time_sec": 30.0,
           "title": "众人追问神秘女子下落",
           "description": "周家众人在厅堂议事，围绕病危老爷非要见的神秘女子身份展开追问，悬念持续发酵",
           "highlight_type": "悬念",
@@ -141,8 +141,8 @@
           ]
         },
         {
-          "start_time_sec": 30,
-          "end_time_sec": 60,
+          "start_time_sec": 30.0,
+          "end_time_sec": 60.0,
           "title": "亲属当众互相讥讽",
           "description": "周家亲属在病危老人面前还互相拆台，黑衣女性嘲笑老太太找大师，厅堂火药味渐浓",
           "highlight_type": "冲突",
@@ -167,8 +167,8 @@
           ]
         },
         {
-          "start_time_sec": 60,
-          "end_time_sec": 90,
+          "start_time_sec": 60.0,
+          "end_time_sec": 90.0,
           "title": "老爷子临终不肯闭眼",
           "description": "九十二岁病危的老爷子迟迟不肯咽气，就为了见神秘女子一面",
           "highlight_type": "虐点",
@@ -193,8 +193,8 @@
           ]
         },
         {
-          "start_time_sec": 90,
-          "end_time_sec": 120,
+          "start_time_sec": 90.0,
+          "end_time_sec": 120.0,
           "title": "老太太要见老爷心上人",
           "description": "老太太手持念珠表情严肃，放话要亲自看看让老爷临终惦记的心上人是谁",
           "highlight_type": "冲突",
@@ -219,7 +219,7 @@
           ]
         },
         {
-          "start_time_sec": 120,
+          "start_time_sec": 120.0,
           "end_time_sec": 148.01,
           "title": "剧情戛然而止留悬念",
           "description": "剧集结尾卡在老太太即将见到神秘女子的节点，弹出未完待续字样",
@@ -241,6 +241,134 @@
             {
               "key": "b",
               "label": "蹲后续更新"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "drama_title": "北往",
+      "episode_no": 1,
+      "highlights": [
+        {
+          "start_time_sec": 22.0,
+          "end_time_sec": 60.0,
+          "title": "讨薪对峙当场全额结清",
+          "description": "工友上门找负责人讨要欠薪，当场和紫衣管理者正面碰上，男主被点名后神色紧张疑惑，现场气氛紧绷，没想到对方当众解释刚凑够钱，男主接过装着薪资的信封，从委屈瞬间放松露出笑容，冲突直接落地成顺利拿到欠薪的爽感转折",
+          "highlight_type": "爽点逆袭",
+          "emotion": "爽",
+          "confidence": 0.95,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v2",
+          "annotation_reason": "合并了间隔不足25秒的讨薪对峙和结清欠薪两段强关联剧情，完整呈现从冲突紧绷到情绪释放的完整爽点，情绪张力充足",
+          "evidence_segment_ids": [
+            2,
+            3
+          ],
+          "evidence_text": "工友们来到院门/楼下，带头者拿着长杆，和一个穿紫色上衣的管理者或老板当面对峙；男主被点名后表情紧张、疑惑。随后紫衣男人当众表达歉意/解释刚把钱凑够，男主接过一叠钱/信封，工友围观；男主从委屈转为放松并露出笑。字幕内容：“门没锁啊”“许成名”“你这是干什么”“我可受不起啊”“我呢”“刚把钱凑够”",
+          "options": [
+            {
+              "key": "opt1",
+              "label": "支持讨薪"
+            },
+            {
+              "key": "opt2",
+              "label": "终于拿到钱了"
+            },
+            {
+              "key": "opt3",
+              "label": "太解气了"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 122.0,
+          "end_time_sec": 158.0,
+          "title": "男主承诺回家团圆",
+          "description": "视频通话里父母怕拖累儿子，劝他过年别回来，男主郑重许下承诺，年三十一定到家陪家人过年",
+          "highlight_type": "虐心共情",
+          "emotion": "心疼",
+          "confidence": 0.93,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v2",
+          "annotation_reason": "打工人和家人互相体谅的亲情情节，极易引发普通观众的共情，情绪浓度足够",
+          "evidence_segment_ids": [
+            7,
+            8
+          ],
+          "evidence_text": "母亲在视频里表情担心、压抑，旁边男性也低落；男主凑近手机安慰，试图说服家人过年要团圆。字幕内容：“不回来过年”“给我和你爸添麻烦”“有钱没钱回家过年嘛”“年三十我指定到家啦”",
+          "options": [
+            {
+              "key": "opt1",
+              "label": "看哭了"
+            },
+            {
+              "key": "opt2",
+              "label": "回家过年"
+            },
+            {
+              "key": "opt3",
+              "label": "太戳人了"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 242.0,
+          "end_time_sec": 258.0,
+          "title": "美女调侃男主行李",
+          "description": "路边车内的女性看到男主抱着的铺盖行李，用调侃的语气吐槽他的东西叫摇滚，氛围轻松诙谐",
+          "highlight_type": "搞笑解压",
+          "emotion": "好笑",
+          "confidence": 0.87,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v2",
+          "annotation_reason": "这段是轻喜剧互动桥段，反差感强，能让观众放松发笑，符合搞笑解压类高光属性",
+          "evidence_segment_ids": [
+            13
+          ],
+          "evidence_text": "车内女性/乘客与男主发生对话，男主抱着行李或铺盖，被对方用调侃语气评价外形/物品。字幕内容：“你这玩意叫摇滚啊”",
+          "options": [
+            {
+              "key": "opt1",
+              "label": "太好笑了"
+            },
+            {
+              "key": "opt2",
+              "label": "这也太损了"
+            },
+            {
+              "key": "opt3",
+              "label": "尴尬住了"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 282.0,
+          "end_time_sec": 299.0,
+          "title": "男主踏上返乡旅途",
+          "description": "男主收拾好全部行李，站在路边准备出发，正式踏上回家过年的远行路程",
+          "highlight_type": "悬念钩子",
+          "emotion": "期待",
+          "confidence": 0.85,
+          "source": "human_review",
+          "model_version": "highlight-annotation-v2",
+          "annotation_reason": "本集结尾停在男主出发的节点，观众会自然期待后续返乡路上的各类故事，属于合格的收尾悬念钩子",
+          "evidence_segment_ids": [
+            15
+          ],
+          "evidence_text": "男主带着行李准备出发，出现路边/车辆/标题画面，像是踏上返乡或远行旅程。",
+          "options": [
+            {
+              "key": "opt1",
+              "label": "一路顺风"
+            },
+            {
+              "key": "opt2",
+              "label": "期待后续"
+            },
+            {
+              "key": "opt3",
+              "label": "平安到家"
             }
           ]
         }

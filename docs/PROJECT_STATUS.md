@@ -1,19 +1,19 @@
 # Project Status
 
-更新时间：2026-05-25 06:18:40
+更新时间：2026-05-25 06:20:43
 
 ## 当前目标
 
-完成《北往》第1集大模型标注、复核写库与播放端验证；当前已复核 3/20 集。
+完成《北往》第1集大模型标注、复核写库、播放端验证与可复现 fixture 导出；当前已复核 3/20 集。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`8e8c9ee`
+- 最新提交：`d390436`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M scripts/annotate_with_llm.py`
-- `?? data/screenshots/`
+- `M backend/app/fixtures/reviewed_highlights.json`
+- `?? scripts/export_reviewed_highlights.py`
 
 ## 数据状态
 
@@ -43,15 +43,15 @@
 
 ## 本次变更摘要
 
-- 更新本地模型配置并成功调用赛方大模型；密钥只保存在本地 .env，未写入 Git 或文档。
 - 增强 scripts/annotate_with_llm.py：模型输出不合规时自动带校验错误重试一次，并加入按钮与情绪标签归一化。
-- 《北往》第1集写入 4 个 human_review 高光：爽点逆袭、虐心共情、搞笑解压、悬念钩子。
+- 新增 scripts/export_reviewed_highlights.py，可将本地 human_review 高光导出到仓库 fixture，避免只存在本地数据库。
+- 《北往》第1集写入并导出 4 个 human_review 高光：爽点逆袭、虐心共情、搞笑解压、悬念钩子。
 - 播放页验证通过：时间轴可见，互动卡可触发，用户点击可上报统计。
 
 ## 下一步建议
 
 - 继续按同一模板处理《北往》第2集，形成同题材连续两集样本。
-- 随后转向下一部题材，保持每集 3-5 个高光、至少 25 秒间隔的质量线。
+- 每完成一集后运行 fixture 导出并提交，保证 GitHub 可复现演示数据。
 
 ## 安全提醒
 
