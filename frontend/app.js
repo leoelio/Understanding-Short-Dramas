@@ -193,6 +193,13 @@ function setView(name) {
   }
 }
 
+function syncEpisodeUrl(episodeId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("episode", String(episodeId));
+  url.hash = "";
+  history.replaceState(null, "", url);
+}
+
 function formatTime(seconds) {
   const safe = Math.max(0, Math.round(seconds || 0));
   const min = Math.floor(safe / 60).toString().padStart(2, "0");
@@ -349,7 +356,7 @@ async function loadDramas() {
   renderDramas();
 }
 
-async function openDrama(dramaId) {
+async function openDrama(dramaId, preferredEpisodeId = null) {
   state.episodes = await fetchJSON(`/api/dramas/${dramaId}/episodes`);
   if (!state.episodes.length) return;
   const select = $("#episodeSelect");
@@ -357,7 +364,8 @@ async function openDrama(dramaId) {
     .map((episode) => `<option value="${episode.id}">${episode.title}</option>`)
     .join("");
   select.onchange = () => openEpisode(Number(select.value));
-  await openEpisode(state.episodes[0].id);
+  const targetEpisode = state.episodes.find((episode) => episode.id === preferredEpisodeId) || state.episodes[0];
+  await openEpisode(targetEpisode.id);
   setView("watch");
 }
 
@@ -378,6 +386,12 @@ async function openEpisode(episodeId) {
   player.src = state.currentEpisode.video_url;
   renderTimeline();
   renderDanmakuHint();
+  syncEpisodeUrl(episodeId);
+}
+
+async function openEpisodeFromUrl(episodeId) {
+  const episode = await fetchJSON(`/api/episodes/${episodeId}`);
+  await openDrama(episode.drama.id, episodeId);
 }
 
 function renderTimeline() {
@@ -856,6 +870,14 @@ if (location.hash === "#admin") {
 applyDanmakuSettings();
 renderDanmakuHint();
 
-loadDramas().catch((error) => {
+async function bootstrap() {
+  await loadDramas();
+  const episodeId = Number(new URLSearchParams(location.search).get("episode"));
+  if (Number.isFinite(episodeId) && episodeId > 0 && !location.hash) {
+    await openEpisodeFromUrl(episodeId);
+  }
+}
+
+bootstrap().catch((error) => {
   $("#dramaGrid").innerHTML = `<div class="empty-state">加载失败：${error.message}</div>`;
 });
