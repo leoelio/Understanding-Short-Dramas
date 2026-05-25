@@ -1,26 +1,20 @@
 # Project Status
 
-更新时间：2026-05-26 02:05:08
+更新时间：2026-05-26 02:13:20
 
 ## 当前目标
 
-升级北往第1集专属贴图和返乡公路播放器主题
+测试更新模型密钥并清理北往播放器中心纹理
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`834d080`
+- 最新提交：`134af56`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M frontend/app.js`
 - `M frontend/index.html`
 - `M frontend/styles.css`
-- `?? frontend/assets/stickers/beiwang_home_ticket.svg`
-- `?? frontend/assets/stickers/beiwang_road_question.svg`
-- `?? frontend/assets/stickers/beiwang_rock_moto.svg`
-- `?? frontend/assets/stickers/beiwang_wage_stamp.svg`
-- `?? frontend/assets/themes/`
-- `?? scripts/generate_style_strategy_with_llm.py`
+- `?? scripts/test_llm_connection.py`
 
 ## 数据状态
 
@@ -30,7 +24,7 @@
 - 高光点：64
 - 已复核剧集：3
 - 待复核剧集：17
-- 互动记录：26
+- 互动记录：27
 - 弹幕记录：170
 
 ## 高光来源
@@ -50,16 +44,15 @@
 
 ## 本次变更摘要
 
-- 新增大模型主题策略生成脚本，按 episode_3 文本与复核高光生成主题/贴图策略 JSON；当前接口返回 HTTPError，已自动使用本地剧情兜底策略且未泄露密钥。
-- 新增北往专属 SVG 贴图：讨薪印章、年三十车票、回家悬念路牌、行李摩托；替换通用贴图触发规则，贴图点击支持分类型 +1、总次数、粒子爆发和 5/10 次升级效果。
-- 升级北往播放器为返乡公路票根主题：票根纹理、公路虚线、路牌式按钮、风声/路障静音按钮、摩托进度标记和主题标签。
-- 时间轴跳转高光时自动把播放器滚回可视区域，降低贴图被裁切的概率。
-- 浏览器验证通过：episode=3 加载 theme-road，新贴图可见可点击，04:30 交通工具选择会投放贼摇滚摩托贴图，控制台无错误。
+- 新增 scripts/test_llm_connection.py，用本地 .env 安全测试模型连通性，只输出脱敏状态，不打印 API Key 或 EP。
+- 联网测试结果：配置项已读取，但服务端返回 401 AuthenticationError，表示当前 API Key 不存在或不可用；本轮未使用模型生成新策略。
+- 移除北往视频主体上的重复浅色竖条，保留底部暗角、左右边缘票根质感和控制条公路元素，避免影响中心观看。
+- 浏览器验证通过：episode=3 加载 styles.css?v=20260526-clean-video，中心视频不再被竖条覆盖。
 
 ## 下一步建议
 
-- 下一步建议先修通赛方大模型接口配置，确保主题策略 JSON 能真实由模型生成；同时把贴图策略从前端常量抽到后端策略接口，便于每部剧独立生成和复核。
-- 再往后补用户/弹幕持久化表，把当前本地点赞回复升级成数据库记录，为登录体系做准备。
+- 请产品负责人向赛方确认 API Key 是否已开通/是否绑定当前接入点；拿到可用 Key 后运行 test_llm_connection.py，再重新生成 episode_3_style_strategy.json。
+- 模型连通后，把每部剧的主题策略改成模型生成、人工复核、前端消费的固定链路。
 
 ## 安全提醒
 

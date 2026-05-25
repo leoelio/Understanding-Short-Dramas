@@ -340,8 +340,13 @@ main {
 .theme-road .video-wrap::before {
   opacity: 1;
   background:
-    linear-gradient(180deg, transparent 0 62%, rgba(10, 7, 4, 0.52) 100%),
-    repeating-linear-gradient(90deg, transparent 0 24px, rgba(255, 244, 207, 0.08) 24px 26px);
+    linear-gradient(180deg, transparent 0 66%, rgba(10, 7, 4, 0.42) 100%),
+    linear-gradient(
+      90deg,
+      rgba(255, 244, 207, 0.05) 0 6%,
+      transparent 13% 87%,
+      rgba(255, 244, 207, 0.05) 94% 100%
+    );
 }
 
 .theme-road .video-wrap::after {
