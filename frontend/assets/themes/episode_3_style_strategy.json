@@ -1,0 +1,85 @@
+{
+  "drama_title": "北往",
+  "theme_id": "homeward_road",
+  "theme_name": "返乡公路票根",
+  "visual_positioning": "现实打工人返乡，朴素、暖光、路牌、车票、摩托和年味混在一起。",
+  "palette": {
+    "background": "#15100d",
+    "accent": "#f6bc4f",
+    "soft": "#12d6b0",
+    "text": "#fff7e8"
+  },
+  "player": {
+    "surface": "像一张压在视频下方的旧车票和公路路面，带微弱纸纹和虚线路标。",
+    "progress": "公路黄线进度条，播放头像小摩托前灯。",
+    "play_button": "路牌形播放键，暂停时变成两条车道线。",
+    "volume_button": "喇叭/风声按钮，静音像路障。",
+    "ambient_elements": [
+      "票根齿孔",
+      "公路虚线",
+      "年三十小标签",
+      "摩托尾灯"
+    ]
+  },
+  "stickers": [
+    {
+      "id": "wage_due_stamp",
+      "label": "欠薪得还",
+      "scene": "开头讨薪对峙",
+      "visual": "红色讨薪印章拍在屏幕上，像工友把诉求盖章确认。",
+      "trigger_keywords": [
+        "欠薪",
+        "讨薪",
+        "要债",
+        "工友"
+      ],
+      "click_effect": "点击像盖章，次数多后印泥溅开。"
+    },
+    {
+      "id": "home_ticket",
+      "label": "年三十到家",
+      "scene": "没钱也想回家过年",
+      "visual": "暖色车票/家书贴纸，边缘有纸纹和小灯笼。",
+      "trigger_keywords": [
+        "回家",
+        "过年",
+        "父母",
+        "年三十"
+      ],
+      "click_effect": "点击冒出小票根和暖光。"
+    },
+    {
+      "id": "road_question_sign",
+      "label": "回得去吗",
+      "scene": "能否回家悬念",
+      "visual": "路口问号指示牌，带一点风吹晃动。",
+      "trigger_keywords": [
+        "到底",
+        "能不能",
+        "回不去",
+        "猜"
+      ],
+      "click_effect": "点击路牌抖动，问号变大。"
+    },
+    {
+      "id": "rock_luggage_moto",
+      "label": "贼摇滚",
+      "scene": "摩托返乡揭晓",
+      "visual": "绑着大包行李的摩托剪影，尾灯和音符抖动。",
+      "trigger_keywords": [
+        "摇滚",
+        "摩托",
+        "交通工具",
+        "回家方式"
+      ],
+      "click_effect": "点击尾灯变亮，5次后火焰尾气，10次后整张贴纸放大。"
+    }
+  ],
+  "rules": [
+    "普通播放中少量出现路牌/票根，狂欢模式加倍。",
+    "高光点前后优先出现对应剧情贴图。",
+    "贴图点击不要遮挡人物脸，默认在画面边缘弹出。"
+  ],
+  "source": "local_fallback",
+  "fallback_reason": "HTTPError"
+}

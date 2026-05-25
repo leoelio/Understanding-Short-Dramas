@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="140" viewBox="0 0 150 140" role="img" aria-label="回得去吗">
+  <defs>
+    <filter id="signShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="9" stdDeviation="5" flood-color="#061211" flood-opacity=".38"/>
+    </filter>
+    <linearGradient id="signGreen" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#1dd8b3"/>
+      <stop offset="1" stop-color="#087d70"/>
+    </linearGradient>
+    <linearGradient id="roadDark" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#384046"/>
+      <stop offset="1" stop-color="#111820"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#signShadow)">
+    <path d="M73 92h8l7 39H66z" fill="url(#roadDark)"/>
+    <path d="M17 29 39 10h74l20 20-20 20H39z" fill="url(#signGreen)" stroke="#dffbf5" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M21 75 41 57h69l19 18-19 18H41z" fill="#111820" stroke="#f6bc4f" stroke-width="5" stroke-linejoin="round"/>
+    <text x="74" y="39" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="24" font-weight="900" fill="#f4fffb">回得去吗</text>
+    <text x="74" y="85" text-anchor="middle" font-family="Arial, sans-serif" font-size="33" font-weight="900" fill="#f6bc4f">?</text>
+    <path d="M31 63c14 8 27 8 38 0" fill="none" stroke="#f4fffb" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+    <path d="M91 63c10 7 20 7 30 0" fill="none" stroke="#f4fffb" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+  </g>
+</svg>

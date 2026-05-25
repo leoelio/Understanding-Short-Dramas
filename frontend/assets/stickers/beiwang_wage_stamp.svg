@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="168" height="128" viewBox="0 0 168 128" role="img" aria-label="欠薪得还">
+  <defs>
+    <filter id="paperNoise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.24"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" mode="multiply"/>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="5" flood-color="#140606" flood-opacity=".34"/>
+    </filter>
+    <linearGradient id="stampRed" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ff795e"/>
+      <stop offset=".55" stop-color="#e33624"/>
+      <stop offset="1" stop-color="#a91c18"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#shadow)" transform="rotate(-7 84 64)">
+    <rect x="23" y="20" width="122" height="82" rx="8" fill="#fff1d5" filter="url(#paperNoise)"/>
+    <path d="M31 29h106M31 93h106" stroke="#d8b985" stroke-width="2" stroke-dasharray="8 7" opacity=".8"/>
+    <rect x="38" y="37" width="92" height="48" rx="5" fill="none" stroke="url(#stampRed)" stroke-width="7"/>
+    <path d="M48 42h73M48 80h73" stroke="#d72f24" stroke-width="2" stroke-linecap="round" opacity=".66"/>
+    <text x="84" y="67" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="24" font-weight="900" fill="#cf251e">欠薪得还</text>
+    <text x="84" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="800" letter-spacing="2" fill="#a91c18">PAY THE WAGE</text>
+  </g>
+  <g opacity=".9">
+    <circle cx="25" cy="104" r="4" fill="#ff6a3d"/>
+    <circle cx="139" cy="17" r="3" fill="#ffb347"/>
+    <path d="M146 103c7-5 9-12 6-19" fill="none" stroke="#ff6a3d" stroke-width="4" stroke-linecap="round"/>
+  </g>
+</svg>
