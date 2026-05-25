@@ -14,6 +14,42 @@ const DANMAKU_MODES = {
   immerse: { label: "沉浸", enabled: false, density: 0, includeModes: [] },
 };
 
+const PLAYER_THEMES = {
+  road: {
+    name: "返乡公路",
+    match: ["北往", "回家", "返乡"],
+    className: "theme-road",
+    playIcon: "▶",
+    pauseIcon: "Ⅱ",
+    muteIcon: "♪",
+    mutedIcon: "×",
+    accent: "#f6bc4f",
+    soft: "#12d6b0",
+  },
+  xianxia: {
+    name: "仙侠灵光",
+    match: ["修仙", "云渺", "仙"],
+    className: "theme-xianxia",
+    playIcon: "◆",
+    pauseIcon: "Ⅱ",
+    muteIcon: "◌",
+    mutedIcon: "×",
+    accent: "#8bd3ff",
+    soft: "#e7c6ff",
+  },
+  city: {
+    name: "都市霓虹",
+    match: [],
+    className: "theme-city",
+    playIcon: "▶",
+    pauseIcon: "Ⅱ",
+    muteIcon: "♪",
+    mutedIcon: "×",
+    accent: "#ff4f64",
+    soft: "#12d6b0",
+  },
+};
+
 const HIGHLIGHT_UI = {
   conflict: {
     label: "冲突对抗",
@@ -122,6 +158,11 @@ const state = {
   danmakuFeedbackTimer: null,
   interactionMode: "choice",
   tapHideDelayMs: 2200,
+  stickerSerial: 0,
+  ambientStickerTimer: null,
+  stickerHideTimers: new Map(),
+  stickerCombo: 0,
+  danmakuActionTimer: null,
 };
 
 localStorage.setItem("session_id", state.sessionId);
@@ -142,6 +183,10 @@ const player = $("#player");
 const interactionLayer = $("#interactionLayer");
 const danmakuLayer = $("#danmakuLayer");
 const stickerLayer = $("#stickerLayer");
+const playToggle = $("#playToggle");
+const muteToggle = $("#muteToggle");
+const progressSlider = $("#progressSlider");
+const playerTime = $("#playerTime");
 
 const HIGHLIGHT_ALIAS_TO_KEY = Object.fromEntries(
   Object.entries(HIGHLIGHT_UI).flatMap(([key, config]) => config.aliases.map((alias) => [alias, key]))
@@ -212,6 +257,11 @@ function setView(name) {
   homeTab.classList.toggle("active", name === "home");
   adminTab.classList.toggle("active", name === "admin");
   reviewTab.classList.toggle("active", name === "review");
+  if (name !== "watch") {
+    window.clearTimeout(state.ambientStickerTimer);
+  } else {
+    scheduleAmbientStickers();
+  }
   if (name === "admin") {
     loadStats();
   }
@@ -232,6 +282,35 @@ function formatTime(seconds) {
   const min = Math.floor(safe / 60).toString().padStart(2, "0");
   const sec = (safe % 60).toString().padStart(2, "0");
   return `${min}:${sec}`;
+}
+
+function getPlayerTheme(dramaTitle = "") {
+  return (
+    Object.values(PLAYER_THEMES).find((theme) => theme.match.some((keyword) => dramaTitle.includes(keyword))) ||
+    PLAYER_THEMES.city
+  );
+}
+
+function applyPlayerTheme(episode) {
+  const theme = getPlayerTheme(episode?.drama?.title || "");
+  const shell = document.querySelector(".app-shell");
+  shell.classList.remove(...Object.values(PLAYER_THEMES).map((item) => item.className));
+  shell.classList.add(theme.className);
+  shell.style.setProperty("--player-accent", theme.accent);
+  shell.style.setProperty("--player-soft", theme.soft);
+  $("#watchGenre").textContent = `${episode.drama.genre || "短剧播放"} · ${theme.name}`;
+  updatePlayerControls();
+}
+
+function updatePlayerControls() {
+  const theme = getPlayerTheme(state.currentEpisode?.drama?.title || "");
+  playToggle.textContent = player.paused ? theme.playIcon : theme.pauseIcon;
+  muteToggle.textContent = player.muted ? theme.mutedIcon : theme.muteIcon;
+  const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode?.duration_sec || 0;
+  const ratio = duration ? Math.min(1000, Math.max(0, (player.currentTime / duration) * 1000)) : 0;
+  progressSlider.value = String(ratio);
+  progressSlider.style.setProperty("--progress", `${ratio / 10}%`);
+  playerTime.textContent = `${formatTime(player.currentTime)} / ${formatTime(duration)}`;
 }
 
 function stableRatio(value) {
@@ -283,15 +362,100 @@ function danmakuDuration() {
   return 7400;
 }
 
+function danmakuKey(comment) {
+  return `danmaku_${comment.id || `${comment.time_sec}_${comment.text}`}`;
+}
+
+function danmakuStats(comment) {
+  try {
+    return JSON.parse(localStorage.getItem(danmakuKey(comment)) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveDanmakuStats(comment, stats) {
+  localStorage.setItem(danmakuKey(comment), JSON.stringify(stats));
+}
+
+function danmakuUser(comment) {
+  const names = ["路过观众", "追剧搭子", "年味观众", "情绪观察员", "返乡同路人", "剧情雷达"];
+  return (
+    comment.user?.nickname ||
+    comment.user_name ||
+    names[Math.floor(stableRatio(comment.session_id || comment.id || comment.text) * names.length)]
+  );
+}
+
+function showDanmakuActions(comment, anchor) {
+  document.querySelector(".danmaku-action-popover")?.remove();
+  window.clearTimeout(state.danmakuActionTimer);
+  const stats = { likes: 0, replies: [], ...danmakuStats(comment) };
+  const popover = document.createElement("div");
+  popover.className = "danmaku-action-popover";
+  popover.innerHTML = `
+    <div>
+      <strong>${escapeHTML(danmakuUser(comment))}</strong>
+      <p>${escapeHTML(comment.text)}</p>
+    </div>
+    <div class="danmaku-actions">
+      <button type="button" data-action="like">赞 ${stats.likes || 0}</button>
+      <button type="button" data-action="reply">回复</button>
+      <button type="button" data-action="follow">关注预留</button>
+    </div>
+    <form class="danmaku-reply-form hidden">
+      <input maxlength="32" placeholder="回复这条弹幕" />
+      <button type="submit">发送</button>
+    </form>
+  `;
+  const wrap = document.querySelector(".video-wrap");
+  const rect = anchor.getBoundingClientRect();
+  const hostRect = wrap.getBoundingClientRect();
+  popover.style.left = `${Math.min(Math.max(10, rect.left - hostRect.left), hostRect.width - 220)}px`;
+  popover.style.top = `${Math.min(Math.max(10, rect.top - hostRect.top + 28), hostRect.height - 112)}px`;
+  wrap.appendChild(popover);
+
+  popover.querySelector('[data-action="like"]').addEventListener("click", () => {
+    stats.likes = (stats.likes || 0) + 1;
+    saveDanmakuStats(comment, stats);
+    anchor.querySelector("em").textContent = `♡${stats.likes}`;
+    popover.querySelector('[data-action="like"]').textContent = `赞 ${stats.likes}`;
+  });
+  popover.querySelector('[data-action="reply"]').addEventListener("click", () => {
+    popover.querySelector(".danmaku-reply-form").classList.remove("hidden");
+    popover.querySelector("input").focus();
+  });
+  popover.querySelector('[data-action="follow"]').addEventListener("click", () => {
+    setDanmakuFeedback("已预留关注/加好友入口，登录后可启用");
+  });
+  popover.querySelector(".danmaku-reply-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const input = popover.querySelector("input");
+    const value = input.value.trim();
+    if (!value) return;
+    stats.replies = [...(stats.replies || []), { text: value, session_id: state.sessionId, created_at: Date.now() }];
+    saveDanmakuStats(comment, stats);
+    setDanmakuFeedback(`已回复：${value}`);
+    popover.remove();
+  });
+  state.danmakuActionTimer = window.setTimeout(() => popover.remove(), 5200);
+}
+
 function emitDanmaku(comment) {
   if (!shouldShowDanmaku(comment)) return;
-  const bubble = document.createElement("span");
+  const stats = { likes: 0, ...danmakuStats(comment) };
+  const bubble = document.createElement("button");
   bubble.className = `danmaku-item ${comment.className || ""}`;
-  bubble.textContent = comment.text;
+  bubble.type = "button";
+  bubble.innerHTML = `<b>${escapeHTML(danmakuUser(comment))}</b><span>${escapeHTML(comment.text)}</span><em>♡${stats.likes || 0}</em>`;
   const lanes = state.danmakuSettings.area === "full" ? 8 : state.danmakuSettings.area === "middle" ? 4 : 3;
   const lane = Math.floor(stableRatio(`${comment.id}-${comment.text}`) * lanes);
   bubble.style.setProperty("--lane", lane);
   bubble.style.setProperty("--duration", `${danmakuDuration()}ms`);
+  bubble.addEventListener("click", (event) => {
+    event.stopPropagation();
+    showDanmakuActions(comment, bubble);
+  });
   danmakuLayer.appendChild(bubble);
   window.setTimeout(() => bubble.remove(), danmakuDuration() + 400);
 }
@@ -362,6 +526,10 @@ const STICKER_RULES = [
 ];
 
 function clearStickerLayer() {
+  window.clearTimeout(state.ambientStickerTimer);
+  state.stickerHideTimers.forEach((timer) => window.clearTimeout(timer));
+  state.stickerHideTimers.clear();
+  state.stickerCombo = 0;
   if (stickerLayer) stickerLayer.innerHTML = "";
 }
 
@@ -383,25 +551,119 @@ function getSceneStickerRules(highlight) {
   return [STICKER_RULES.find((rule) => rule.asset === "rock")];
 }
 
-function spawnVideoSticker(rule, index = 0) {
+function setStickerLifetime(sticker, delayMs = 2000) {
+  const id = sticker.dataset.stickerId;
+  window.clearTimeout(state.stickerHideTimers.get(id));
+  state.stickerHideTimers.set(
+    id,
+    window.setTimeout(() => {
+      sticker.classList.add("leaving");
+      window.setTimeout(() => {
+        sticker.remove();
+        state.stickerHideTimers.delete(id);
+      }, 260);
+    }, delayMs)
+  );
+}
+
+function spawnTapText(target, text) {
+  if (!stickerLayer || !target) return;
+  const fx = document.createElement("span");
+  fx.className = "sticker-tap-fx";
+  fx.textContent = text;
+  const rect = target.getBoundingClientRect();
+  const hostRect = stickerLayer.getBoundingClientRect();
+  fx.style.left = `${rect.left - hostRect.left + rect.width * 0.6}px`;
+  fx.style.top = `${rect.top - hostRect.top + rect.height * 0.18}px`;
+  stickerLayer.appendChild(fx);
+  window.setTimeout(() => fx.remove(), 720);
+}
+
+function tapSticker(sticker) {
+  const clicks = Number(sticker.dataset.clicks || "0") + 1;
+  state.stickerCombo += 1;
+  sticker.dataset.clicks = String(clicks);
+  sticker.style.setProperty("--tap-scale", `${Math.min(1.75, 1 + clicks * 0.065)}`);
+  sticker.classList.toggle("hot", clicks >= 5);
+  sticker.classList.toggle("mega", clicks >= 10);
+  sticker.querySelector(".sticker-count").textContent = String(clicks);
+  sticker.classList.add("tapped");
+  window.setTimeout(() => sticker.classList.remove("tapped"), 180);
+  spawnTapText(sticker, `+1  总${clicks}`);
+  if (clicks === 5 || clicks === 10 || clicks % 15 === 0) {
+    spawnTapText(sticker, clicks >= 10 ? "爆了!" : "冒火!");
+    spawnVideoSticker(STICKER_RULES.find((rule) => rule.asset === "charge"), clicks, {
+      interactive: false,
+      durationMs: 1200,
+      className: "sticker-bonus",
+    });
+  }
+  setStickerLifetime(sticker, 1000);
+}
+
+function spawnVideoSticker(rule, index = 0, options = {}) {
   if (!stickerLayer || !rule) return;
   const asset = STICKER_ASSETS[rule.asset];
   if (!asset) return;
-  const image = document.createElement("img");
-  image.className = `scene-sticker ${rule.className || ""}`;
-  image.src = asset.src;
-  image.alt = asset.label;
-  image.style.setProperty("--left", `${12 + ((index * 29) % 62)}%`);
-  image.style.setProperty("--top", `${12 + ((index * 19) % 34)}%`);
-  image.style.setProperty("--delay", `${index * 160}ms`);
-  stickerLayer.appendChild(image);
-  window.setTimeout(() => image.remove(), 2300 + index * 160);
+  const sticker = document.createElement(options.interactive === false ? "span" : "button");
+  const id = `sticker-${Date.now()}-${state.stickerSerial++}`;
+  sticker.className = `scene-sticker ${rule.className || ""} ${options.className || ""}`;
+  sticker.dataset.stickerId = id;
+  sticker.dataset.clicks = "0";
+  sticker.type = options.interactive === false ? undefined : "button";
+  sticker.style.setProperty("--left", options.left || `${8 + ((index * 23 + state.stickerSerial * 7) % 72)}%`);
+  sticker.style.setProperty("--top", options.top || `${8 + ((index * 17 + state.stickerSerial * 11) % 48)}%`);
+  sticker.style.setProperty("--delay", `${options.delayMs ?? index * 90}ms`);
+  sticker.innerHTML = `<img src="${asset.src}" alt="${escapeHTML(asset.label)}" /><span class="sticker-count">0</span>`;
+  if (options.interactive !== false) {
+    sticker.addEventListener("click", (event) => {
+      event.stopPropagation();
+      tapSticker(sticker);
+    });
+  }
+  stickerLayer.appendChild(sticker);
+  setStickerLifetime(sticker, options.durationMs || 2000);
+  return sticker;
 }
 
 function spawnHighlightStickers(highlight) {
-  getSceneStickerRules(highlight).forEach((rule, index) => {
-    window.setTimeout(() => spawnVideoSticker(rule, index), index * 180);
+  const rules = getSceneStickerRules(highlight);
+  [...rules, ...rules].slice(0, 5).forEach((rule, index) => {
+    window.setTimeout(() => spawnVideoSticker(rule, index), index * 160);
   });
+}
+
+function ambientStickerRule() {
+  const currentTime = player.currentTime || 0;
+  const nearHighlight = (state.currentEpisode?.highlights || []).find(
+    (item) => currentTime >= item.start_time_sec - 5 && currentTime <= item.end_time_sec + 4
+  );
+  if (nearHighlight) {
+    const rules = getSceneStickerRules(nearHighlight);
+    return rules[Math.floor(currentTime) % rules.length];
+  }
+  const title = state.currentEpisode?.drama?.title || "";
+  if (title.includes("北往")) {
+    const pool = ["charge", "tear", "question", "rock"];
+    const asset = pool[Math.floor(currentTime / 3) % pool.length];
+    return STICKER_RULES.find((rule) => rule.asset === asset);
+  }
+  return STICKER_RULES[Math.floor(currentTime / 4) % STICKER_RULES.length];
+}
+
+function scheduleAmbientStickers() {
+  window.clearTimeout(state.ambientStickerTimer);
+  if (!state.currentEpisode || player.paused || views.watch.classList.contains("active") === false) return;
+  const mode = getDanmakuMode();
+  const baseDelay = state.danmakuSettings.mode === "carnival" ? 1450 : state.danmakuSettings.mode === "immerse" ? 3600 : 2600;
+  state.ambientStickerTimer = window.setTimeout(() => {
+    const bursts = state.danmakuSettings.mode === "carnival" ? 2 : 1;
+    for (let index = 0; index < bursts; index += 1) {
+      const rule = ambientStickerRule();
+      if (rule) spawnVideoSticker(rule, Math.floor(player.currentTime || 0) + index, { durationMs: mode.enabled ? 2100 : 1700 });
+    }
+    scheduleAmbientStickers();
+  }, baseDelay + stableRatio(`${player.currentTime}-${state.sessionId}`) * 900);
 }
 
 function checkDanmaku(currentTime) {
@@ -472,10 +734,10 @@ async function openEpisode(episodeId) {
   ]);
   state.currentEpisode = episode;
   state.danmaku = danmaku;
-  $("#watchGenre").textContent = state.currentEpisode.drama.genre || "短剧播放";
   $("#watchTitle").textContent = `${state.currentEpisode.drama.title} · ${state.currentEpisode.title}`;
   $("#episodeSelect").value = String(episodeId);
   player.src = state.currentEpisode.video_url;
+  applyPlayerTheme(state.currentEpisode);
   renderTimeline();
   renderDanmakuHint();
   syncEpisodeUrl(episodeId);
@@ -632,16 +894,15 @@ function spawnVehicleSticker(optionKey, anchor) {
   panelImage.style.top = `${Math.max(8, anchor.offsetTop - 94)}px`;
   panel.appendChild(panelImage);
 
-  const videoImage = document.createElement("img");
-  videoImage.className = "scene-sticker sticker-vehicle";
-  videoImage.src = sticker;
-  videoImage.alt = "";
-  videoImage.style.setProperty("--left", "58%");
-  videoImage.style.setProperty("--top", "18%");
-  if (stickerLayer) stickerLayer.appendChild(videoImage);
+  const videoSticker = spawnVideoSticker(
+    { asset: optionKey.replace("vehicle_", "") === "train" ? "rock" : "rock", className: "sticker-vehicle", keywords: [] },
+    4,
+    { left: "58%", top: "18%", durationMs: 2200 }
+  );
+  const videoImage = videoSticker?.querySelector("img");
+  if (videoImage) videoImage.src = sticker;
 
   window.setTimeout(() => panelImage.remove(), 1400);
-  window.setTimeout(() => videoImage.remove(), 2300);
 }
 
 function getInteractionMode(highlight, ui, vehicleChoice) {
@@ -1046,11 +1307,44 @@ player.addEventListener("timeupdate", () => {
   const highlight = findDueHighlight(player.currentTime);
   if (highlight) showInteraction(highlight);
   checkDanmaku(player.currentTime);
+  updatePlayerControls();
+});
+
+player.addEventListener("loadedmetadata", updatePlayerControls);
+
+player.addEventListener("play", () => {
+  updatePlayerControls();
+  scheduleAmbientStickers();
+});
+
+player.addEventListener("pause", () => {
+  updatePlayerControls();
+  window.clearTimeout(state.ambientStickerTimer);
 });
 
 player.addEventListener("seeked", () => {
   clearDanmakuLayer();
   clearStickerLayer();
+  scheduleAmbientStickers();
+});
+
+playToggle.addEventListener("click", () => {
+  if (player.paused) {
+    player.play();
+  } else {
+    player.pause();
+  }
+});
+
+muteToggle.addEventListener("click", () => {
+  player.muted = !player.muted;
+  updatePlayerControls();
+});
+
+progressSlider.addEventListener("input", () => {
+  const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode?.duration_sec || 0;
+  player.currentTime = duration * (Number(progressSlider.value) / 1000);
+  updatePlayerControls();
 });
 
 homeTab.addEventListener("click", () => setView("home"));

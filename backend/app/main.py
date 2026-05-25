@@ -1,4 +1,5 @@
 import json
+import hashlib
 from collections import Counter
 from pathlib import Path
 from uuid import uuid4
@@ -113,6 +114,17 @@ def option_stats(db: Session, highlight: Highlight) -> dict:
             }
         )
     return {"total": total, "options": options}
+
+
+def danmaku_user_payload(comment: DanmakuComment) -> dict:
+    raw = comment.session_id or "anonymous"
+    digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:8]
+    suffix = int(digest[:4], 16) % 1000
+    return {
+        "id": f"anon-{digest}",
+        "nickname": f"游客{suffix:03d}",
+        "relation_ready": False,
+    }
 
 
 @app.get("/api/health")
@@ -234,6 +246,7 @@ def list_danmaku(episode_id: int, db: Session = Depends(get_db)) -> list[dict]:
             "time_sec": row.time_sec,
             "text": row.text,
             "mode": row.mode,
+            "user": danmaku_user_payload(row),
             "created_at": row.created_at.isoformat() if row.created_at else None,
         }
         for row in rows
@@ -276,6 +289,7 @@ def create_danmaku(payload: DanmakuCreate, db: Session = Depends(get_db)) -> dic
         "time_sec": comment.time_sec,
         "text": comment.text,
         "mode": comment.mode,
+        "user": danmaku_user_payload(comment),
         "created_at": comment.created_at.isoformat() if comment.created_at else None,
     }
 

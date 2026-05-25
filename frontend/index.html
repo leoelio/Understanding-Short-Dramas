@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260526-interactive-stickers" />
   </head>
   <body>
     <div class="app-shell">
@@ -43,10 +43,16 @@
               <select id="episodeSelect" class="episode-select" aria-label="选择剧集"></select>
             </div>
             <div class="video-wrap">
-              <video id="player" controls playsinline preload="metadata"></video>
+              <video id="player" playsinline preload="metadata"></video>
               <div id="danmakuLayer" class="danmaku-layer"></div>
               <div id="stickerLayer" class="sticker-layer" aria-hidden="true"></div>
               <div id="interactionLayer" class="interaction-layer hidden"></div>
+              <div id="themeControls" class="theme-controls">
+                <button id="playToggle" class="theme-icon-button" type="button" aria-label="播放">▶</button>
+                <input id="progressSlider" class="theme-progress" type="range" min="0" max="1000" value="0" />
+                <span id="playerTime" class="player-time">00:00 / 00:00</span>
+                <button id="muteToggle" class="theme-icon-button" type="button" aria-label="静音">♪</button>
+              </div>
             </div>
             <div class="watch-tools">
               <div class="mode-switch" aria-label="弹幕模式">
@@ -143,6 +149,6 @@
       </main>
     </div>
 
-    <script type="module" src="/app.js?v=20260525-review-effects"></script>
+    <script type="module" src="/app.js?v=20260526-interactive-stickers"></script>
   </body>
 </html>

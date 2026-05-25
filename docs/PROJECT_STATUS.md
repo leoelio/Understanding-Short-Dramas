@@ -1,28 +1,22 @@
 # Project Status
 
-更新时间：2026-05-25 18:15:29
+更新时间：2026-05-26 01:38:34
 
 ## 当前目标
 
-优化《北往》第1集复核与互动体验：可视化改时间、贴纸特效、弹幕分层和互动消失逻辑。
+增强观看层互动：高频可点击贴图、弹幕点赞回复雏形、按剧播放器主题。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`37dc546`
+- 最新提交：`d9d46ec`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M backend/app/fixtures/danmaku_comments.json`
-- `M backend/app/fixtures/reviewed_highlights.json`
-- `M backend/app/seed.py`
+- `M backend/app/main.py`
 - `M frontend/app.js`
 - `M frontend/index.html`
 - `M frontend/styles.css`
-- `?? frontend/assets/stickers/effect_charge.svg`
-- `?? frontend/assets/stickers/effect_laugh.svg`
-- `?? frontend/assets/stickers/effect_question.svg`
-- `?? frontend/assets/stickers/effect_rock.svg`
-- `?? frontend/assets/stickers/effect_tear.svg`
 
 ## 数据状态
 
@@ -32,8 +26,8 @@
 - 高光点：64
 - 已复核剧集：3
 - 待复核剧集：17
-- 互动记录：12
-- 弹幕记录：148
+- 互动记录：20
+- 弹幕记录：170
 
 ## 高光来源
 
@@ -52,16 +46,16 @@
 
 ## 本次变更摘要
 
-- 复核页新增高光点卡片，显示片名、名称、类型、时间，并支持直接输入秒数调整开始/结束时间。
-- 《北往》第1集交通工具互动触发点从 04:18 校准到 04:30。
-- 新增视频贴纸层和冲、问号、哈哈、摇滚、心疼等常用 SVG 贴纸，按高光关键词自动弹出。
-- 弹幕 fixture 扩充到 34 条，并按轻聊/狂欢模式分层展示，沉浸模式保持关闭。
-- 互动组件区分问答选择和疯狂点击：问答回答后短时消失，点击型互动按最后一次点击刷新消失计时。
+- 贴图投放更频繁，播放中会按剧情和模式不定时出现，狂欢模式更密集。
+- 贴图升级为可点击互动对象：不点击约 2 秒消失，点击后刷新 1 秒倒计时，显示 +1、总次数，5 次冒火、10 次增强。
+- 弹幕扩充到 56 条，支持适度重复和狂欢模式更高密度。
+- 弹幕新增点击弹层：可点赞、可回复，并预留关注/加好友入口；后端返回匿名用户对象，方便后续登录合并。
+- 新增按剧播放器主题系统，《北往》使用返乡公路主题，未来可由大模型输出主题 JSON 替换进度条、播放键、声音键风格。
 
 ## 下一步建议
 
-- 继续按这个复核工作台校准《北往》第2集或下一部素材的关键高光时间。
-- 下一轮可以把贴纸规则抽成后端策略接口，并接入大模型批量生成 PNG/WebP 资产。
+- 继续把贴图规则抽到后端策略接口，并接入大模型生成可审核的 PNG/WebP 素材包。
+- 下一步可处理弹幕回复持久化和用户表结构，让点赞/回复进入数据库而不是只存在本地。
 
 ## 安全提醒
 
