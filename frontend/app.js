@@ -9,9 +9,9 @@ const DEFAULT_DANMAKU_SETTINGS = {
 const MIN_INTERACTION_GAP_SEC = 18;
 
 const DANMAKU_MODES = {
-  light: { label: "轻聊", enabled: true, density: 0.62 },
-  carnival: { label: "狂欢", enabled: true, density: 1 },
-  immerse: { label: "沉浸", enabled: false, density: 0 },
+  light: { label: "轻聊", enabled: true, density: 0.68, includeModes: ["light", "curated", "seed"] },
+  carnival: { label: "狂欢", enabled: true, density: 1, includeModes: ["light", "curated", "seed", "carnival"] },
+  immerse: { label: "沉浸", enabled: false, density: 0, includeModes: [] },
 };
 
 const HIGHLIGHT_UI = {
@@ -120,6 +120,8 @@ const state = {
   reviewEpisodes: [],
   reviewFilter: "all",
   danmakuFeedbackTimer: null,
+  interactionMode: "choice",
+  tapHideDelayMs: 2200,
 };
 
 localStorage.setItem("session_id", state.sessionId);
@@ -139,6 +141,7 @@ const reviewTab = $("#reviewTab");
 const player = $("#player");
 const interactionLayer = $("#interactionLayer");
 const danmakuLayer = $("#danmakuLayer");
+const stickerLayer = $("#stickerLayer");
 
 const HIGHLIGHT_ALIAS_TO_KEY = Object.fromEntries(
   Object.entries(HIGHLIGHT_UI).flatMap(([key, config]) => config.aliases.map((alias) => [alias, key]))
@@ -266,7 +269,12 @@ function clearDanmakuLayer() {
 
 function shouldShowDanmaku(comment) {
   const mode = getDanmakuMode();
-  return mode.enabled && stableRatio(comment.id || `${comment.time_sec}-${comment.text}`) <= mode.density;
+  const commentMode = comment.mode || "light";
+  return (
+    mode.enabled &&
+    mode.includeModes.includes(commentMode) &&
+    stableRatio(comment.id || `${comment.time_sec}-${comment.text}`) <= mode.density
+  );
 }
 
 function danmakuDuration() {
@@ -337,6 +345,65 @@ function extractSceneMotifs(highlight) {
   return candidates.filter((word) => source.includes(word)).slice(0, 3);
 }
 
+const STICKER_ASSETS = {
+  charge: { src: "/assets/stickers/effect_charge.svg", label: "冲" },
+  question: { src: "/assets/stickers/effect_question.svg", label: "问号" },
+  laugh: { src: "/assets/stickers/effect_laugh.svg", label: "好笑" },
+  rock: { src: "/assets/stickers/effect_rock.svg", label: "摇滚" },
+  tear: { src: "/assets/stickers/effect_tear.svg", label: "心疼" },
+};
+
+const STICKER_RULES = [
+  { asset: "charge", className: "sticker-charge", keywords: ["冲", "干", "走", "要债", "讨薪", "欠薪", "工友"] },
+  { asset: "question", className: "sticker-question", keywords: ["到底", "能不能", "回不去", "悬念", "疑问", "猜"] },
+  { asset: "laugh", className: "sticker-laugh", keywords: ["搞笑", "笑", "好笑", "哈哈"] },
+  { asset: "rock", className: "sticker-rock", keywords: ["摇滚", "摩托", "交通工具", "车", "回家方式"] },
+  { asset: "tear", className: "sticker-tear", keywords: ["没钱", "回家", "过年", "心疼", "破防", "父母"] },
+];
+
+function clearStickerLayer() {
+  if (stickerLayer) stickerLayer.innerHTML = "";
+}
+
+function highlightText(highlight) {
+  return `${highlight.title || ""} ${highlight.description || ""} ${highlight.highlight_type || ""} ${
+    highlight.emotion || ""
+  } ${highlight.evidence_text || ""}`;
+}
+
+function getSceneStickerRules(highlight) {
+  const source = highlightText(highlight);
+  const matched = STICKER_RULES.filter((rule) => rule.keywords.some((keyword) => source.includes(keyword)));
+  if (matched.length) return matched.slice(0, 3);
+  const key = getHighlightKey(highlight.highlight_type);
+  if (key === "suspense") return [STICKER_RULES.find((rule) => rule.asset === "question")];
+  if (key === "tear") return [STICKER_RULES.find((rule) => rule.asset === "tear")];
+  if (key === "comedy") return [STICKER_RULES.find((rule) => rule.asset === "laugh")];
+  if (key === "conflict") return [STICKER_RULES.find((rule) => rule.asset === "charge")];
+  return [STICKER_RULES.find((rule) => rule.asset === "rock")];
+}
+
+function spawnVideoSticker(rule, index = 0) {
+  if (!stickerLayer || !rule) return;
+  const asset = STICKER_ASSETS[rule.asset];
+  if (!asset) return;
+  const image = document.createElement("img");
+  image.className = `scene-sticker ${rule.className || ""}`;
+  image.src = asset.src;
+  image.alt = asset.label;
+  image.style.setProperty("--left", `${12 + ((index * 29) % 62)}%`);
+  image.style.setProperty("--top", `${12 + ((index * 19) % 34)}%`);
+  image.style.setProperty("--delay", `${index * 160}ms`);
+  stickerLayer.appendChild(image);
+  window.setTimeout(() => image.remove(), 2300 + index * 160);
+}
+
+function spawnHighlightStickers(highlight) {
+  getSceneStickerRules(highlight).forEach((rule, index) => {
+    window.setTimeout(() => spawnVideoSticker(rule, index), index * 180);
+  });
+}
+
 function checkDanmaku(currentTime) {
   for (const comment of state.danmaku) {
     const due = currentTime >= comment.time_sec && currentTime <= comment.time_sec + 2.4;
@@ -397,6 +464,7 @@ async function openEpisode(episodeId) {
   state.firedHighlights.clear();
   state.lastInteractionTime = -Infinity;
   clearDanmakuLayer();
+  clearStickerLayer();
   hideInteraction();
   const [episode, danmaku] = await Promise.all([
     fetchJSON(`/api/episodes/${episodeId}`),
@@ -498,6 +566,11 @@ function floatingWord(text, ui, anchor) {
   window.setTimeout(() => word.remove(), 820);
 }
 
+function scheduleInteractionHide(delayMs) {
+  window.clearTimeout(state.hideTimer);
+  state.hideTimer = window.setTimeout(hideInteraction, delayMs);
+}
+
 function tapImpactPad(button, ui) {
   const counter = button.querySelector("strong");
   const next = Number(counter.textContent || "0") + 1;
@@ -510,6 +583,7 @@ function tapImpactPad(button, ui) {
   if (ui.effect === "laugh") {
     spawnLaughSticker(button);
   }
+  scheduleInteractionHide(state.tapHideDelayMs);
 }
 
 function spawnLaughSticker(anchor) {
@@ -550,14 +624,31 @@ function spawnVehicleSticker(optionKey, anchor) {
   const sticker = VEHICLE_STICKERS[optionKey];
   const panel = interactionLayer.querySelector(".interaction-panel");
   if (!sticker || !panel || !anchor) return;
-  const image = document.createElement("img");
-  image.className = "vehicle-float-sticker";
-  image.src = sticker;
-  image.alt = "";
-  image.style.left = `${anchor.offsetLeft + anchor.offsetWidth / 2 - 48}px`;
-  image.style.top = `${Math.max(8, anchor.offsetTop - 94)}px`;
-  panel.appendChild(image);
-  window.setTimeout(() => image.remove(), 1400);
+  const panelImage = document.createElement("img");
+  panelImage.className = "vehicle-float-sticker";
+  panelImage.src = sticker;
+  panelImage.alt = "";
+  panelImage.style.left = `${anchor.offsetLeft + anchor.offsetWidth / 2 - 48}px`;
+  panelImage.style.top = `${Math.max(8, anchor.offsetTop - 94)}px`;
+  panel.appendChild(panelImage);
+
+  const videoImage = document.createElement("img");
+  videoImage.className = "scene-sticker sticker-vehicle";
+  videoImage.src = sticker;
+  videoImage.alt = "";
+  videoImage.style.setProperty("--left", "58%");
+  videoImage.style.setProperty("--top", "18%");
+  if (stickerLayer) stickerLayer.appendChild(videoImage);
+
+  window.setTimeout(() => panelImage.remove(), 1400);
+  window.setTimeout(() => videoImage.remove(), 2300);
+}
+
+function getInteractionMode(highlight, ui, vehicleChoice) {
+  if (vehicleChoice) return "choice";
+  const key = getHighlightKey(highlight.highlight_type);
+  if (ui.effect === "tapstorm" || key === "comedy") return "tap";
+  return "choice";
 }
 
 function showInteraction(highlight) {
@@ -565,7 +656,9 @@ function showInteraction(highlight) {
   const key = getHighlightKey(highlight.highlight_type);
   const motifs = extractSceneMotifs(highlight);
   const vehicleChoice = isVehicleChoice(highlight);
+  const interactionMode = getInteractionMode(highlight, ui, vehicleChoice);
   state.activeHighlight = highlight;
+  state.interactionMode = interactionMode;
   state.firedHighlights.add(highlight.id);
   state.lastInteractionTime = highlight.start_time_sec;
   if (vehicleChoice) {
@@ -574,7 +667,21 @@ function showInteraction(highlight) {
   window.clearTimeout(state.hideTimer);
   interactionLayer.className = `interaction-layer ${ui.className} effect-${ui.effect} ${
     vehicleChoice ? "vehicle-choice-layer" : ""
-  }`;
+  } mode-${interactionMode}`;
+  const impactMarkup =
+    interactionMode === "tap"
+      ? `<button class="impact-pad" type="button">
+        <span>${escapeHTML(ui.padText)}</span>
+        <strong>0</strong>
+      </button>`
+      : "";
+  const optionsMarkup =
+    interactionMode === "choice"
+      ? `<div class="interaction-options">
+        ${highlight.options.map((option) => renderReactionButton(option, vehicleChoice)).join("")}
+      </div>`
+      : "";
+  const helperText = interactionMode === "tap" ? "连续点击表达情绪" : vehicleChoice ? "先猜交通工具，再看揭晓" : "选一个最贴近你的反应";
   interactionLayer.innerHTML = `
     <div class="interaction-panel ${vehicleChoice ? "vehicle-choice-panel" : ""}" data-effect="${escapeHTML(
       ui.effect
@@ -588,32 +695,29 @@ function showInteraction(highlight) {
         </div>
         <h3>${escapeHTML(highlight.title)}</h3>
         <p>${escapeHTML(highlight.description || "")}</p>
+        <small class="interaction-helper">${escapeHTML(helperText)}</small>
       </div>
       ${renderSceneCaptions(ui, motifs)}
-      <button class="impact-pad" type="button">
-        <span>${escapeHTML(ui.padText)}</span>
-        <strong>0</strong>
-      </button>
-      <div class="interaction-options">
-        ${highlight.options
-          .map((option) => renderReactionButton(option, vehicleChoice))
-          .join("")}
-      </div>
+      ${impactMarkup}
+      ${optionsMarkup}
       <div class="interaction-meter"><i></i></div>
-      <button class="close-button" type="button" aria-label="关闭">×</button>
+      <button class="close-button" type="button" aria-label="不看这个互动" title="不看">×</button>
     </div>
   `;
   interactionLayer.querySelector(".close-button").addEventListener("click", hideInteraction);
   const impactPad = interactionLayer.querySelector(".impact-pad");
-  impactPad.addEventListener("click", () => tapImpactPad(impactPad, ui));
+  if (impactPad) {
+    impactPad.addEventListener("click", () => tapImpactPad(impactPad, ui));
+  }
   interactionLayer.querySelectorAll(".interaction-options button").forEach((button) => {
     button.addEventListener("click", () => submitInteraction(button.dataset.key, button));
   });
   emitHighlightDanmaku(highlight, ui);
-  if (key === "comedy") {
+  spawnHighlightStickers(highlight);
+  if (key === "comedy" && impactPad) {
     window.setTimeout(() => tapImpactPad(impactPad, ui), 120);
   }
-  state.hideTimer = window.setTimeout(hideInteraction, vehicleChoice ? 13000 : 9000);
+  scheduleInteractionHide(interactionMode === "tap" ? state.tapHideDelayMs : vehicleChoice ? 13000 : 9000);
 }
 
 function hideInteraction() {
@@ -669,7 +773,7 @@ function renderInteractionResult(stats) {
     )
     .join("");
   interactionLayer.querySelector(".interaction-copy span").textContent = `${stats.total} 次互动`;
-  state.hideTimer = window.setTimeout(hideInteraction, 5000);
+  scheduleInteractionHide(3200);
 }
 
 function renderEvidence(item) {
@@ -782,7 +886,9 @@ async function renderReviewEpisodeOptions(preferredEpisodeId) {
 async function loadReviewEpisodes() {
   state.reviewEpisodes = await fetchJSON("/api/admin/episodes");
   renderReviewSummary();
-  await renderReviewEpisodeOptions(Number($("#reviewEpisodeSelect").value));
+  const urlEpisodeId = Number(new URLSearchParams(location.search).get("episode"));
+  const preferredEpisodeId = state.currentEpisode?.id || (Number.isFinite(urlEpisodeId) ? urlEpisodeId : 0);
+  await renderReviewEpisodeOptions(preferredEpisodeId || Number($("#reviewEpisodeSelect").value));
 }
 
 async function loadReviewPayload(episodeId) {
@@ -807,20 +913,75 @@ function setReviewStatus(message, isError = false) {
   status.classList.toggle("error", isError);
 }
 
+function syncReviewJson(payload) {
+  $("#reviewJson").value = JSON.stringify(payload, null, 2);
+}
+
+function updateReviewTimeInput(input) {
+  const value = Number(input.value);
+  if (!Number.isFinite(value) || value < 0) return;
+  const index = Number(input.dataset.index);
+  const field = input.dataset.field;
+  const payload = parseReviewJson();
+  const item = payload.highlights?.[index];
+  if (!item || !["start_time_sec", "end_time_sec"].includes(field)) return;
+
+  item[field] = Number(value.toFixed(2));
+  if (field === "start_time_sec" && Number(item.end_time_sec) <= item.start_time_sec) {
+    item.end_time_sec = Number(Math.min(payload.duration_sec || item.start_time_sec + 8, item.start_time_sec + 8).toFixed(2));
+  }
+  if (field === "end_time_sec" && Number(item.end_time_sec) <= Number(item.start_time_sec)) {
+    item.end_time_sec = Number((Number(item.start_time_sec) + 1).toFixed(2));
+    input.value = item.end_time_sec;
+  }
+  syncReviewJson(payload);
+  const card = input.closest(".review-card");
+  const timeLabel = card?.querySelector("[data-time-label]");
+  if (timeLabel) {
+    timeLabel.textContent = `${formatTime(item.start_time_sec)}-${formatTime(item.end_time_sec)}`;
+  }
+  setReviewStatus(`已调整 ${item.title} 的${field === "start_time_sec" ? "开始" : "结束"}时间，点击保存后生效`);
+}
+
 function renderReviewPreview(payload) {
   const highlights = payload.highlights || [];
-  $("#reviewPreview").innerHTML = highlights
-    .map(
-      (item) => `
-        <article class="review-card">
-          <p>${formatTime(item.start_time_sec)}-${formatTime(item.end_time_sec)} · ${item.highlight_type} · ${item.emotion}</p>
-          <h4>${item.title}</h4>
-          <span>${(item.options || []).map((option) => option.label).join(" / ")}</span>
-          ${item.evidence_text ? `<small>${item.evidence_text}</small>` : ""}
-        </article>
-      `
-    )
-    .join("");
+  $("#reviewPreview").innerHTML = `
+    <div class="review-preview-head">
+      <span>片名</span>
+      <strong>${escapeHTML(payload.drama_title)} · ${escapeHTML(payload.episode_title)}</strong>
+      <small>${highlights.length} 个高光点 · 总时长 ${formatTime(payload.duration_sec)}</small>
+    </div>
+    ${highlights
+      .map(
+        (item, index) => `
+          <article class="review-card" data-index="${index}">
+            <div class="review-card-title">
+              <span>高光点 ${index + 1}</span>
+              <h4>${escapeHTML(item.title)}</h4>
+            </div>
+            <p>${escapeHTML(item.highlight_type)} · ${escapeHTML(item.emotion)}</p>
+            <div class="review-time-editor">
+              <label>
+                开始秒
+                <input class="review-time-input" type="number" min="0" step="0.1" data-index="${index}" data-field="start_time_sec" value="${Number(
+                  item.start_time_sec
+                )}" />
+              </label>
+              <label>
+                结束秒
+                <input class="review-time-input" type="number" min="0" step="0.1" data-index="${index}" data-field="end_time_sec" value="${Number(
+                  item.end_time_sec
+                )}" />
+              </label>
+              <strong data-time-label>${formatTime(item.start_time_sec)}-${formatTime(item.end_time_sec)}</strong>
+            </div>
+            <span>${(item.options || []).map((option) => escapeHTML(option.label)).join(" / ")}</span>
+            ${item.evidence_text ? `<small>${escapeHTML(item.evidence_text)}</small>` : ""}
+          </article>
+        `
+      )
+      .join("")}
+  `;
 }
 
 function formatReviewJson() {
@@ -889,6 +1050,7 @@ player.addEventListener("timeupdate", () => {
 
 player.addEventListener("seeked", () => {
   clearDanmakuLayer();
+  clearStickerLayer();
 });
 
 homeTab.addEventListener("click", () => setView("home"));
@@ -904,6 +1066,11 @@ $("#reviewEpisodeSelect").addEventListener("change", (event) => loadReviewPayloa
 $("#reloadReview").addEventListener("click", () => loadReviewPayload(Number($("#reviewEpisodeSelect").value)));
 $("#formatReview").addEventListener("click", formatReviewJson);
 $("#saveReview").addEventListener("click", saveReviewPayload);
+$("#reviewPreview").addEventListener("input", (event) => {
+  if (event.target.classList.contains("review-time-input")) {
+    updateReviewTimeInput(event.target);
+  }
+});
 $("#danmakuForm").addEventListener("submit", sendDanmaku);
 $("#danmakuSettingsToggle").addEventListener("click", () => {
   $("#danmakuSettings").classList.toggle("open");

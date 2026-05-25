@@ -212,7 +212,7 @@ def apply_danmaku_fixtures(db: Session) -> None:
 
         db.query(DanmakuComment).filter(
             DanmakuComment.episode_id == episode.id,
-            DanmakuComment.mode.in_(["seed", "curated"]),
+            DanmakuComment.session_id == "fixture",
         ).delete(synchronize_session=False)
         for item in fixture.get("comments", []):
             db.add(

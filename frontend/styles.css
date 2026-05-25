@@ -246,6 +246,7 @@ main {
 .danmaku-layer {
   position: absolute;
   inset: 0;
+  z-index: 1;
   overflow: hidden;
   pointer-events: none;
   opacity: var(--danmaku-opacity, 0.82);
@@ -253,6 +254,37 @@ main {
 
 .danmaku-layer.disabled {
   display: none;
+}
+
+.sticker-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.scene-sticker {
+  position: absolute;
+  left: var(--left);
+  top: var(--top);
+  width: 92px;
+  height: 70px;
+  object-fit: contain;
+  opacity: 0;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34));
+  animation: scene-sticker-pop 2100ms var(--delay, 0ms) cubic-bezier(0.2, 0.88, 0.28, 1) forwards;
+}
+
+.sticker-question {
+  width: 78px;
+  height: 78px;
+}
+
+.sticker-rock,
+.sticker-vehicle {
+  width: 112px;
+  height: 82px;
 }
 
 .danmaku-item {
@@ -300,6 +332,25 @@ main {
   }
   to {
     transform: translateX(-140vw);
+  }
+}
+
+@keyframes scene-sticker-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.72) rotate(-8deg);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.08) rotate(5deg);
+  }
+  72% {
+    opacity: 1;
+    transform: translateY(-18px) scale(1) rotate(-2deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-48px) scale(0.9) rotate(4deg);
   }
 }
 
@@ -395,6 +446,7 @@ main {
 .interaction-layer {
   position: absolute;
   inset: 0;
+  z-index: 3;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -606,6 +658,16 @@ main {
   line-height: 1.45;
 }
 
+.interaction-helper {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 6px;
+  color: var(--type-accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .interaction-options {
   position: relative;
   z-index: 1;
@@ -746,10 +808,13 @@ main {
 
 .close-button {
   position: absolute;
-  right: 26px;
-  margin-top: -32px;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  display: grid;
   width: 28px;
   height: 28px;
+  place-items: center;
   border: 1px solid var(--line);
   border-radius: 50%;
   color: var(--text);
@@ -1074,11 +1139,46 @@ main {
   margin-top: 10px;
 }
 
+.review-preview-head {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(18, 214, 176, 0.06);
+}
+
+.review-preview-head span,
+.review-preview-head small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-preview-head strong {
+  display: block;
+  margin: 4px 0;
+  font-size: 16px;
+}
+
 .review-card {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
   background: var(--panel);
+}
+
+.review-card-title {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.review-card-title span {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: #071012;
+  background: var(--accent-2);
+  font-weight: 800;
 }
 
 .review-card p,
@@ -1097,6 +1197,40 @@ main {
   display: block;
   margin-top: 8px;
   line-height: 1.5;
+}
+
+.review-time-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.review-time-editor label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-time-editor input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--text);
+  background: #080c12;
+}
+
+.review-time-editor strong {
+  min-width: 92px;
+  border-radius: 8px;
+  padding: 9px 8px;
+  color: var(--gold);
+  background: rgba(246, 188, 79, 0.08);
+  text-align: center;
+  font-size: 12px;
 }
 
 .empty-state {
@@ -1125,7 +1259,8 @@ main {
   }
 
   .review-toolbar,
-  .review-layout {
+  .review-layout,
+  .review-time-editor {
     grid-template-columns: 1fr;
   }
 }

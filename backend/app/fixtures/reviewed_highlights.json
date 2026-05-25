@@ -348,7 +348,7 @@
           ]
         },
         {
-          "start_time_sec": 258.0,
+          "start_time_sec": 270.0,
           "end_time_sec": 300.0,
           "title": "贼摇滚的回家方式",
           "description": "车里人调侃男主这玩意儿叫摇滚，系统暂停让用户先猜交通工具，最后揭晓男主带着行李骑摩托踏上返乡路。",
@@ -357,7 +357,7 @@
           "confidence": 0.94,
           "source": "human_review",
           "model_version": "product-review-v3",
-          "annotation_reason": "第四个高光按产品反馈做成“怎么回去”的选择互动：先猜火车/小车/摩托车，再用贴图强化揭晓。",
+          "annotation_reason": "第四个高光按产品反馈做成“怎么回去”的选择互动：贼摇滚台词约 04:28 出现，互动触发点校准到 04:30，先猜火车/小车/摩托车，再用贴图强化揭晓。",
           "evidence_segment_ids": [
             13,
             14,

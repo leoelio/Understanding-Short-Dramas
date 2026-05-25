@@ -1,27 +1,28 @@
 # Project Status
 
-更新时间：2026-05-25 07:11:48
+更新时间：2026-05-25 18:15:29
 
 ## 当前目标
 
-按产品反馈重做《北往》第1集回家主线互动：四段高光、交通工具选择贴图、弹幕种子与审核规则已完成。
+优化《北往》第1集复核与互动体验：可视化改时间、贴纸特效、弹幕分层和互动消失逻辑。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`2b568a1`
+- 最新提交：`37dc546`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
+- `M backend/app/fixtures/danmaku_comments.json`
 - `M backend/app/fixtures/reviewed_highlights.json`
-- `M backend/app/main.py`
 - `M backend/app/seed.py`
 - `M frontend/app.js`
 - `M frontend/index.html`
 - `M frontend/styles.css`
-- `?? backend/app/danmaku_moderation.py`
-- `?? backend/app/fixtures/danmaku_comments.json`
-- `?? docs/future_ai_extensions.md`
-- `?? frontend/assets/`
+- `?? frontend/assets/stickers/effect_charge.svg`
+- `?? frontend/assets/stickers/effect_laugh.svg`
+- `?? frontend/assets/stickers/effect_question.svg`
+- `?? frontend/assets/stickers/effect_rock.svg`
+- `?? frontend/assets/stickers/effect_tear.svg`
 
 ## 数据状态
 
@@ -31,8 +32,8 @@
 - 高光点：64
 - 已复核剧集：3
 - 待复核剧集：17
-- 互动记录：5
-- 弹幕记录：127
+- 互动记录：12
+- 弹幕记录：148
 
 ## 高光来源
 
@@ -51,16 +52,16 @@
 
 ## 本次变更摘要
 
-- 《北往》第1集高光改为：开头要债、没钱回家虐心、能否回去疑问、交通工具揭晓摩托返乡。
-- 新增弹幕审核模块：辱骂黑名单、通用剧透拦截、按播放时间判断交通工具剧透。
-- 新增精选弹幕 fixture，针对第1集生成 13 条不剧透、贴剧情节奏的弹幕。
-- 新增火车/小车/摩托车贴图素材，并在 04:18 高光暂停视频展示交通工具选择。
-- 新增未来 AI 延展文档，预留片尾生成、用户上传漫画化和登录体系。
+- 复核页新增高光点卡片，显示片名、名称、类型、时间，并支持直接输入秒数调整开始/结束时间。
+- 《北往》第1集交通工具互动触发点从 04:18 校准到 04:30。
+- 新增视频贴纸层和冲、问号、哈哈、摇滚、心疼等常用 SVG 贴纸，按高光关键词自动弹出。
+- 弹幕 fixture 扩充到 34 条，并按轻聊/狂欢模式分层展示，沉浸模式保持关闭。
+- 互动组件区分问答选择和疯狂点击：问答回答后短时消失，点击型互动按最后一次点击刷新消失计时。
 
 ## 下一步建议
 
-- 继续观察《北往》第1集播放体验，确认四个高光的触发时机是否要微调到更贴字幕。
-- 下一步处理《北往》第2集，保持同题材连续体验一致。
+- 继续按这个复核工作台校准《北往》第2集或下一部素材的关键高光时间。
+- 下一轮可以把贴纸规则抽成后端策略接口，并接入大模型批量生成 PNG/WebP 资产。
 
 ## 安全提醒
 
