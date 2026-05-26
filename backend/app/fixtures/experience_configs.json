@@ -1,0 +1,85 @@
+{
+  "episodes": [
+    {
+      "drama_title": "北往",
+      "episode_no": 1,
+      "version": 1,
+      "source": "llm_seed",
+      "model_version": "episode-experience-v1",
+      "review_status": "human_reviewed",
+      "config": {
+        "player_theme": {
+          "theme_key": "road",
+          "name": "北往·返乡烟火",
+          "badge": "返乡烟火 · 年三十",
+          "signal": "讨薪现金 / 家用电话 / 路边烟雾 / 行李摩托",
+          "accent": "#ff7a30",
+          "soft": "#f2e2c4",
+          "endpoint_label": "家"
+        },
+        "sticker_timeline": [
+          {
+            "start_time_sec": 0,
+            "end_time_sec": 16,
+            "asset_ids": ["mealSteam"],
+            "cadence_sec": 8,
+            "burst_count": 1,
+            "meaning": "开场饭桌和烟火气，只做氛围贴图。"
+          },
+          {
+            "start_time_sec": 16,
+            "end_time_sec": 62,
+            "asset_ids": ["noPayBill", "goSign", "wageStamp", "debtCash"],
+            "cadence_sec": 5,
+            "burst_count": 4,
+            "meaning": "上门讨薪、要钱、结清工资。"
+          },
+          {
+            "start_time_sec": 112,
+            "end_time_sec": 180,
+            "asset_ids": ["homePhone", "homeTicket", "homeLantern"],
+            "cadence_sec": 7,
+            "burst_count": 4,
+            "meaning": "家里电话、年三十回家、父母叮嘱。"
+          },
+          {
+            "start_time_sec": 198,
+            "end_time_sec": 244,
+            "asset_ids": ["smokeQuestion", "roadQuestion"],
+            "cadence_sec": 7,
+            "burst_count": 3,
+            "meaning": "到底能不能回去的疑问和悬念。"
+          },
+          {
+            "start_time_sec": 244,
+            "end_time_sec": 300,
+            "asset_ids": ["rockWord", "rockMoto", "northTitle"],
+            "cadence_sec": 6,
+            "burst_count": 4,
+            "meaning": "贼摇滚的交通工具揭晓和片尾记忆点。"
+          }
+        ],
+        "danmaku_modes": {
+          "light": {
+            "label": "轻聊",
+            "enabled": true,
+            "density": 0.72,
+            "include_modes": ["light"]
+          },
+          "carnival": {
+            "label": "狂欢",
+            "enabled": true,
+            "density": 1,
+            "include_modes": ["light", "curated", "seed", "carnival"]
+          },
+          "immerse": {
+            "label": "沉浸",
+            "enabled": false,
+            "density": 0,
+            "include_modes": []
+          }
+        }
+      }
+    }
+  ]
+}

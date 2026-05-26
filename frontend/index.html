@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260527-home-endpoint" />
+    <link rel="stylesheet" href="/styles.css?v=20260527-experience-config" />
   </head>
   <body>
     <div class="app-shell">
@@ -149,10 +149,24 @@
               <div id="reviewPreview" class="review-preview"></div>
             </div>
           </div>
+          <div class="experience-head">
+            <div>
+              <h3>体验配置</h3>
+              <p>管理播放器主题、贴图时间轴、弹幕模式、来源和版本。</p>
+            </div>
+            <div>
+              <button id="formatExperience" class="ghost-button" type="button">格式化配置</button>
+              <button id="saveExperience" class="primary-button" type="button">保存体验配置</button>
+            </div>
+          </div>
+          <div class="experience-layout">
+            <textarea id="experienceJson" spellcheck="false" aria-label="体验配置 JSON"></textarea>
+            <div id="experiencePreview" class="experience-preview"></div>
+          </div>
         </section>
       </main>
     </div>
 
-    <script type="module" src="/app.js?v=20260527-home-endpoint"></script>
+    <script type="module" src="/app.js?v=20260527-experience-config"></script>
   </body>
 </html>

@@ -31,6 +31,9 @@ class Episode(Base):
 
     drama = relationship("Drama", back_populates="episodes")
     highlights = relationship("Highlight", back_populates="episode", cascade="all, delete-orphan")
+    experience_config = relationship(
+        "EpisodeExperienceConfig", back_populates="episode", cascade="all, delete-orphan", uselist=False
+    )
 
 
 class Highlight(Base):
@@ -81,3 +84,19 @@ class DanmakuComment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     episode = relationship("Episode")
+
+
+class EpisodeExperienceConfig(Base):
+    __tablename__ = "episode_experience_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    episode_id = Column(Integer, ForeignKey("episodes.id"), nullable=False, unique=True, index=True)
+    version = Column(Integer, default=1)
+    source = Column(String(64), default="manual")
+    model_version = Column(String(64), default="experience-config-v1")
+    review_status = Column(String(64), default="draft")
+    config_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    episode = relationship("Episode", back_populates="experience_config")

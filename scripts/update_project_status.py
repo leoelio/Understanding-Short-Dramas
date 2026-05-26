@@ -40,6 +40,7 @@ def db_snapshot() -> dict:
             "highlights": 0,
             "interactions": 0,
             "danmaku": 0,
+            "experience_configs": 0,
             "reviewed_episodes": 0,
             "pending_episodes": 0,
             "sources": {},
@@ -70,6 +71,7 @@ def db_snapshot() -> dict:
             "highlights": scalar(connection, "select count(*) from highlights"),
             "interactions": scalar(connection, "select count(*) from interactions"),
             "danmaku": scalar(connection, "select count(*) from danmaku_comments"),
+            "experience_configs": scalar(connection, "select count(*) from episode_experience_configs"),
             "reviewed_episodes": reviewed,
             "pending_episodes": max(0, episodes - reviewed),
             "sources": dict(sources),
@@ -119,6 +121,7 @@ def render_status(args: argparse.Namespace, snapshot: dict, now: str) -> str:
 - 待复核剧集：{snapshot["pending_episodes"]}
 - 互动记录：{snapshot["interactions"]}
 - 弹幕记录：{snapshot["danmaku"]}
+- 体验配置：{snapshot["experience_configs"]}
 
 ## 高光来源
 
@@ -133,6 +136,7 @@ def render_status(args: argparse.Namespace, snapshot: dict, now: str) -> str:
 - 8 类高光分类体系和稀疏高光规则。
 - 弹幕评论、三种弹幕模式和弹幕样式设置。
 - 分类型高光动效：冲突站队、反转狂点、爽点连击、甜蜜气泡、虐心共情、悬念线索、搞笑贴纸、危机心跳。
+- 体验配置复核台：服务端存储播放器主题、贴图时间轴、弹幕策略、来源和版本。
 
 ## 本次变更摘要
 
@@ -157,7 +161,7 @@ def append_run_log(args: argparse.Namespace, snapshot: dict, now: str) -> None:
 
 - 目标：{args.summary}
 - Git：`{run_git(["rev-parse", "--short", "HEAD"])}` / `{run_git(["branch", "--show-current"])}`
-- 数据：{snapshot["dramas"]} 部短剧，{snapshot["episodes"]} 集，{snapshot["highlights"]} 个高光，{snapshot["reviewed_episodes"]} 集已复核，{snapshot["danmaku"]} 条弹幕。
+- 数据：{snapshot["dramas"]} 部短剧，{snapshot["episodes"]} 集，{snapshot["highlights"]} 个高光，{snapshot["reviewed_episodes"]} 集已复核，{snapshot["danmaku"]} 条弹幕，{snapshot["experience_configs"]} 条体验配置。
 - 变更：
 {change_lines}
 - 下一步：

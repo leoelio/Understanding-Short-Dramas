@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -13,3 +15,11 @@ class DanmakuCreate(BaseModel):
     text: str = Field(min_length=1, max_length=40)
     session_id: str = Field(min_length=1, max_length=128)
     mode: str = Field(default="light", max_length=32)
+
+
+class ExperienceConfigUpdate(BaseModel):
+    version: int = Field(default=1, ge=1)
+    source: str = Field(default="human_review", max_length=64)
+    model_version: str = Field(default="experience-config-v1", max_length=64)
+    review_status: str = Field(default="human_reviewed", max_length=64)
+    config: dict[str, Any]

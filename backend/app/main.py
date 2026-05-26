@@ -14,8 +14,8 @@ from .config import APP_NAME, FRONTEND_DIR
 from .database import SessionLocal, get_db
 from .danmaku_moderation import moderate_danmaku, moderation_rules_payload
 from .migrations import ensure_database_schema
-from .models import DanmakuComment, Drama, Episode, Highlight, Interaction
-from .schemas import DanmakuCreate, InteractionCreate
+from .models import DanmakuComment, Drama, Episode, EpisodeExperienceConfig, Highlight, Interaction
+from .schemas import DanmakuCreate, ExperienceConfigUpdate, InteractionCreate
 from .seed import seed_from_video_library
 from .annotation_schema import validate_annotation_payload
 from .taxonomy import normalize_highlight_type, taxonomy_payload
@@ -124,6 +124,63 @@ def danmaku_user_payload(comment: DanmakuComment) -> dict:
         "id": f"anon-{digest}",
         "nickname": f"游客{suffix:03d}",
         "relation_ready": False,
+    }
+
+
+def default_experience_config(episode: Episode) -> dict:
+    base = {
+        "player_theme": {
+            "theme_key": "road" if "北往" in episode.drama.title else "city",
+            "name": "北往·返乡烟火" if "北往" in episode.drama.title else "都市情绪场",
+            "badge": "返乡烟火 · 年三十" if "北往" in episode.drama.title else "默认互动主题",
+            "signal": "讨薪现金 / 家用电话 / 路边烟雾 / 行李摩托" if "北往" in episode.drama.title else "高光时间轴 / 弹幕反馈 / 互动按钮",
+            "accent": "#ff7a30" if "北往" in episode.drama.title else "#ff4f64",
+            "soft": "#f2e2c4" if "北往" in episode.drama.title else "#12d6b0",
+            "endpoint_label": "家" if "北往" in episode.drama.title else "",
+        },
+        "sticker_timeline": [],
+        "danmaku_modes": {
+            "light": {"label": "轻聊", "enabled": True, "density": 0.72, "include_modes": ["light"]},
+            "carnival": {
+                "label": "狂欢",
+                "enabled": True,
+                "density": 1,
+                "include_modes": ["light", "curated", "seed", "carnival"],
+            },
+            "immerse": {"label": "沉浸", "enabled": False, "density": 0, "include_modes": []},
+        },
+    }
+    return base
+
+
+def parse_experience_config(row: EpisodeExperienceConfig | None, episode: Episode) -> dict:
+    if not row:
+        return {
+            "episode_id": episode.id,
+            "drama_title": episode.drama.title,
+            "episode_title": episode.title,
+            "version": 1,
+            "source": "system_default",
+            "model_version": "experience-config-v1",
+            "review_status": "draft",
+            "persisted": False,
+            "config": default_experience_config(episode),
+        }
+    try:
+        config = json.loads(row.config_json)
+    except json.JSONDecodeError:
+        config = {}
+    return {
+        "episode_id": episode.id,
+        "drama_title": episode.drama.title,
+        "episode_title": episode.title,
+        "version": row.version,
+        "source": row.source,
+        "model_version": row.model_version,
+        "review_status": row.review_status,
+        "persisted": True,
+        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+        "config": config,
     }
 
 
@@ -253,6 +310,15 @@ def list_danmaku(episode_id: int, db: Session = Depends(get_db)) -> list[dict]:
     ]
 
 
+@app.get("/api/episodes/{episode_id}/experience")
+def get_episode_experience(episode_id: int, db: Session = Depends(get_db)) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    row = db.query(EpisodeExperienceConfig).filter(EpisodeExperienceConfig.episode_id == episode_id).first()
+    return parse_experience_config(row, episode)
+
+
 @app.get("/api/danmaku/moderation-rules")
 def danmaku_moderation_rules() -> dict:
     return moderation_rules_payload()
@@ -302,6 +368,7 @@ def stats_summary(db: Session = Depends(get_db)) -> dict:
         "highlight_count": db.query(Highlight).count(),
         "interaction_count": db.query(Interaction).count(),
         "danmaku_count": db.query(DanmakuComment).count(),
+        "experience_config_count": db.query(EpisodeExperienceConfig).count(),
     }
 
 
@@ -342,6 +409,11 @@ def admin_list_episodes(db: Session = Depends(get_db)) -> list[dict]:
                 "episode_title": episode.title,
                 "episode_no": episode.episode_no,
                 "duration_sec": episode.duration_sec,
+                "experience_config_status": episode.experience_config.review_status
+                if episode.experience_config
+                else "draft",
+                "experience_config_source": episode.experience_config.source if episode.experience_config else "none",
+                "experience_config_version": episode.experience_config.version if episode.experience_config else 0,
                 **review_meta,
             }
         )
@@ -382,6 +454,39 @@ def admin_get_episode_highlights(episode_id: int, db: Session = Depends(get_db))
         "prompt_version": "admin-review-v1",
         "highlights": [annotation_item_payload(highlight) for highlight in highlights],
     }
+
+
+@app.get("/api/admin/episodes/{episode_id}/experience")
+def admin_get_episode_experience(episode_id: int, db: Session = Depends(get_db)) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    row = db.query(EpisodeExperienceConfig).filter(EpisodeExperienceConfig.episode_id == episode_id).first()
+    return parse_experience_config(row, episode)
+
+
+@app.put("/api/admin/episodes/{episode_id}/experience")
+def admin_save_episode_experience(
+    episode_id: int, payload: ExperienceConfigUpdate, db: Session = Depends(get_db)
+) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    if not isinstance(payload.config, dict):
+        raise HTTPException(status_code=400, detail="config 必须是 JSON 对象")
+
+    row = db.query(EpisodeExperienceConfig).filter(EpisodeExperienceConfig.episode_id == episode_id).first()
+    if not row:
+        row = EpisodeExperienceConfig(episode_id=episode_id)
+        db.add(row)
+    row.version = payload.version
+    row.source = payload.source
+    row.model_version = payload.model_version
+    row.review_status = payload.review_status
+    row.config_json = json.dumps(payload.config, ensure_ascii=False)
+    db.commit()
+    db.refresh(row)
+    return parse_experience_config(row, episode)
 
 
 @app.put("/api/admin/episodes/{episode_id}/highlights")

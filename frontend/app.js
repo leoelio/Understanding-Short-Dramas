@@ -151,6 +151,7 @@ const state = {
   dramas: [],
   episodes: [],
   currentEpisode: null,
+  currentExperience: null,
   sessionId: localStorage.getItem("session_id") || crypto.randomUUID(),
   firedHighlights: new Set(),
   firedDanmaku: new Set(),
@@ -160,6 +161,7 @@ const state = {
   danmaku: [],
   danmakuSettings: loadDanmakuSettings(),
   reviewEpisodes: [],
+  reviewExperience: null,
   reviewFilter: "all",
   danmakuFeedbackTimer: null,
   interactionMode: "choice",
@@ -212,7 +214,14 @@ function getHighlightUI(type) {
 }
 
 function getDanmakuMode() {
-  return DANMAKU_MODES[state.danmakuSettings.mode] || DANMAKU_MODES.light;
+  const key = state.danmakuSettings.mode;
+  const fallback = DANMAKU_MODES[key] || DANMAKU_MODES.light;
+  const configured = currentExperienceConfig().danmaku_modes?.[key] || {};
+  return {
+    ...fallback,
+    ...configured,
+    includeModes: configured.includeModes || configured.include_modes || fallback.includeModes,
+  };
 }
 
 function getHighlightKey(type) {
@@ -297,8 +306,33 @@ function getPlayerTheme(dramaTitle = "") {
   );
 }
 
+function currentExperienceConfig() {
+  return state.currentExperience?.config || {};
+}
+
+function themeWithExperience(baseTheme) {
+  const config = currentExperienceConfig().player_theme || {};
+  return {
+    ...baseTheme,
+    name: config.name || baseTheme.name,
+    className: config.class_name || config.className || baseTheme.className,
+    accent: config.accent || baseTheme.accent,
+    soft: config.soft || baseTheme.soft,
+    badge: config.badge || baseTheme.badge,
+    signal: config.signal || baseTheme.signal,
+    playIcon: config.play_icon || config.playIcon || baseTheme.playIcon,
+    pauseIcon: config.pause_icon || config.pauseIcon || baseTheme.pauseIcon,
+    muteIcon: config.mute_icon || config.muteIcon || baseTheme.muteIcon,
+    mutedIcon: config.muted_icon || config.mutedIcon || baseTheme.mutedIcon,
+  };
+}
+
+function getCurrentPlayerTheme(episode = state.currentEpisode) {
+  return themeWithExperience(getPlayerTheme(episode?.drama?.title || ""));
+}
+
 function applyPlayerTheme(episode) {
-  const theme = getPlayerTheme(episode?.drama?.title || "");
+  const theme = getCurrentPlayerTheme(episode);
   const shell = document.querySelector(".app-shell");
   shell.classList.remove(...Object.values(PLAYER_THEMES).map((item) => item.className));
   shell.classList.add(theme.className);
@@ -314,7 +348,7 @@ function applyPlayerTheme(episode) {
 }
 
 function updatePlayerControls() {
-  const theme = getPlayerTheme(state.currentEpisode?.drama?.title || "");
+  const theme = getCurrentPlayerTheme();
   playToggle.textContent = player.paused ? theme.playIcon : theme.pauseIcon;
   muteToggle.textContent = player.muted ? theme.mutedIcon : theme.muteIcon;
   const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode?.duration_sec || 0;
@@ -786,17 +820,22 @@ function isBeiwangEpisode() {
 }
 
 function stickerSlotForTime(timeSec) {
-  if (!isBeiwangEpisode()) return null;
+  const configuredTimeline = currentExperienceConfig().sticker_timeline;
+  const timeline = Array.isArray(configuredTimeline) && configuredTimeline.length ? configuredTimeline : null;
+  if (!timeline && !isBeiwangEpisode()) return null;
+  const slots = timeline || BEIWANG_STICKER_TIMELINE;
   return (
-    BEIWANG_STICKER_TIMELINE.find((slot, index) => {
-      const isLast = index === BEIWANG_STICKER_TIMELINE.length - 1;
-      return timeSec >= slot.start && (timeSec < slot.end || (isLast && timeSec <= slot.end));
+    slots.find((slot, index) => {
+      const start = Number(slot.start_time_sec ?? slot.start ?? 0);
+      const end = Number(slot.end_time_sec ?? slot.end ?? start);
+      const isLast = index === slots.length - 1;
+      return timeSec >= start && (timeSec < end || (isLast && timeSec <= end));
     }) || null
   );
 }
 
 function stickerRulesFromSlot(slot) {
-  return (slot?.assets || []).map(stickerRuleByAsset).filter(Boolean);
+  return (slot?.assets || slot?.asset_ids || []).map(stickerRuleByAsset).filter(Boolean);
 }
 
 function getSceneStickerRules(highlight) {
@@ -922,7 +961,7 @@ function spawnVideoSticker(rule, index = 0, options = {}) {
 function spawnHighlightStickers(highlight) {
   const rules = getSceneStickerRules(highlight);
   const slot = stickerSlotForTime(Number(highlight.start_time_sec || 0));
-  const count = slot?.burstCount || 4;
+  const count = slot?.burstCount || slot?.burst_count || 4;
   [...rules, ...rules].slice(0, count).forEach((rule, index) => {
     window.setTimeout(() => spawnVideoSticker(rule, index, { durationMs: rule.durationMs || 3800 }), index * 220);
   });
@@ -934,8 +973,10 @@ function ambientStickerRule() {
   if (slot) {
     const rules = stickerRulesFromSlot(slot);
     if (!rules.length) return null;
-    const localTime = Math.max(0, currentTime - slot.start);
-    return rules[Math.floor(localTime / slot.cadenceSec) % rules.length];
+    const start = Number(slot.start_time_sec ?? slot.start ?? 0);
+    const cadence = Number(slot.cadence_sec ?? slot.cadenceSec ?? 6);
+    const localTime = Math.max(0, currentTime - start);
+    return rules[Math.floor(localTime / cadence) % rules.length];
   }
   if (isBeiwangEpisode()) return null;
   return STICKER_RULES[Math.floor(currentTime / 4) % STICKER_RULES.length];
@@ -1018,11 +1059,13 @@ async function openEpisode(episodeId) {
   clearDanmakuLayer();
   clearStickerLayer();
   hideInteraction();
-  const [episode, danmaku] = await Promise.all([
+  const [episode, danmaku, experience] = await Promise.all([
     fetchJSON(`/api/episodes/${episodeId}`),
     fetchJSON(`/api/episodes/${episodeId}/danmaku`),
+    fetchJSON(`/api/episodes/${episodeId}/experience`),
   ]);
   state.currentEpisode = episode;
+  state.currentExperience = experience;
   state.danmaku = danmaku;
   $("#watchTitle").textContent = `${state.currentEpisode.drama.title} · ${state.currentEpisode.title}`;
   $("#episodeSelect").value = String(episodeId);
@@ -1373,6 +1416,7 @@ async function loadStats() {
     ["高光点", summary.highlight_count],
     ["互动次数", summary.interaction_count],
     ["弹幕", summary.danmaku_count || 0],
+    ["体验配置", summary.experience_config_count || 0],
   ]
     .map(([label, value]) => `<div class="summary-card"><span>${label}</span><strong>${value}</strong></div>`)
     .join("");
@@ -1411,6 +1455,7 @@ function getFilteredReviewEpisodes() {
 function renderReviewSummary() {
   const total = state.reviewEpisodes.length;
   const reviewed = state.reviewEpisodes.filter((episode) => episode.review_status === "reviewed").length;
+  const configured = state.reviewEpisodes.filter((episode) => episode.experience_config_version > 0).length;
   const reviewedHighlights = state.reviewEpisodes.reduce(
     (sum, episode) => sum + (episode.reviewed_highlight_count || 0),
     0
@@ -1421,6 +1466,7 @@ function renderReviewSummary() {
     ["已复核", reviewed],
     ["待复核", total - reviewed],
     ["人工高光", `${reviewedHighlights}/${totalHighlights}`],
+    ["体验配置", configured],
   ]
     .map(([label, value]) => `<div class="summary-card"><span>${label}</span><strong>${value}</strong></div>`)
     .join("");
@@ -1434,7 +1480,9 @@ async function renderReviewEpisodeOptions(preferredEpisodeId) {
   if (!episodes.length) {
     select.innerHTML = `<option value="">当前筛选没有剧集</option>`;
     $("#reviewJson").value = "";
+    $("#experienceJson").value = "";
     $("#reviewPreview").innerHTML = "";
+    $("#experiencePreview").innerHTML = "";
     setReviewStatus("当前筛选没有剧集");
     return;
   }
@@ -1443,7 +1491,9 @@ async function renderReviewEpisodeOptions(preferredEpisodeId) {
     .map(
       (episode) => `
         <option value="${episode.id}">
-          ${episode.review_status_label} · ${episode.drama_title} · ${episode.episode_title} · ${episode.highlight_count} 个高光
+          ${episode.review_status_label} · 配置v${episode.experience_config_version || 0} · ${episode.drama_title} · ${
+            episode.episode_title
+          } · ${episode.highlight_count} 个高光
         </option>
       `
     )
@@ -1465,10 +1515,16 @@ async function loadReviewEpisodes() {
 
 async function loadReviewPayload(episodeId) {
   if (!episodeId) return;
-  const payload = await fetchJSON(`/api/admin/episodes/${episodeId}/highlights`);
+  const [payload, experience] = await Promise.all([
+    fetchJSON(`/api/admin/episodes/${episodeId}/highlights`),
+    fetchJSON(`/api/admin/episodes/${episodeId}/experience`),
+  ]);
   const meta = state.reviewEpisodes.find((episode) => episode.id === episodeId);
   $("#reviewJson").value = JSON.stringify(payload, null, 2);
+  $("#experienceJson").value = JSON.stringify(experience, null, 2);
+  state.reviewExperience = experience;
   renderReviewPreview(payload);
+  renderExperiencePreview(experience);
   const status = meta
     ? `${meta.review_status_label} · 人工 ${meta.reviewed_highlight_count || 0}/${meta.highlight_count || 0}`
     : "已加载";
@@ -1479,6 +1535,10 @@ function parseReviewJson() {
   return JSON.parse($("#reviewJson").value);
 }
 
+function parseExperienceJson() {
+  return JSON.parse($("#experienceJson").value);
+}
+
 function setReviewStatus(message, isError = false) {
   const status = $("#reviewStatus");
   status.textContent = message;
@@ -1487,6 +1547,10 @@ function setReviewStatus(message, isError = false) {
 
 function syncReviewJson(payload) {
   $("#reviewJson").value = JSON.stringify(payload, null, 2);
+}
+
+function syncExperienceJson(payload) {
+  $("#experienceJson").value = JSON.stringify(payload, null, 2);
 }
 
 function updateReviewTimeInput(input) {
@@ -1556,6 +1620,56 @@ function renderReviewPreview(payload) {
   `;
 }
 
+function renderExperiencePreview(payload) {
+  const config = payload.config || {};
+  const theme = config.player_theme || {};
+  const timeline = Array.isArray(config.sticker_timeline) ? config.sticker_timeline : [];
+  const modes = config.danmaku_modes || {};
+  $("#experiencePreview").innerHTML = `
+    <article class="experience-card">
+      <strong>${escapeHTML(payload.drama_title || "")} · ${escapeHTML(payload.episode_title || "")}</strong>
+      <p>版本 ${escapeHTML(payload.version || 1)} · ${escapeHTML(payload.source || "unknown")} · ${escapeHTML(
+        payload.review_status || "draft"
+      )}</p>
+      <small>${payload.persisted ? "已存入数据库" : "系统默认草稿，保存后进入数据库"}</small>
+    </article>
+    <article class="experience-card">
+      <strong>播放器主题</strong>
+      <p>${escapeHTML(theme.name || "未配置")} · ${escapeHTML(theme.badge || "")}</p>
+      <small>${escapeHTML(theme.signal || "")}</small>
+    </article>
+    <article class="experience-card">
+      <strong>贴图时间轴</strong>
+      ${
+        timeline.length
+          ? `<ul>${timeline
+              .map((slot) => {
+                const start = Number(slot.start_time_sec ?? slot.start ?? 0);
+                const end = Number(slot.end_time_sec ?? slot.end ?? start);
+                const assets = slot.asset_ids || slot.assets || [];
+                return `<li>${formatTime(start)}-${formatTime(end)}：${assets.map(escapeHTML).join(" / ")}</li>`;
+              })
+              .join("")}</ul>`
+          : "<p>暂无贴图时间窗</p>"
+      }
+    </article>
+    <article class="experience-card">
+      <strong>弹幕模式</strong>
+      <ul>
+        ${["light", "carnival", "immerse"]
+          .map((key) => {
+            const item = modes[key] || {};
+            const includeModes = item.include_modes || item.includeModes || [];
+            return `<li>${escapeHTML(item.label || key)}：密度 ${escapeHTML(item.density ?? "-")} · ${
+              item.enabled ? "展示" : "关闭"
+            } · ${includeModes.map(escapeHTML).join("/")}</li>`;
+          })
+          .join("")}
+      </ul>
+    </article>
+  `;
+}
+
 function formatReviewJson() {
   try {
     const payload = parseReviewJson();
@@ -1564,6 +1678,17 @@ function formatReviewJson() {
     setReviewStatus("格式化完成");
   } catch (error) {
     setReviewStatus(`JSON 格式错误：${error.message}`, true);
+  }
+}
+
+function formatExperienceJson() {
+  try {
+    const payload = parseExperienceJson();
+    syncExperienceJson(payload);
+    renderExperiencePreview(payload);
+    setReviewStatus("体验配置格式化完成");
+  } catch (error) {
+    setReviewStatus(`体验配置 JSON 格式错误：${error.message}`, true);
   }
 }
 
@@ -1585,6 +1710,33 @@ async function saveReviewPayload() {
     setReviewStatus(`已保存 ${result.highlight_count} 个高光点，复核状态已更新`);
   } catch (error) {
     setReviewStatus(`保存失败：${error.message}`, true);
+  }
+}
+
+async function saveExperiencePayload() {
+  try {
+    const payload = parseExperienceJson();
+    const episodeId = Number($("#reviewEpisodeSelect").value || payload.episode_id);
+    const result = await fetchJSON(`/api/admin/episodes/${episodeId}/experience`, {
+      method: "PUT",
+      body: JSON.stringify({
+        version: payload.version || 1,
+        source: payload.source || "human_review",
+        model_version: payload.model_version || "experience-config-v1",
+        review_status: payload.review_status || "human_reviewed",
+        config: payload.config || {},
+      }),
+    });
+    syncExperienceJson(result);
+    state.reviewExperience = result;
+    renderExperiencePreview(result);
+    if (state.currentEpisode?.id === episodeId) {
+      state.currentExperience = result;
+      applyPlayerTheme(state.currentEpisode);
+    }
+    setReviewStatus(`体验配置已保存：版本 ${result.version} · ${result.source}`);
+  } catch (error) {
+    setReviewStatus(`体验配置保存失败：${error.message}`, true);
   }
 }
 
@@ -1671,6 +1823,8 @@ $("#reviewEpisodeSelect").addEventListener("change", (event) => loadReviewPayloa
 $("#reloadReview").addEventListener("click", () => loadReviewPayload(Number($("#reviewEpisodeSelect").value)));
 $("#formatReview").addEventListener("click", formatReviewJson);
 $("#saveReview").addEventListener("click", saveReviewPayload);
+$("#formatExperience").addEventListener("click", formatExperienceJson);
+$("#saveExperience").addEventListener("click", saveExperiencePayload);
 $("#reviewPreview").addEventListener("input", (event) => {
   if (event.target.classList.contains("review-time-input")) {
     updateReviewTimeInput(event.target);
