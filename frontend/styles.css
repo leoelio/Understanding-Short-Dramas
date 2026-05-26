@@ -293,6 +293,17 @@ main {
   backdrop-filter: blur(10px);
 }
 
+.progress-track-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.progress-home-marker {
+  display: none;
+}
+
 .theme-icon-button {
   display: grid;
   width: 32px;
@@ -447,6 +458,56 @@ main {
   background:
     linear-gradient(90deg, #ff7a30 var(--progress, 0%), rgba(255, 255, 255, 0.22) var(--progress, 0%)),
     repeating-linear-gradient(90deg, transparent 0 16px, rgba(17, 23, 32, 0.8) 16px 20px);
+}
+
+.theme-road .progress-track-shell {
+  padding-right: 22px;
+}
+
+.theme-road .progress-track-shell::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 28px;
+  top: calc(50% - 1px);
+  height: 2px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(90deg, rgba(255, 240, 168, 0.9) 0 18px, transparent 18px 31px);
+  pointer-events: none;
+}
+
+.theme-road .progress-home-marker {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  width: 22px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid rgba(255, 244, 207, 0.82);
+  border-radius: 4px 4px 6px 6px;
+  color: #3a220c;
+  background: linear-gradient(180deg, #fff2bd, #f2c066);
+  box-shadow: 0 3px 0 rgba(58, 34, 12, 0.72), 0 0 16px rgba(255, 122, 48, 0.3);
+  font-size: 11px;
+  font-weight: 900;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.theme-road .progress-home-marker::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: -7px;
+  width: 13px;
+  height: 13px;
+  border-left: 1px solid rgba(255, 244, 207, 0.82);
+  border-top: 1px solid rgba(255, 244, 207, 0.82);
+  background: #ff7a30;
+  transform: rotate(45deg);
+  z-index: -1;
 }
 
 .theme-road .player-time {

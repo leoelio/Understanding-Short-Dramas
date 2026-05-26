@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260527-timed-stickers" />
+    <link rel="stylesheet" href="/styles.css?v=20260527-home-endpoint" />
   </head>
   <body>
     <div class="app-shell">
@@ -50,7 +50,10 @@
               <div id="interactionLayer" class="interaction-layer hidden"></div>
               <div id="themeControls" class="theme-controls">
                 <button id="playToggle" class="theme-icon-button" type="button" aria-label="播放">▶</button>
-                <input id="progressSlider" class="theme-progress" type="range" min="0" max="1000" value="0" />
+                <div class="progress-track-shell">
+                  <input id="progressSlider" class="theme-progress" type="range" min="0" max="1000" value="0" />
+                  <span class="progress-home-marker" aria-hidden="true">家</span>
+                </div>
                 <span id="playerTime" class="player-time">00:00 / 00:00</span>
                 <button id="muteToggle" class="theme-icon-button" type="button" aria-label="静音">♪</button>
               </div>
@@ -150,6 +153,6 @@
       </main>
     </div>
 
-    <script type="module" src="/app.js?v=20260527-timed-stickers"></script>
+    <script type="module" src="/app.js?v=20260527-home-endpoint"></script>
   </body>
 </html>

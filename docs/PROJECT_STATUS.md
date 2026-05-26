@@ -1,31 +1,19 @@
 # Project Status
 
-更新时间：2026-05-27 05:25:32
+更新时间：2026-05-27 05:57:18
 
 ## 当前目标
 
-优化北往第一集的定时贴图、点击特效、个性化播放器氛围和三档弹幕体验
+补强北往播放器个性化终点感，并整理当前项目状态与下一步计划
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`63fcf71`
+- 最新提交：`33d0904`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M backend/app/fixtures/danmaku_comments.json`
-- `M docs/PROJECT_STATUS.md`
-- `M docs/RUN_LOG.md`
-- `M frontend/app.js`
 - `M frontend/index.html`
 - `M frontend/styles.css`
-- `?? frontend/assets/stickers/beiwang_go_sign.svg`
-- `?? frontend/assets/stickers/beiwang_home_lantern.svg`
-- `?? frontend/assets/stickers/beiwang_meal_steam.svg`
-- `?? frontend/assets/stickers/beiwang_no_pay_bill.svg`
-- `?? frontend/assets/stickers/beiwang_rock_word.svg`
-- `?? frontend/assets/stickers/beiwang_title_north.svg`
-- `?? frontend/assets/themes/episode_3_experience_plan.json`
-- `?? scripts/generate_episode_experience_with_llm.py`
 
 ## 数据状态
 
@@ -35,7 +23,7 @@
 - 高光点：64
 - 已复核剧集：3
 - 待复核剧集：17
-- 互动记录：30
+- 互动记录：34
 - 弹幕记录：187
 
 ## 高光来源
@@ -55,15 +43,15 @@
 
 ## 本次变更摘要
 
-- 新增北往主题贴图资源，并按视频文本时间段建立贴图投放节奏
-- 修复时间轴复核时旧互动不关闭、贴图时间窗边界错误、连续点击高亮不刷新的问题
-- 扩展北往弹幕种子数据，区分轻聊、狂欢和深度讨论三类体验
-- 接入本地大模型经验生成脚本，生成北往第一集体验计划 JSON
+- 在移动端播放控制条加入北往主题的返乡终点标记：进度条末端显示家的小图标
+- 保留路线虚线和摩托进度点，让播放器更贴合返乡剧情而不遮挡视频主体
+- 更新静态资源版本，确保浏览器能加载最新播放器样式
 
 ## 下一步建议
 
-- 继续用复核页校准每集高光时间，优先保证一集一集体验稳定
-- 下一轮可把贴图资源从 SVG 继续升级为更高质量图片/动图素材
+- 下一步优先把高光贴图和播放器主题从前端常量迁移为可复核配置，方便每部剧单独调整
+- 继续处理更多剧集的第1-2集，形成跨题材演示样本
+- 在复核页增加贴图时间窗、弹幕密度和主题元素的编辑入口
 
 ## 安全提醒
 
