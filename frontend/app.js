@@ -16,17 +16,17 @@ const DANMAKU_MODES = {
 
 const PLAYER_THEMES = {
   road: {
-    name: "返乡公路票根",
+    name: "北往·返乡烟火",
     match: ["北往", "回家", "返乡"],
     className: "theme-road",
     playIcon: "▶",
     pauseIcon: "Ⅱ",
     muteIcon: "风",
     mutedIcon: "障",
-    accent: "#f6bc4f",
-    soft: "#12d6b0",
-    badge: "年三十 · 回家路",
-    signal: "路牌 / 票根 / 摩托尾灯",
+    accent: "#ff7a30",
+    soft: "#f2e2c4",
+    badge: "返乡烟火 · 年三十",
+    signal: "讨薪现金 / 家用电话 / 路边烟雾 / 行李摩托",
   },
   xianxia: {
     name: "仙侠灵光",
@@ -531,6 +531,9 @@ function extractSceneMotifs(highlight) {
 }
 
 const STICKER_ASSETS = {
+  debtCash: { src: "/assets/stickers/beiwang_debt_cash.svg", label: "欠薪结清" },
+  homePhone: { src: "/assets/stickers/beiwang_home_phone.svg", label: "想家了" },
+  smokeQuestion: { src: "/assets/stickers/beiwang_smoke_question.svg", label: "悬着心" },
   wageStamp: { src: "/assets/stickers/beiwang_wage_stamp.svg", label: "欠薪得还" },
   homeTicket: { src: "/assets/stickers/beiwang_home_ticket.svg", label: "年三十到家" },
   roadQuestion: { src: "/assets/stickers/beiwang_road_question.svg", label: "回得去吗" },
@@ -547,6 +550,17 @@ const STICKER_ASSETS = {
 
 const STICKER_RULES = [
   {
+    asset: "debtCash",
+    className: "sticker-cash",
+    keywords: ["一分没结", "要钱去", "钱凑够", "结清", "工钱"],
+    tapWords: ["结清", "工钱+1", "站工友"],
+    positions: [
+      { left: "55%", top: "22%" },
+      { left: "11%", top: "40%" },
+      { left: "60%", top: "48%" },
+    ],
+  },
+  {
     asset: "wageStamp",
     className: "sticker-stamp",
     keywords: ["开头", "一分没结", "刚把钱凑够", "要债", "讨薪", "欠薪", "工友", "门没锁"],
@@ -558,6 +572,17 @@ const STICKER_RULES = [
     ],
   },
   {
+    asset: "homePhone",
+    className: "sticker-phone",
+    keywords: ["回家过年", "指定到家", "安安全全", "电话", "视频", "家人"],
+    tapWords: ["想家了", "安安全全", "到家"],
+    positions: [
+      { left: "12%", top: "26%" },
+      { left: "58%", top: "38%" },
+      { left: "45%", top: "20%" },
+    ],
+  },
+  {
     asset: "homeTicket",
     className: "sticker-ticket",
     keywords: ["没钱", "回家", "过年", "年三十", "父母", "妈妈", "心疼", "想家"],
@@ -566,6 +591,17 @@ const STICKER_RULES = [
       { left: "58%", top: "43%" },
       { left: "9%", top: "26%" },
       { left: "47%", top: "21%" },
+    ],
+  },
+  {
+    asset: "smokeQuestion",
+    className: "sticker-smoke",
+    keywords: ["咋不想啊", "低声交流", "抽烟", "蹲路边", "悬着心"],
+    tapWords: ["悬着心", "咋回去", "别断"],
+    positions: [
+      { left: "62%", top: "28%" },
+      { left: "8%", top: "42%" },
+      { left: "52%", top: "48%" },
     ],
   },
   {
@@ -743,7 +779,7 @@ function ambientStickerRule() {
   }
   const title = state.currentEpisode?.drama?.title || "";
   if (title.includes("北往")) {
-    const pool = ["wageStamp", "homeTicket", "roadQuestion", "rockMoto"];
+    const pool = ["debtCash", "wageStamp", "homePhone", "homeTicket", "smokeQuestion", "roadQuestion", "rockMoto"];
     const asset = pool[Math.floor(currentTime / 3) % pool.length];
     return STICKER_RULES.find((rule) => rule.asset === asset);
   }

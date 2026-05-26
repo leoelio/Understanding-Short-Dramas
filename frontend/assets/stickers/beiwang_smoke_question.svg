@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="136" viewBox="0 0 150 136" role="img" aria-label="悬着心">
+  <defs>
+    <filter id="smokeBlur">
+      <feGaussianBlur stdDeviation="1.4"/>
+    </filter>
+    <filter id="smokeShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="5" flood-color="#030608" flood-opacity=".38"/>
+    </filter>
+    <linearGradient id="ember" x1="0" x2="1">
+      <stop offset="0" stop-color="#ff7a30"/>
+      <stop offset=".6" stop-color="#ffc35b"/>
+      <stop offset="1" stop-color="#fff4bd"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#smokeShadow)">
+    <path d="M50 84c-3-17 18-19 12-36-4-12 8-20 19-26" fill="none" stroke="#f2e2c4" stroke-width="9" stroke-linecap="round" opacity=".58" filter="url(#smokeBlur)"/>
+    <path d="M83 78c14-14-8-24 5-38 6-6 17-8 21-18" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity=".45" filter="url(#smokeBlur)"/>
+    <path d="M33 93h78c8 0 14 6 14 14v1H34c-8 0-14-6-14-14v-1z" fill="#1d242c" stroke="#f2e2c4" stroke-width="4"/>
+    <rect x="30" y="87" width="76" height="14" rx="7" fill="#f2e2c4"/>
+    <rect x="98" y="87" width="22" height="14" rx="7" fill="url(#ember)"/>
+    <text x="78" y="124" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="900" fill="#fff4bd">悬着心</text>
+    <text x="107" y="58" text-anchor="middle" font-family="Arial, sans-serif" font-size="40" font-weight="900" fill="#ffc35b">?</text>
+  </g>
+</svg>

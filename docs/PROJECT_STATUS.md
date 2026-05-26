@@ -1,20 +1,24 @@
 # Project Status
 
-更新时间：2026-05-26 02:13:20
+更新时间：2026-05-27 04:13:55
 
 ## 当前目标
 
-测试更新模型密钥并清理北往播放器中心纹理
+修通赛方大模型连接并落地北往模型主题优化
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`134af56`
+- 最新提交：`0b18e14`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
+- `M frontend/app.js`
+- `M frontend/assets/themes/episode_3_style_strategy.json`
 - `M frontend/index.html`
 - `M frontend/styles.css`
-- `?? scripts/test_llm_connection.py`
+- `?? frontend/assets/stickers/beiwang_debt_cash.svg`
+- `?? frontend/assets/stickers/beiwang_home_phone.svg`
+- `?? frontend/assets/stickers/beiwang_smoke_question.svg`
 
 ## 数据状态
 
@@ -44,15 +48,16 @@
 
 ## 本次变更摘要
 
-- 新增 scripts/test_llm_connection.py，用本地 .env 安全测试模型连通性，只输出脱敏状态，不打印 API Key 或 EP。
-- 联网测试结果：配置项已读取，但服务端返回 401 AuthenticationError，表示当前 API Key 不存在或不可用；本轮未使用模型生成新策略。
-- 移除北往视频主体上的重复浅色竖条，保留底部暗角、左右边缘票根质感和控制条公路元素，避免影响中心观看。
-- 浏览器验证通过：episode=3 加载 styles.css?v=20260526-clean-video，中心视频不再被竖条覆盖。
+- 按赛方提示确认本地配置：model 字段使用 EP，API Key 为 4 结尾；安全连通性测试返回 ok=true，未输出任何密钥内容。
+- 重新运行 scripts/generate_style_strategy_with_llm.py，episode_3_style_strategy.json 已由大模型生成，source=llm。
+- 根据模型策略将《北往》第1集播放器更新为‘北往·返乡烟火’方向，使用暖橙现实质感，并保留中心视频无遮挡。
+- 新增模型策略贴图资产：欠薪结清现金、想家电话、悬着心烟雾；加入对应关键词触发、点击文案和粒子反馈。
+- 浏览器验证通过：episode=3 加载 20260527-llm-theme，主题标签、时间轴和新贴图均正常。
 
 ## 下一步建议
 
-- 请产品负责人向赛方确认 API Key 是否已开通/是否绑定当前接入点；拿到可用 Key 后运行 test_llm_connection.py，再重新生成 episode_3_style_strategy.json。
-- 模型连通后，把每部剧的主题策略改成模型生成、人工复核、前端消费的固定链路。
+- 继续把主题策略从前端常量抽象成后端策略接口，支持每部剧使用模型生成 JSON 后人工复核再下发。
+- 下一步可用模型批量处理其他 9 部剧的第1-2集，形成跨题材播放器主题和贴图策略样本。
 
 ## 安全提醒
 

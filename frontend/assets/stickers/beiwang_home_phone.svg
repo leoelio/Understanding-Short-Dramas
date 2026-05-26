@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="128" viewBox="0 0 160 128" role="img" aria-label="想家了">
+  <defs>
+    <radialGradient id="homeGlow" cx="50%" cy="48%" r="58%">
+      <stop offset="0" stop-color="#fff4bd"/>
+      <stop offset=".55" stop-color="#ffb85a"/>
+      <stop offset="1" stop-color="#ff7a30"/>
+    </radialGradient>
+    <filter id="phoneShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="5" flood-color="#1a0d04" flood-opacity=".38"/>
+    </filter>
+  </defs>
+  <circle cx="80" cy="63" r="51" fill="url(#homeGlow)" opacity=".38"/>
+  <g filter="url(#phoneShadow)">
+    <path d="M39 76c7-22 26-39 47-39 18 0 32 9 40 25 4 8-2 18-11 18H99c-5 0-9-3-10-8l-3-10c-1-4-6-6-10-4-7 4-13 10-17 17-2 4 0 9 4 10l10 3c5 1 8 5 8 10v13c0 8-8 14-16 11-15-6-25-22-26-46z" fill="#fff0cf" stroke="#6d3a18" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M49 27h62a9 9 0 0 1 9 9v56a9 9 0 0 1-9 9H49a9 9 0 0 1-9-9V36a9 9 0 0 1 9-9z" fill="none" stroke="#fff6dd" stroke-width="4" opacity=".45"/>
+    <path d="M55 93h50" stroke="#ff7a30" stroke-width="5" stroke-linecap="round"/>
+    <text x="80" y="24" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="19" font-weight="900" fill="#fff4bd">想家了</text>
+  </g>
+</svg>
