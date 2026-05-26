@@ -1,0 +1,119 @@
+{
+  "episode_id": 1,
+  "drama_title": "云渺1：我修仙多年强亿点怎么了",
+  "episode_title": "第1集",
+  "episode_no": 1,
+  "version": 1,
+  "source": "llm_seed",
+  "model_version": "episode-experience-v1",
+  "review_status": "llm_draft",
+  "config": {
+    "player_theme": {
+      "theme_key": "xianxia",
+      "name": "云渺·灵雨压场",
+      "class_name": "theme-xianxia",
+      "badge": "灵雨入门 · 身份悬念",
+      "signal": "雨伞 / 周家老宅 / 病榻 / 神秘访客",
+      "accent": "#8bd3ff",
+      "soft": "#e7c6ff",
+      "endpoint_label": "灵"
+    },
+    "sticker_timeline": [
+      {
+        "start_time_sec": 0.0,
+        "end_time_sec": 30.0,
+        "asset_ids": [
+          "xianxiaRain"
+        ],
+        "cadence_sec": 3,
+        "burst_count": 2,
+        "meaning": "开场雨天白衣女子撑伞站在周家老宅门口，飘落的灵雨贴图贴合仙侠雨天场景，快速建立云渺仙侠世界观氛围"
+      },
+      {
+        "start_time_sec": 30.0,
+        "end_time_sec": 60.0,
+        "asset_ids": [
+          "xianxiaRain",
+          "question"
+        ],
+        "cadence_sec": 4,
+        "burst_count": 3,
+        "meaning": "???????????????????????????????????????"
+      },
+      {
+        "start_time_sec": 60.0,
+        "end_time_sec": 90.0,
+        "asset_ids": [
+          "xianxiaSeal"
+        ],
+        "cadence_sec": 5,
+        "burst_count": 2,
+        "meaning": "门房察觉女子身份非同寻常转身入内禀报，淡金色仙侠印贴图暗示女子拥有特殊灵界身份，铺垫后续身份反转伏笔"
+      },
+      {
+        "start_time_sec": 90.0,
+        "end_time_sec": 120.0,
+        "asset_ids": [
+          "tear"
+        ],
+        "cadence_sec": 3,
+        "burst_count": 4,
+        "meaning": "病床边亲人对着病危老人哭诉不舍，泪滴贴图随悲伤台词同步弹出，放大虐点情绪，唤起观众共情"
+      },
+      {
+        "start_time_sec": 120.0,
+        "end_time_sec": 150.0,
+        "asset_ids": [
+          "xianxiaSpirit"
+        ],
+        "cadence_sec": 6,
+        "burst_count": 3,
+        "meaning": "亲人穷尽所有办法请遍故人仍救不回老人，淡光灵韵贴图烘托绝望又期盼奇迹的复杂情绪，贴合仙侠世界观下对灵能转机的期待感"
+      },
+      {
+        "start_time_sec": 150.0,
+        "end_time_sec": 173.55,
+        "asset_ids": [
+          "xianxiaSeal",
+          "question"
+        ],
+        "cadence_sec": 2,
+        "burst_count": 5,
+        "meaning": "???????????????????????????????????"
+      }
+    ],
+    "danmaku_modes": {
+      "light": {
+        "label": "轻聊",
+        "enabled": true,
+        "density": 0.7,
+        "include_modes": [
+          "light"
+        ]
+      },
+      "carnival": {
+        "label": "狂欢",
+        "enabled": true,
+        "density": 1,
+        "include_modes": [
+          "light",
+          "curated",
+          "seed",
+          "carnival"
+        ]
+      },
+      "immerse": {
+        "label": "沉浸",
+        "enabled": false,
+        "density": 0,
+        "include_modes": []
+      }
+    },
+    "draft_notes": [
+      "所有贴图素材均从给定allowed_assets列表选取，未使用外部资源",
+      "贴图时间线严格匹配剧情推进顺序，无乱序错位问题",
+      "互动选项完全匹配人工标注的高光点情绪导向，无偏离剧情内容",
+      "仙侠主题配色严格遵循预设的灵蓝+柔紫配色体系，无额外自定义色值"
+    ]
+  }
+}

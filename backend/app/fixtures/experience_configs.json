@@ -21,7 +21,9 @@
           {
             "start_time_sec": 0,
             "end_time_sec": 16,
-            "asset_ids": ["mealSteam"],
+            "asset_ids": [
+              "mealSteam"
+            ],
             "cadence_sec": 8,
             "burst_count": 1,
             "meaning": "开场饭桌和烟火气，只做氛围贴图。"
@@ -29,7 +31,12 @@
           {
             "start_time_sec": 16,
             "end_time_sec": 62,
-            "asset_ids": ["noPayBill", "goSign", "wageStamp", "debtCash"],
+            "asset_ids": [
+              "noPayBill",
+              "goSign",
+              "wageStamp",
+              "debtCash"
+            ],
             "cadence_sec": 5,
             "burst_count": 4,
             "meaning": "上门讨薪、要钱、结清工资。"
@@ -37,7 +44,11 @@
           {
             "start_time_sec": 112,
             "end_time_sec": 180,
-            "asset_ids": ["homePhone", "homeTicket", "homeLantern"],
+            "asset_ids": [
+              "homePhone",
+              "homeTicket",
+              "homeLantern"
+            ],
             "cadence_sec": 7,
             "burst_count": 4,
             "meaning": "家里电话、年三十回家、父母叮嘱。"
@@ -45,7 +56,10 @@
           {
             "start_time_sec": 198,
             "end_time_sec": 244,
-            "asset_ids": ["smokeQuestion", "roadQuestion"],
+            "asset_ids": [
+              "smokeQuestion",
+              "roadQuestion"
+            ],
             "cadence_sec": 7,
             "burst_count": 3,
             "meaning": "到底能不能回去的疑问和悬念。"
@@ -53,7 +67,11 @@
           {
             "start_time_sec": 244,
             "end_time_sec": 300,
-            "asset_ids": ["rockWord", "rockMoto", "northTitle"],
+            "asset_ids": [
+              "rockWord",
+              "rockMoto",
+              "northTitle"
+            ],
             "cadence_sec": 6,
             "burst_count": 4,
             "meaning": "贼摇滚的交通工具揭晓和片尾记忆点。"
@@ -64,13 +82,20 @@
             "label": "轻聊",
             "enabled": true,
             "density": 0.72,
-            "include_modes": ["light"]
+            "include_modes": [
+              "light"
+            ]
           },
           "carnival": {
             "label": "狂欢",
             "enabled": true,
             "density": 1,
-            "include_modes": ["light", "curated", "seed", "carnival"]
+            "include_modes": [
+              "light",
+              "curated",
+              "seed",
+              "carnival"
+            ]
           },
           "immerse": {
             "label": "沉浸",
@@ -79,6 +104,315 @@
             "include_modes": []
           }
         }
+      }
+    },
+    {
+      "drama_title": "云渺1：我修仙多年强亿点怎么了",
+      "episode_no": 1,
+      "version": 1,
+      "source": "llm_seed",
+      "model_version": "episode-experience-v1",
+      "review_status": "llm_draft",
+      "config": {
+        "player_theme": {
+          "theme_key": "xianxia",
+          "name": "云渺·灵雨压场",
+          "class_name": "theme-xianxia",
+          "badge": "灵雨入门 · 身份悬念",
+          "signal": "雨伞 / 周家老宅 / 病榻 / 神秘访客",
+          "accent": "#8bd3ff",
+          "soft": "#e7c6ff",
+          "endpoint_label": "灵"
+        },
+        "sticker_timeline": [
+          {
+            "start_time_sec": 0.0,
+            "end_time_sec": 30.0,
+            "asset_ids": [
+              "xianxiaRain"
+            ],
+            "cadence_sec": 3,
+            "burst_count": 2,
+            "meaning": "开场雨天白衣女子撑伞站在周家老宅门口，飘落的灵雨贴图贴合仙侠雨天场景，快速建立云渺仙侠世界观氛围"
+          },
+          {
+            "start_time_sec": 30.0,
+            "end_time_sec": 60.0,
+            "asset_ids": [
+              "question"
+            ],
+            "cadence_sec": 4,
+            "burst_count": 3,
+            "meaning": "女子坚持要见病重老爷身份成谜，问号贴图随对峙节奏弹出，强化观众对女子真实身份的好奇感，贴合冲突悬念氛围"
+          },
+          {
+            "start_time_sec": 60.0,
+            "end_time_sec": 90.0,
+            "asset_ids": [
+              "xianxiaSeal"
+            ],
+            "cadence_sec": 5,
+            "burst_count": 2,
+            "meaning": "门房察觉女子身份非同寻常转身入内禀报，淡金色仙侠印贴图暗示女子拥有特殊灵界身份，铺垫后续身份反转伏笔"
+          },
+          {
+            "start_time_sec": 90.0,
+            "end_time_sec": 120.0,
+            "asset_ids": [
+              "tear"
+            ],
+            "cadence_sec": 3,
+            "burst_count": 4,
+            "meaning": "病床边亲人对着病危老人哭诉不舍，泪滴贴图随悲伤台词同步弹出，放大虐点情绪，唤起观众共情"
+          },
+          {
+            "start_time_sec": 120.0,
+            "end_time_sec": 150.0,
+            "asset_ids": [
+              "xianxiaSpirit"
+            ],
+            "cadence_sec": 6,
+            "burst_count": 3,
+            "meaning": "亲人穷尽所有办法请遍故人仍救不回老人，淡光灵韵贴图烘托绝望又期盼奇迹的复杂情绪，贴合仙侠世界观下对灵能转机的期待感"
+          },
+          {
+            "start_time_sec": 150.0,
+            "end_time_sec": 173.55,
+            "asset_ids": [
+              "question"
+            ],
+            "cadence_sec": 2,
+            "burst_count": 5,
+            "meaning": "门房禀报访客称老爷看不到她，连续弹出问号贴图将身份悬念推至顶峰，引导观众对女子非人/修仙者身份展开猜想"
+          }
+        ],
+        "danmaku_modes": {
+          "light": {
+            "label": "轻聊",
+            "enabled": true,
+            "density": 0.7,
+            "include_modes": [
+              "light"
+            ]
+          },
+          "carnival": {
+            "label": "狂欢",
+            "enabled": true,
+            "density": 1,
+            "include_modes": [
+              "light",
+              "curated",
+              "seed",
+              "carnival"
+            ]
+          },
+          "immerse": {
+            "label": "沉浸",
+            "enabled": false,
+            "density": 0,
+            "include_modes": []
+          }
+        },
+        "draft_notes": [
+          "所有贴图素材均从给定allowed_assets列表选取，未使用外部资源",
+          "贴图时间线严格匹配剧情推进顺序，无乱序错位问题",
+          "互动选项完全匹配人工标注的高光点情绪导向，无偏离剧情内容",
+          "仙侠主题配色严格遵循预设的灵蓝+柔紫配色体系，无额外自定义色值"
+        ]
+      }
+    },
+    {
+      "drama_title": "北派寻宝",
+      "episode_no": 63,
+      "version": 1,
+      "source": "llm_seed",
+      "model_version": "episode-experience-v1",
+      "review_status": "llm_draft",
+      "config": {
+        "player_theme": {
+          "theme_key": "treasure",
+          "name": "北派寻宝·机关线索",
+          "class_name": "theme-treasure",
+          "badge": "寻宝线索 · 机关风险",
+          "signal": "地图 / 罗盘 / 机关 / 悬念线索",
+          "accent": "#d6b45f",
+          "soft": "#55d68f",
+          "endpoint_label": "宝"
+        },
+        "sticker_timeline": [
+          {
+            "start_time_sec": 12.0,
+            "end_time_sec": 22.0,
+            "asset_ids": [
+              "treasureMap"
+            ],
+            "cadence_sec": 5,
+            "burst_count": 2,
+            "meaning": "基于《北派寻宝》题材生成的氛围体验草稿，贴图 treasureMap 仅作为待复核建议，不代表已确认画面内容。"
+          },
+          {
+            "start_time_sec": 62.0,
+            "end_time_sec": 75.0,
+            "asset_ids": [
+              "treasureTrap"
+            ],
+            "cadence_sec": 3,
+            "burst_count": 4,
+            "meaning": "基于当前高光《冲突升级》生成的北派寻宝·机关线索体验草稿，贴图 treasureTrap 需要人工对齐正片画面。"
+          },
+          {
+            "start_time_sec": 150.0,
+            "end_time_sec": 165.0,
+            "asset_ids": [
+              "treasureCompass"
+            ],
+            "cadence_sec": 4,
+            "burst_count": 2,
+            "meaning": "基于当前高光《甜蜜瞬间》生成的北派寻宝·机关线索体验草稿，贴图 treasureCompass 需要人工对齐正片画面。"
+          },
+          {
+            "start_time_sec": 228.0,
+            "end_time_sec": 242.0,
+            "asset_ids": [
+              "question",
+              "charge"
+            ],
+            "cadence_sec": 2,
+            "burst_count": 3,
+            "meaning": "基于当前高光《虐心时刻》生成的北派寻宝·机关线索体验草稿，贴图 question / charge 需要人工对齐正片画面。"
+          }
+        ],
+        "danmaku_modes": {
+          "light": {
+            "label": "轻聊",
+            "enabled": true,
+            "density": 0.7,
+            "include_modes": [
+              "light"
+            ]
+          },
+          "carnival": {
+            "label": "狂欢",
+            "enabled": true,
+            "density": 1,
+            "include_modes": [
+              "light",
+              "curated",
+              "seed",
+              "carnival"
+            ]
+          },
+          "immerse": {
+            "label": "沉浸",
+            "enabled": false,
+            "density": 0,
+            "include_modes": []
+          }
+        },
+        "draft_notes": [
+          "该剧集暂无字幕/画面备注输入，本配置仅基于剧名和现有高光草稿生成，必须人工复核时间点和剧情语义。",
+          "所有贴图触发时间已对齐高光节点，人工复核时需确认无遮挡核心人物面部",
+          "寻宝主题色值已统一配置，需校验移动端深色/浅色模式下的显示适配",
+          "互动选项弹窗需对应高光点时间延后2秒弹出，避免遮挡关键剧情台词"
+        ]
+      }
+    },
+    {
+      "drama_title": "那年冬至",
+      "episode_no": 1,
+      "version": 1,
+      "source": "llm_seed",
+      "model_version": "episode-experience-v1",
+      "review_status": "llm_draft",
+      "config": {
+        "player_theme": {
+          "theme_key": "winter",
+          "name": "那年冬至·雪夜心事",
+          "class_name": "theme-winter",
+          "badge": "冬日情绪 · 爱情拉扯",
+          "signal": "雪夜 / 回忆 / 心动 / 遗憾",
+          "accent": "#9fd8ff",
+          "soft": "#ff9bbd",
+          "endpoint_label": "心"
+        },
+        "sticker_timeline": [
+          {
+            "start_time_sec": 0.0,
+            "end_time_sec": 40.0,
+            "asset_ids": [
+              "winterSnow"
+            ],
+            "cadence_sec": 5,
+            "burst_count": 2,
+            "meaning": "基于《那年冬至》题材生成的氛围体验草稿，贴图 winterSnow 仅作为待复核建议，不代表已确认画面内容。"
+          },
+          {
+            "start_time_sec": 41.03,
+            "end_time_sec": 49.03,
+            "asset_ids": [
+              "winterHeart",
+              "tear"
+            ],
+            "cadence_sec": 2,
+            "burst_count": 4,
+            "meaning": "基于当前高光《虐心时刻》生成的那年冬至·雪夜心事体验草稿，贴图 winterHeart / tear 需要人工对齐正片画面。"
+          },
+          {
+            "start_time_sec": 96.98,
+            "end_time_sec": 104.98,
+            "asset_ids": [
+              "winterHeart",
+              "laugh"
+            ],
+            "cadence_sec": 3,
+            "burst_count": 3,
+            "meaning": "基于当前高光《剧情爽点来袭》生成的那年冬至·雪夜心事体验草稿，贴图 winterHeart / laugh 需要人工对齐正片画面。"
+          },
+          {
+            "start_time_sec": 145.47,
+            "end_time_sec": 153.47,
+            "asset_ids": [
+              "winterMemory"
+            ],
+            "cadence_sec": 2,
+            "burst_count": 3,
+            "meaning": "基于当前高光《剧情突然反转》生成的那年冬至·雪夜心事体验草稿，贴图 winterMemory 需要人工对齐正片画面。"
+          }
+        ],
+        "danmaku_modes": {
+          "light": {
+            "label": "轻聊",
+            "enabled": true,
+            "density": 0.7,
+            "include_modes": [
+              "light"
+            ]
+          },
+          "carnival": {
+            "label": "狂欢",
+            "enabled": true,
+            "density": 1,
+            "include_modes": [
+              "light",
+              "curated",
+              "seed",
+              "carnival"
+            ]
+          },
+          "immerse": {
+            "label": "沉浸",
+            "enabled": false,
+            "density": 0,
+            "include_modes": []
+          }
+        },
+        "draft_notes": [
+          "该剧集暂无字幕/画面备注输入，本配置仅基于剧名和现有高光草稿生成，必须人工复核时间点和剧情语义。",
+          "人工复核需校验所有贴图asset_ids均在allowed_assets资源池范围内，无违规引用外部资源",
+          "核对sticker_timeline时间顺序严格递增，无贴图时段错位覆盖无关剧情的问题",
+          "确认三个高光点的互动选项弹窗触发时间与对应剧情画面完全对齐，无提前/延后触发的错位问题",
+          "校验冬日主题的两个色值在不同移动端机型上的显示效果，避免出现色偏影响冬日情绪氛围传递"
+        ]
       }
     }
   ]

@@ -520,8 +520,136 @@ main {
 .theme-xianxia .player-card {
   border-color: rgba(139, 211, 255, 0.28);
   background:
-    radial-gradient(circle at 20% 0%, rgba(231, 198, 255, 0.14), transparent 36%),
+    radial-gradient(circle at 20% 0%, rgba(231, 198, 255, 0.18), transparent 36%),
+    radial-gradient(circle at 82% 18%, rgba(139, 211, 255, 0.18), transparent 28%),
     linear-gradient(180deg, rgba(13, 19, 32, 0.96), rgba(17, 23, 32, 0.98));
+}
+
+.theme-xianxia .player-title {
+  background:
+    linear-gradient(90deg, rgba(139, 211, 255, 0.13), transparent 48%),
+    repeating-linear-gradient(135deg, rgba(231, 198, 255, 0.11) 0 8px, transparent 8px 22px);
+}
+
+.theme-xianxia .video-wrap::after {
+  left: 9%;
+  right: 9%;
+  top: 10px;
+  bottom: auto;
+  height: 1px;
+  opacity: 0.72;
+  background: linear-gradient(90deg, transparent, rgba(139, 211, 255, 0.78), transparent);
+  box-shadow: 0 0 26px rgba(139, 211, 255, 0.42);
+}
+
+.theme-xianxia .theme-controls {
+  border-color: rgba(139, 211, 255, 0.36);
+  background: linear-gradient(180deg, rgba(21, 28, 50, 0.82), rgba(8, 12, 24, 0.76));
+}
+
+.theme-xianxia .theme-controls::after {
+  content: "灵";
+  position: absolute;
+  left: clamp(54px, var(--progress, 0%), calc(100% - 74px));
+  bottom: 34px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(231, 198, 255, 0.9);
+  border-radius: 50%;
+  color: #102132;
+  background: #dff7ff;
+  box-shadow: 0 0 18px rgba(139, 211, 255, 0.52);
+  font-size: 12px;
+  font-weight: 900;
+  transform: translateX(-50%);
+}
+
+.theme-treasure .player-card {
+  border-color: rgba(214, 180, 95, 0.34);
+  background:
+    linear-gradient(90deg, rgba(214, 180, 95, 0.08), transparent 24% 76%, rgba(85, 214, 143, 0.08)),
+    radial-gradient(circle at 18% 0%, rgba(214, 180, 95, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(24, 29, 22, 0.96), rgba(13, 22, 21, 0.98));
+}
+
+.theme-treasure .player-title {
+  background:
+    linear-gradient(90deg, rgba(214, 180, 95, 0.16), transparent 60%),
+    repeating-linear-gradient(90deg, rgba(85, 214, 143, 0.12) 0 2px, transparent 2px 22px);
+}
+
+.theme-treasure .video-wrap::before {
+  opacity: 1;
+  background:
+    linear-gradient(90deg, rgba(214, 180, 95, 0.05), transparent 16% 84%, rgba(214, 180, 95, 0.05)),
+    repeating-linear-gradient(0deg, transparent 0 36px, rgba(214, 180, 95, 0.04) 36px 37px);
+}
+
+.theme-treasure .theme-controls {
+  border-color: rgba(214, 180, 95, 0.48);
+  background: linear-gradient(180deg, rgba(44, 36, 22, 0.86), rgba(10, 18, 17, 0.78));
+}
+
+.theme-treasure .theme-controls::after {
+  content: "◎";
+  position: absolute;
+  left: clamp(54px, var(--progress, 0%), calc(100% - 74px));
+  bottom: 35px;
+  color: #d6b45f;
+  text-shadow: 0 0 16px rgba(214, 180, 95, 0.78);
+  font-size: 28px;
+  font-weight: 900;
+  transform: translateX(-50%);
+}
+
+.theme-winter .player-card {
+  border-color: rgba(159, 216, 255, 0.32);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(159, 216, 255, 0.18), transparent 32%),
+    radial-gradient(circle at 82% 4%, rgba(255, 155, 189, 0.16), transparent 31%),
+    linear-gradient(180deg, rgba(14, 21, 32, 0.96), rgba(18, 23, 34, 0.98));
+}
+
+.theme-winter .player-title {
+  background:
+    linear-gradient(90deg, rgba(159, 216, 255, 0.14), transparent 44%, rgba(255, 155, 189, 0.11)),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0 5px, transparent 5px 20px);
+}
+
+.theme-winter .video-wrap::after {
+  left: 8%;
+  right: 8%;
+  top: 12px;
+  bottom: auto;
+  height: 26px;
+  opacity: 0.7;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.72) 0 2px, transparent 3px);
+  background-size: 34px 18px;
+}
+
+.theme-winter .theme-controls {
+  border-color: rgba(159, 216, 255, 0.42);
+  background: linear-gradient(180deg, rgba(21, 32, 45, 0.84), rgba(16, 18, 28, 0.78));
+}
+
+.theme-winter .theme-controls::after {
+  content: "心";
+  position: absolute;
+  left: clamp(54px, var(--progress, 0%), calc(100% - 74px));
+  bottom: 35px;
+  display: grid;
+  width: 24px;
+  height: 22px;
+  place-items: center;
+  border-radius: 12px 12px 14px 14px;
+  color: #fff;
+  background: #ff7faa;
+  box-shadow: 0 0 18px rgba(255, 155, 189, 0.56);
+  font-size: 12px;
+  font-weight: 900;
+  transform: translateX(-50%) rotate(-5deg);
 }
 
 .theme-city .player-card {
@@ -657,6 +785,15 @@ main {
 .sticker-rock-word,
 .sticker-moto,
 .sticker-north-title,
+.sticker-xianxia-rain,
+.sticker-xianxia-seal,
+.sticker-xianxia-spirit,
+.sticker-treasure-map,
+.sticker-treasure-compass,
+.sticker-treasure-trap,
+.sticker-winter-snow,
+.sticker-winter-heart,
+.sticker-winter-memory,
 .sticker-vehicle {
   width: 128px;
   height: 92px;
@@ -674,6 +811,15 @@ main {
 .sticker-rock-word img,
 .sticker-moto img,
 .sticker-north-title img,
+.sticker-xianxia-rain img,
+.sticker-xianxia-seal img,
+.sticker-xianxia-spirit img,
+.sticker-treasure-map img,
+.sticker-treasure-compass img,
+.sticker-treasure-trap img,
+.sticker-winter-snow img,
+.sticker-winter-heart img,
+.sticker-winter-memory img,
 .sticker-vehicle img {
   width: 128px;
   height: 92px;
@@ -733,6 +879,27 @@ main {
 .sticker-north-title,
 .sticker-vehicle {
   animation-name: moto-rumble;
+}
+
+.sticker-xianxia-rain,
+.sticker-xianxia-spirit,
+.sticker-winter-snow {
+  animation-name: smoke-rise;
+}
+
+.sticker-xianxia-seal,
+.sticker-treasure-compass,
+.sticker-winter-heart {
+  animation-name: ticket-float;
+}
+
+.sticker-treasure-map,
+.sticker-winter-memory {
+  animation-name: sign-swing;
+}
+
+.sticker-treasure-trap {
+  animation-name: stamp-slam;
 }
 
 .sticker-bonus {
@@ -796,6 +963,33 @@ main {
   box-shadow: 0 0 18px rgba(255, 106, 61, 0.5);
 }
 
+.sticker-tap-fx.fx-xianxiaRain,
+.sticker-tap-fx.fx-xianxiaSeal,
+.sticker-tap-fx.fx-xianxiaSpirit {
+  background: #e8f8ff;
+  color: #244a8f;
+  border-color: #8bd3ff;
+  box-shadow: 0 0 18px rgba(139, 211, 255, 0.5);
+}
+
+.sticker-tap-fx.fx-treasureMap,
+.sticker-tap-fx.fx-treasureCompass,
+.sticker-tap-fx.fx-treasureTrap {
+  background: #fff1bc;
+  color: #4a3518;
+  border-color: #d6b45f;
+  box-shadow: 0 0 18px rgba(214, 180, 95, 0.45);
+}
+
+.sticker-tap-fx.fx-winterSnow,
+.sticker-tap-fx.fx-winterHeart,
+.sticker-tap-fx.fx-winterMemory {
+  background: #f3fbff;
+  color: #7a2e55;
+  border-color: #ff9bbd;
+  box-shadow: 0 0 18px rgba(255, 155, 189, 0.45);
+}
+
 .sticker-burst-dot {
   position: absolute;
   z-index: 5;
@@ -840,6 +1034,27 @@ main {
 .burst-northTitle {
   background: #ff6a3d;
   box-shadow: 0 0 12px #f6bc4f;
+}
+
+.burst-xianxiaRain,
+.burst-xianxiaSeal,
+.burst-xianxiaSpirit {
+  background: #8bd3ff;
+  box-shadow: 0 0 12px #e7c6ff;
+}
+
+.burst-treasureMap,
+.burst-treasureCompass,
+.burst-treasureTrap {
+  background: #d6b45f;
+  box-shadow: 0 0 12px #55d68f;
+}
+
+.burst-winterSnow,
+.burst-winterHeart,
+.burst-winterMemory {
+  background: #ff9bbd;
+  box-shadow: 0 0 12px #9fd8ff;
 }
 
 .scene-sticker.click-hold img {

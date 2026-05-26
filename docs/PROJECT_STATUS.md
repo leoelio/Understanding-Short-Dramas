@@ -1,29 +1,34 @@
 # Project Status
 
-更新时间：2026-05-27 06:40:51
+更新时间：2026-05-27 07:33:16
 
 ## 当前目标
 
-完成体验配置复核台 v1：服务端存储、后台编辑、播放页下发
+批量生成三类题材体验配置草稿：修仙、寻宝、冬至爱情
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`c717e92`
+- 最新提交：`700e06e`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M backend/app/main.py`
-- `M backend/app/models.py`
-- `M backend/app/schemas.py`
-- `M backend/app/seed.py`
-- `M docs/PROJECT_STATUS.md`
-- `M docs/RUN_LOG.md`
-- `M docs/future_ai_extensions.md`
+- `M backend/app/fixtures/experience_configs.json`
 - `M frontend/app.js`
 - `M frontend/index.html`
 - `M frontend/styles.css`
-- `M scripts/update_project_status.py`
-- `?? backend/app/fixtures/experience_configs.json`
+- `M scripts/generate_episode_experience_with_llm.py`
+- `?? frontend/assets/stickers/treasure_compass.svg`
+- `?? frontend/assets/stickers/treasure_map.svg`
+- `?? frontend/assets/stickers/treasure_trap.svg`
+- `?? frontend/assets/stickers/winter_heart.svg`
+- `?? frontend/assets/stickers/winter_memory.svg`
+- `?? frontend/assets/stickers/winter_snow.svg`
+- `?? frontend/assets/stickers/xianxia_rain.svg`
+- `?? frontend/assets/stickers/xianxia_seal.svg`
+- `?? frontend/assets/stickers/xianxia_spirit.svg`
+- `?? frontend/assets/themes/episode_19_experience_config.json`
+- `?? frontend/assets/themes/episode_1_experience_config.json`
+- `?? frontend/assets/themes/episode_5_experience_config.json`
 
 ## 数据状态
 
@@ -33,9 +38,9 @@
 - 高光点：64
 - 已复核剧集：3
 - 待复核剧集：17
-- 互动记录：37
+- 互动记录：38
 - 弹幕记录：187
-- 体验配置：1
+- 体验配置：4
 
 ## 高光来源
 
@@ -55,17 +60,16 @@
 
 ## 本次变更摘要
 
-- 新增 episode_experience_configs 数据表，保存每集播放器主题、贴图时间轴和弹幕模式配置
-- 新增公开体验配置接口和后台读取/保存接口，支持版本、来源、模型版本和人工复核状态
-- 复核页增加体验配置 JSON 编辑区和预览区，可保存到数据库
-- 播放页改为读取服务端体验配置，北往第1集贴图时间轴和播放器主题不再只依赖前端常量
-- 补充未来路线图：登录、同看房间、选片页、AI二创、用户带入、移动客户端、公网访问和语音智能人控制
+- 为《云渺1》第1集生成并写入修仙主题体验配置，增加灵雨、法阵、灵气贴图策略
+- 为《北派寻宝》第63集生成并写入寻宝主题体验配置，增加地图、罗盘、机关贴图策略；因缺少字幕/画面备注，标记为 llm_draft 待复核
+- 为《那年冬至》第1集生成并写入冬至爱情主题体验配置，增加雪、心事、回忆贴图策略；因缺少字幕/画面备注，标记为 llm_draft 待复核
+- 补充新增题材播放器主题和贴图资产，播放页已能按服务端配置展示不同风格
 
 ## 下一步建议
 
-- 用大模型为第2-3部剧生成体验配置草稿，并在复核台人工确认
-- 把体验配置 JSON 中最常用字段做成表单控件，减少手改 JSON 的成本
-- 后续再进入登录和真实管理后台，不要在当前阶段打散 MVP 闭环
+- 在复核台人工查看《北派寻宝》和《那年冬至》正片画面，修正贴图时间窗和语义描述
+- 下一步可把体验配置 JSON 的核心字段做成表单，降低人工复核成本
+- 再扩大到每部剧第1集前，先确保这4部样例能稳定展示题材差异
 
 ## 安全提醒
 

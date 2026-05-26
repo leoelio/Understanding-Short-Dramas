@@ -1,0 +1,98 @@
+{
+  "episode_id": 5,
+  "drama_title": "北派寻宝",
+  "episode_title": "第63集",
+  "episode_no": 63,
+  "version": 1,
+  "source": "llm_seed",
+  "model_version": "episode-experience-v1",
+  "review_status": "llm_draft",
+  "config": {
+    "player_theme": {
+      "theme_key": "treasure",
+      "name": "北派寻宝·机关线索",
+      "class_name": "theme-treasure",
+      "badge": "寻宝线索 · 机关风险",
+      "signal": "地图 / 罗盘 / 机关 / 悬念线索",
+      "accent": "#d6b45f",
+      "soft": "#55d68f",
+      "endpoint_label": "宝"
+    },
+    "sticker_timeline": [
+      {
+        "start_time_sec": 12.0,
+        "end_time_sec": 22.0,
+        "asset_ids": [
+          "treasureMap"
+        ],
+        "cadence_sec": 5,
+        "burst_count": 2,
+        "meaning": "基于《北派寻宝》题材生成的氛围体验草稿，贴图 treasureMap 仅作为待复核建议，不代表已确认画面内容。"
+      },
+      {
+        "start_time_sec": 62.0,
+        "end_time_sec": 75.0,
+        "asset_ids": [
+          "treasureTrap"
+        ],
+        "cadence_sec": 3,
+        "burst_count": 4,
+        "meaning": "基于当前高光《冲突升级》生成的北派寻宝·机关线索体验草稿，贴图 treasureTrap 需要人工对齐正片画面。"
+      },
+      {
+        "start_time_sec": 150.0,
+        "end_time_sec": 165.0,
+        "asset_ids": [
+          "treasureCompass"
+        ],
+        "cadence_sec": 4,
+        "burst_count": 2,
+        "meaning": "基于当前高光《甜蜜瞬间》生成的北派寻宝·机关线索体验草稿，贴图 treasureCompass 需要人工对齐正片画面。"
+      },
+      {
+        "start_time_sec": 228.0,
+        "end_time_sec": 242.0,
+        "asset_ids": [
+          "question",
+          "charge"
+        ],
+        "cadence_sec": 2,
+        "burst_count": 3,
+        "meaning": "基于当前高光《虐心时刻》生成的北派寻宝·机关线索体验草稿，贴图 question / charge 需要人工对齐正片画面。"
+      }
+    ],
+    "danmaku_modes": {
+      "light": {
+        "label": "轻聊",
+        "enabled": true,
+        "density": 0.7,
+        "include_modes": [
+          "light"
+        ]
+      },
+      "carnival": {
+        "label": "狂欢",
+        "enabled": true,
+        "density": 1,
+        "include_modes": [
+          "light",
+          "curated",
+          "seed",
+          "carnival"
+        ]
+      },
+      "immerse": {
+        "label": "沉浸",
+        "enabled": false,
+        "density": 0,
+        "include_modes": []
+      }
+    },
+    "draft_notes": [
+      "该剧集暂无字幕/画面备注输入，本配置仅基于剧名和现有高光草稿生成，必须人工复核时间点和剧情语义。",
+      "所有贴图触发时间已对齐高光节点，人工复核时需确认无遮挡核心人物面部",
+      "寻宝主题色值已统一配置，需校验移动端深色/浅色模式下的显示适配",
+      "互动选项弹窗需对应高光点时间延后2秒弹出，避免遮挡关键剧情台词"
+    ]
+  }
+}
