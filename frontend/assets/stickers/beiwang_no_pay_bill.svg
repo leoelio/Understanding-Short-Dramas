@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="166" height="124" viewBox="0 0 166 124" role="img" aria-label="一分没结">
+  <defs>
+    <filter id="billShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="5" flood-color="#160706" flood-opacity=".36"/>
+    </filter>
+    <linearGradient id="billPaper" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff8df"/>
+      <stop offset="1" stop-color="#f2d8b6"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#billShadow)" transform="rotate(4 83 62)">
+    <path d="M33 16h99v89l-12-7-11 8-11-8-11 8-11-8-11 8-11-8-21 9z" fill="url(#billPaper)" stroke="#7c3d22" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M47 38h70M47 55h52M47 72h63" stroke="#a86b42" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+    <rect x="48" y="79" width="72" height="22" rx="5" fill="#d72720" opacity=".92"/>
+    <text x="84" y="96" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="900" fill="#fff2d6">一分没结</text>
+    <text x="83" y="32" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="900" fill="#5f2c18">工资账单</text>
+  </g>
+</svg>

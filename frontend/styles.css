@@ -206,6 +206,7 @@ main {
 
 .player-card,
 .table-card {
+  position: relative;
   margin-top: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -323,6 +324,7 @@ main {
 }
 
 .theme-road .player-card {
+  overflow: hidden;
   border-color: rgba(246, 188, 79, 0.28);
   background:
     radial-gradient(circle at 12% 0%, rgba(255, 122, 48, 0.14), transparent 38%),
@@ -331,10 +333,54 @@ main {
   box-shadow: inset 0 0 0 1px rgba(255, 122, 48, 0.08);
 }
 
+.theme-road .player-card::before {
+  content: "北往";
+  position: absolute;
+  right: 18px;
+  top: 52px;
+  z-index: 0;
+  color: rgba(255, 240, 200, 0.06);
+  font-size: 68px;
+  font-weight: 900;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+.theme-road .player-card::after {
+  content: "一分没结  /  年三十到家  /  回家路";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 84px;
+  z-index: 0;
+  color: rgba(242, 226, 196, 0.38);
+  font-size: 11px;
+  font-weight: 900;
+  text-align: right;
+  pointer-events: none;
+}
+
 .theme-road .player-title {
+  position: relative;
+  z-index: 1;
   background:
     radial-gradient(circle at 10% 0%, rgba(255, 122, 48, 0.18), transparent 36%),
     linear-gradient(90deg, rgba(242, 226, 196, 0.12), transparent 58%);
+}
+
+.theme-road .player-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  background: repeating-linear-gradient(180deg, #f2e2c4 0 8px, transparent 8px 16px);
+  opacity: 0.48;
+}
+
+.theme-road .theme-badge {
+  box-shadow: inset 0 0 0 1px rgba(255, 240, 200, 0.18), 0 0 18px rgba(255, 122, 48, 0.16);
 }
 
 .theme-road .video-wrap::before {
@@ -494,22 +540,42 @@ main {
 }
 
 .scene-sticker.hot img {
-  filter: drop-shadow(0 0 14px rgba(255, 79, 100, 0.82)) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34));
+  filter: drop-shadow(0 0 18px rgba(255, 122, 48, 0.9)) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34));
 }
 
 .scene-sticker.hot::before,
 .scene-sticker.mega::before {
   content: "";
   position: absolute;
-  inset: 8px;
+  inset: -3px;
   z-index: -1;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 79, 100, 0.72), rgba(246, 188, 79, 0.32), transparent 70%);
-  animation: sticker-fire 720ms ease-in-out infinite alternate;
+  background:
+    radial-gradient(circle at 50% 65%, rgba(255, 242, 161, 0.88), rgba(255, 122, 48, 0.46) 38%, transparent 68%),
+    conic-gradient(from 20deg, transparent, rgba(255, 77, 45, 0.62), rgba(255, 195, 91, 0.7), transparent);
+  animation: sticker-fire 680ms ease-in-out infinite alternate;
+}
+
+.scene-sticker.hot::after,
+.scene-sticker.mega::after {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: -2px;
+  height: 30px;
+  z-index: -1;
+  border-radius: 60% 60% 35% 35%;
+  background:
+    radial-gradient(circle at 30% 80%, #fff0a8 0 12%, transparent 13%),
+    radial-gradient(circle at 52% 74%, #ff7a30 0 22%, transparent 23%),
+    radial-gradient(circle at 70% 82%, #ff4f2f 0 20%, transparent 21%);
+  filter: blur(1px);
+  animation: sticker-flame 360ms ease-in-out infinite alternate;
 }
 
 .scene-sticker.mega img {
-  filter: drop-shadow(0 0 24px rgba(246, 188, 79, 0.9)) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34));
+  filter: drop-shadow(0 0 26px rgba(255, 195, 91, 0.96)) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34));
 }
 
 .scene-sticker.leaving {
@@ -518,26 +584,38 @@ main {
   transition: opacity 240ms ease, transform 240ms ease;
 }
 
+.sticker-meal,
+.sticker-bill,
+.sticker-go,
 .sticker-cash,
 .sticker-stamp,
 .sticker-phone,
+.sticker-lantern,
 .sticker-ticket,
 .sticker-smoke,
+.sticker-rock-word,
 .sticker-moto,
+.sticker-north-title,
 .sticker-vehicle {
-  width: 136px;
-  height: 98px;
+  width: 128px;
+  height: 92px;
 }
 
+.sticker-meal img,
+.sticker-bill img,
+.sticker-go img,
 .sticker-cash img,
 .sticker-stamp img,
 .sticker-phone img,
+.sticker-lantern img,
 .sticker-ticket img,
 .sticker-smoke img,
+.sticker-rock-word img,
 .sticker-moto img,
+.sticker-north-title img,
 .sticker-vehicle img {
-  width: 136px;
-  height: 98px;
+  width: 128px;
+  height: 92px;
 }
 
 .sticker-road-sign,
@@ -556,11 +634,24 @@ main {
   animation-name: stamp-slam;
 }
 
+.sticker-meal,
 .sticker-cash {
   animation-name: ticket-float;
 }
 
+.sticker-bill {
+  animation-name: stamp-slam;
+}
+
+.sticker-go {
+  animation-name: sign-swing;
+}
+
 .sticker-phone {
+  animation-name: phone-glow;
+}
+
+.sticker-lantern {
   animation-name: phone-glow;
 }
 
@@ -576,7 +667,9 @@ main {
   animation-name: sign-swing;
 }
 
+.sticker-rock-word,
 .sticker-moto,
+.sticker-north-title,
 .sticker-vehicle {
   animation-name: moto-rumble;
 }
@@ -605,6 +698,7 @@ main {
   border-color: #b82018;
 }
 
+.sticker-tap-fx.fx-noPayBill,
 .sticker-tap-fx.fx-debtCash {
   background: #fff2cb;
   color: #25683c;
@@ -612,6 +706,7 @@ main {
 }
 
 .sticker-tap-fx.fx-homePhone,
+.sticker-tap-fx.fx-homeLantern,
 .sticker-tap-fx.fx-homeTicket {
   background: #fff0bd;
   color: #6b3815;
@@ -630,7 +725,9 @@ main {
   border-color: #12d6b0;
 }
 
+.sticker-tap-fx.fx-rockWord,
 .sticker-tap-fx.fx-rockMoto,
+.sticker-tap-fx.fx-northTitle,
 .sticker-tap-fx.fx-hot {
   background: #111820;
   color: #f6bc4f;
@@ -654,12 +751,14 @@ main {
   box-shadow: 0 0 0 3px rgba(255, 121, 94, 0.22);
 }
 
+.burst-noPayBill,
 .burst-debtCash {
   background: #ff7a30;
   box-shadow: 0 0 0 3px rgba(255, 195, 91, 0.24);
 }
 
 .burst-homePhone,
+.burst-homeLantern,
 .burst-homeTicket {
   background: #ffb85a;
   border-radius: 2px;
@@ -675,9 +774,15 @@ main {
   clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
 }
 
-.burst-rockMoto {
+.burst-rockWord,
+.burst-rockMoto,
+.burst-northTitle {
   background: #ff6a3d;
   box-shadow: 0 0 12px #f6bc4f;
+}
+
+.scene-sticker.click-hold img {
+  filter: drop-shadow(0 0 18px var(--tap-color)) drop-shadow(0 9px 15px rgba(0, 0, 0, 0.38));
 }
 
 .danmaku-item {
@@ -985,8 +1090,15 @@ main {
 
 @keyframes sticker-fire {
   to {
-    transform: scale(1.26);
-    opacity: 0.54;
+    transform: scale(1.18) rotate(6deg);
+    opacity: 0.72;
+  }
+}
+
+@keyframes sticker-flame {
+  to {
+    transform: translateY(-5px) scaleX(1.14);
+    opacity: 0.78;
   }
 }
 

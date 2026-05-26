@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="138" height="112" viewBox="0 0 138 112" role="img" aria-label="打工人日常">
+  <defs>
+    <filter id="mealShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="5" flood-color="#130b05" flood-opacity=".34"/>
+    </filter>
+  </defs>
+  <g filter="url(#mealShadow)">
+    <path d="M30 66c3 23 76 23 79 0H30Z" fill="#d96f32" stroke="#fff0c8" stroke-width="4"/>
+    <ellipse cx="69" cy="66" rx="40" ry="14" fill="#fff0c8" stroke="#8a4a24" stroke-width="4"/>
+    <path d="M38 62c16 7 43 8 63 0" fill="none" stroke="#8a4a24" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+    <path d="M48 49c-10-16 12-18 2-34M70 49c-11-18 15-21 5-38M91 49c-9-16 12-19 4-32" fill="none" stroke="#f2e2c4" stroke-width="7" stroke-linecap="round" opacity=".72"/>
+    <text x="69" y="102" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="900" fill="#fff0c8">打工人日常</text>
+  </g>
+</svg>

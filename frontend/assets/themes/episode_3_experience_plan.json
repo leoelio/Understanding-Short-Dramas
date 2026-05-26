@@ -1,0 +1,164 @@
+{
+  "hot_terms": [
+    {
+      "term": "一年到头一分没结",
+      "start_time_sec": 0,
+      "end_time_sec": 20,
+      "meaning": "打工人欠薪一年的核心痛点台词，是整个讨薪冲突的起因，极易引发打工人群体共鸣",
+      "asset_id": "sticker_salary_001"
+    },
+    {
+      "term": "有钱没钱回家过年",
+      "start_time_sec": 120,
+      "end_time_sec": 160,
+      "meaning": "亲情线核心国民级共情台词，精准戳中所有返乡人群的情绪点",
+      "asset_id": "sticker_home_002"
+    },
+    {
+      "term": "你这玩意叫摇滚啊",
+      "start_time_sec": 240,
+      "end_time_sec": 270,
+      "meaning": "本集标志性轻喜剧台词，是返乡交通工具揭晓前的关键铺垫",
+      "asset_id": "sticker_rock_003"
+    },
+    {
+      "term": "北往",
+      "start_time_sec": 280,
+      "end_time_sec": 301.14,
+      "meaning": "剧集片名，对应男主正式踏上北上返乡旅途的收尾节点",
+      "asset_id": "sticker_title_004"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 0,
+      "end_time_sec": 16,
+      "slot_name": "开场氛围铺垫段",
+      "asset_ids": [
+        "sticker_atmosphere_001"
+      ],
+      "meaning": "简陋宿舍工友聚餐的朴素生活氛围，仅做弱氛围烘托不抢主线注意力",
+      "placement": "画面右下角空白边角，避免遮挡饭桌中心人物",
+      "click_effect": "点击弹出轻量提示「打工人日常太真实了」"
+    },
+    {
+      "start_time_sec": 16,
+      "end_time_sec": 62,
+      "slot_name": "讨薪冲突高光段",
+      "asset_ids": [
+        "sticker_salary_001"
+      ],
+      "meaning": "对应工友上门讨薪对峙、最终拿到欠薪的爽点高光，引导用户情绪释放",
+      "placement": "画面底部非人物区域，避开对峙双方中心站位",
+      "click_effect": "点击弹出预设互动选项：欠薪得还/站工友/别拖了"
+    },
+    {
+      "start_time_sec": 112,
+      "end_time_sec": 180,
+      "slot_name": "亲情共情高光段",
+      "asset_ids": [
+        "sticker_home_002"
+      ],
+      "meaning": "对应男主和家人视频通话、承诺年三十到家的虐心共情高光，唤醒用户思乡情绪",
+      "placement": "画面左下角边角，避开手机视频里的母子人脸区域",
+      "click_effect": "点击弹出预设互动选项：想家了/太心疼/抱抱他"
+    },
+    {
+      "start_time_sec": 198,
+      "end_time_sec": 244,
+      "slot_name": "返乡悬念高光段",
+      "asset_ids": [
+        "sticker_suspense_001"
+      ],
+      "meaning": "对应男主路边抽烟、返乡路径成谜的悬念钩子高光，引导用户好奇后续出行方式",
+      "placement": "画面右上角空白区域，避开男主抽烟的核心人物画面",
+      "click_effect": "点击弹出预设互动选项：能回去吗/悬着了/别骗我"
+    },
+    {
+      "start_time_sec": 270,
+      "end_time_sec": 300,
+      "slot_name": "旅途揭晓收尾段",
+      "asset_ids": [
+        "sticker_rock_003",
+        "sticker_title_004"
+      ],
+      "meaning": "对应台词「你这玩意叫摇滚啊」出现、男主正式踏上返乡旅途的反转高光，完成本集互动闭环",
+      "placement": "画面顶部空白区域，避开男主带行李出发的核心动作画面",
+      "click_effect": "点击弹出预设交通工具选择互动选项：火车/小车/摩托车"
+    }
+  ],
+  "player_theme_elements": [
+    {
+      "element": "播放器进度条皮肤",
+      "visual": "做旧春运绿皮火车票纹理样式，进度点用红色票根戳标记",
+      "reason": "全程贴合「北往返乡过年」的核心剧情主题，强化整体沉浸感"
+    },
+    {
+      "element": "高光互动按钮样式",
+      "visual": "仿春运纸质返乡票根的圆角红色设计，文字用手写体呈现",
+      "reason": "所有高光触发的互动按钮都统一用票根形态，和回家主线视觉逻辑完全统一"
+    },
+    {
+      "element": "本集收尾提示弹窗",
+      "visual": "手写体「北往」字样搭配模糊的远行背影剪影",
+      "reason": "呼应本集结尾男主刚踏上返乡路的开放式收尾画面，强化用户对剧集的记忆点"
+    }
+  ],
+  "danmaku_comments": [
+    {
+      "time_sec": 18,
+      "text": "这就直接上门讨薪了？",
+      "mode": "light",
+      "intent": "普通用户实时轻吐槽，适配非高光段的轻松互动节奏"
+    },
+    {
+      "time_sec": 36,
+      "text": "终于和老板对上话了",
+      "mode": "light",
+      "intent": "普通用户实时轻吐槽，适配对峙场景的情绪铺垫"
+    },
+    {
+      "time_sec": 57,
+      "text": "拿到钱的那一刻太爽了！",
+      "mode": "carnival",
+      "intent": "讨薪高光爽点触发全量弹幕狂欢，放大用户情绪释放感"
+    },
+    {
+      "time_sec": 127,
+      "text": "爸妈怕拖累孩子的样子太好哭了",
+      "mode": "light",
+      "intent": "普通用户实时轻共情，适配亲情线的情绪铺垫"
+    },
+    {
+      "time_sec": 152,
+      "text": "有钱没钱回家过年这句话真的破防",
+      "mode": "carnival",
+      "intent": "亲情高光点触发全量弹幕狂欢，放大群体共情效果"
+    },
+    {
+      "time_sec": 176,
+      "text": "男主笑里带苦的样子看得我鼻子酸",
+      "mode": "seed",
+      "intent": "深度共情内容，仅在沉浸模式下展示，不干扰普通用户观看节奏"
+    },
+    {
+      "time_sec": 212,
+      "text": "他打算怎么回去啊好好奇",
+      "mode": "light",
+      "intent": "普通用户实时轻好奇，适配返乡悬念段的引导节奏，不提前剧透出行方式"
+    },
+    {
+      "time_sec": 252,
+      "text": "这姑娘调侃人也太损了哈哈哈哈",
+      "mode": "light",
+      "intent": "普通用户实时轻吐槽，适配轻喜剧互动段的轻松氛围"
+    },
+    {
+      "time_sec": 291,
+      "text": "这趟往北的旅途终于要开始啦",
+      "mode": "carnival",
+      "intent": "结尾高光点触发全量弹幕狂欢，给本集内容做情绪收尾"
+    }
+  ],
+  "source": "llm"
+}

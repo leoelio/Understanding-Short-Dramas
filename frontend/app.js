@@ -9,7 +9,7 @@ const DEFAULT_DANMAKU_SETTINGS = {
 const MIN_INTERACTION_GAP_SEC = 18;
 
 const DANMAKU_MODES = {
-  light: { label: "轻聊", enabled: true, density: 0.68, includeModes: ["light", "curated", "seed"] },
+  light: { label: "轻聊", enabled: true, density: 0.72, includeModes: ["light"] },
   carnival: { label: "狂欢", enabled: true, density: 1, includeModes: ["light", "curated", "seed", "carnival"] },
   immerse: { label: "沉浸", enabled: false, density: 0, includeModes: [] },
 };
@@ -531,13 +531,19 @@ function extractSceneMotifs(highlight) {
 }
 
 const STICKER_ASSETS = {
+  mealSteam: { src: "/assets/stickers/beiwang_meal_steam.svg", label: "打工人日常" },
+  noPayBill: { src: "/assets/stickers/beiwang_no_pay_bill.svg", label: "一分没结" },
+  goSign: { src: "/assets/stickers/beiwang_go_sign.svg", label: "走" },
   debtCash: { src: "/assets/stickers/beiwang_debt_cash.svg", label: "欠薪结清" },
   homePhone: { src: "/assets/stickers/beiwang_home_phone.svg", label: "想家了" },
+  homeLantern: { src: "/assets/stickers/beiwang_home_lantern.svg", label: "安安全全" },
   smokeQuestion: { src: "/assets/stickers/beiwang_smoke_question.svg", label: "悬着心" },
   wageStamp: { src: "/assets/stickers/beiwang_wage_stamp.svg", label: "欠薪得还" },
   homeTicket: { src: "/assets/stickers/beiwang_home_ticket.svg", label: "年三十到家" },
   roadQuestion: { src: "/assets/stickers/beiwang_road_question.svg", label: "回得去吗" },
+  rockWord: { src: "/assets/stickers/beiwang_rock_word.svg", label: "你这叫摇滚啊" },
   rockMoto: { src: "/assets/stickers/beiwang_rock_moto.svg", label: "贼摇滚摩托" },
+  northTitle: { src: "/assets/stickers/beiwang_title_north.svg", label: "北往" },
   vehicleTrain: { src: "/assets/stickers/vehicle_train.svg", label: "火车" },
   vehicleCar: { src: "/assets/stickers/vehicle_car.svg", label: "小车" },
   vehicleMotorcycle: { src: "/assets/stickers/vehicle_motorcycle.svg", label: "摩托车" },
@@ -550,6 +556,42 @@ const STICKER_ASSETS = {
 
 const STICKER_RULES = [
   {
+    asset: "mealSteam",
+    className: "sticker-meal",
+    keywords: ["饭桌", "吃饭", "生活味", "日常"],
+    tapWords: ["太真实", "开饭", "生活味"],
+    positions: [
+      { left: "60%", top: "48%" },
+      { left: "8%", top: "44%" },
+    ],
+    durationMs: 2600,
+    clickHoldMs: 1600,
+  },
+  {
+    asset: "noPayBill",
+    className: "sticker-bill",
+    keywords: ["一年到头一分没结", "一分没结", "欠薪", "工资账单"],
+    tapWords: ["一分没结", "欠薪不行", "讨回来"],
+    positions: [
+      { left: "56%", top: "28%" },
+      { left: "9%", top: "42%" },
+    ],
+    durationMs: 3900,
+    clickHoldMs: 2300,
+  },
+  {
+    asset: "goSign",
+    className: "sticker-go",
+    keywords: ["走", "要钱去", "冲"],
+    tapWords: ["走", "冲", "要回来"],
+    positions: [
+      { left: "10%", top: "30%" },
+      { left: "58%", top: "46%" },
+    ],
+    durationMs: 3200,
+    clickHoldMs: 1900,
+  },
+  {
     asset: "debtCash",
     className: "sticker-cash",
     keywords: ["一分没结", "要钱去", "钱凑够", "结清", "工钱"],
@@ -559,6 +601,8 @@ const STICKER_RULES = [
       { left: "11%", top: "40%" },
       { left: "60%", top: "48%" },
     ],
+    durationMs: 3900,
+    clickHoldMs: 2300,
   },
   {
     asset: "wageStamp",
@@ -570,6 +614,8 @@ const STICKER_RULES = [
       { left: "57%", top: "22%" },
       { left: "10%", top: "47%" },
     ],
+    durationMs: 3600,
+    clickHoldMs: 2200,
   },
   {
     asset: "homePhone",
@@ -581,6 +627,20 @@ const STICKER_RULES = [
       { left: "58%", top: "38%" },
       { left: "45%", top: "20%" },
     ],
+    durationMs: 4200,
+    clickHoldMs: 2500,
+  },
+  {
+    asset: "homeLantern",
+    className: "sticker-lantern",
+    keywords: ["安安全全", "年三十", "指定到家", "回来过年"],
+    tapWords: ["安安全全", "一定到家", "别担心"],
+    positions: [
+      { left: "58%", top: "22%" },
+      { left: "10%", top: "44%" },
+    ],
+    durationMs: 4200,
+    clickHoldMs: 2500,
   },
   {
     asset: "homeTicket",
@@ -592,6 +652,8 @@ const STICKER_RULES = [
       { left: "9%", top: "26%" },
       { left: "47%", top: "21%" },
     ],
+    durationMs: 4200,
+    clickHoldMs: 2500,
   },
   {
     asset: "smokeQuestion",
@@ -603,6 +665,8 @@ const STICKER_RULES = [
       { left: "8%", top: "42%" },
       { left: "52%", top: "48%" },
     ],
+    durationMs: 3800,
+    clickHoldMs: 2300,
   },
   {
     asset: "roadQuestion",
@@ -614,6 +678,20 @@ const STICKER_RULES = [
       { left: "9%", top: "38%" },
       { left: "50%", top: "46%" },
     ],
+    durationMs: 3800,
+    clickHoldMs: 2300,
+  },
+  {
+    asset: "rockWord",
+    className: "sticker-rock-word",
+    keywords: ["你这玩意叫摇滚啊", "摇滚", "啦啦掉"],
+    tapWords: ["摇滚", "太损了", "有画面"],
+    positions: [
+      { left: "10%", top: "26%" },
+      { left: "55%", top: "42%" },
+    ],
+    durationMs: 4000,
+    clickHoldMs: 2300,
   },
   {
     asset: "rockMoto",
@@ -625,6 +703,20 @@ const STICKER_RULES = [
       { left: "13%", top: "42%" },
       { left: "57%", top: "46%" },
     ],
+    durationMs: 4300,
+    clickHoldMs: 2500,
+  },
+  {
+    asset: "northTitle",
+    className: "sticker-north-title",
+    keywords: ["北往", "旅途", "出发"],
+    tapWords: ["北往", "出发", "追下一集"],
+    positions: [
+      { left: "55%", top: "24%" },
+      { left: "8%", top: "40%" },
+    ],
+    durationMs: 4300,
+    clickHoldMs: 2500,
   },
   { asset: "charge", className: "sticker-charge", keywords: ["冲", "干", "走"], tapWords: ["冲"] },
   { asset: "question", className: "sticker-question", keywords: ["悬念", "疑问"], tapWords: ["?"] },
@@ -633,8 +725,46 @@ const STICKER_RULES = [
   { asset: "tear", className: "sticker-tear", keywords: ["心疼", "破防"], tapWords: ["破防"] },
 ];
 
-function clearStickerLayer() {
-  window.clearTimeout(state.ambientStickerTimer);
+const BEIWANG_STICKER_TIMELINE = [
+  {
+    start: 0,
+    end: 16,
+    assets: ["mealSteam"],
+    cadenceSec: 8,
+    burstCount: 1,
+  },
+  {
+    start: 16,
+    end: 62,
+    assets: ["noPayBill", "goSign", "wageStamp", "debtCash"],
+    cadenceSec: 5,
+    burstCount: 4,
+  },
+  {
+    start: 112,
+    end: 180,
+    assets: ["homePhone", "homeTicket", "homeLantern"],
+    cadenceSec: 7,
+    burstCount: 4,
+  },
+  {
+    start: 198,
+    end: 244,
+    assets: ["smokeQuestion", "roadQuestion"],
+    cadenceSec: 7,
+    burstCount: 3,
+  },
+  {
+    start: 244,
+    end: 300,
+    assets: ["rockWord", "rockMoto", "northTitle"],
+    cadenceSec: 6,
+    burstCount: 4,
+  },
+];
+
+function clearStickerLayer(clearTimer = true) {
+  if (clearTimer) window.clearTimeout(state.ambientStickerTimer);
   state.stickerHideTimers.forEach((timer) => window.clearTimeout(timer));
   state.stickerHideTimers.clear();
   state.stickerCombo = 0;
@@ -647,7 +777,31 @@ function highlightText(highlight) {
   } ${highlight.evidence_text || ""}`;
 }
 
+function stickerRuleByAsset(asset) {
+  return STICKER_RULES.find((rule) => rule.asset === asset);
+}
+
+function isBeiwangEpisode() {
+  return (state.currentEpisode?.drama?.title || "").includes("北往");
+}
+
+function stickerSlotForTime(timeSec) {
+  if (!isBeiwangEpisode()) return null;
+  return (
+    BEIWANG_STICKER_TIMELINE.find((slot, index) => {
+      const isLast = index === BEIWANG_STICKER_TIMELINE.length - 1;
+      return timeSec >= slot.start && (timeSec < slot.end || (isLast && timeSec <= slot.end));
+    }) || null
+  );
+}
+
+function stickerRulesFromSlot(slot) {
+  return (slot?.assets || []).map(stickerRuleByAsset).filter(Boolean);
+}
+
 function getSceneStickerRules(highlight) {
+  const timeSlot = stickerSlotForTime(Number(highlight.start_time_sec || 0));
+  if (timeSlot) return stickerRulesFromSlot(timeSlot);
   const source = highlightText(highlight);
   const matched = STICKER_RULES.filter((rule) => rule.keywords.some((keyword) => source.includes(keyword)));
   if (matched.length) return matched.slice(0, 3);
@@ -718,6 +872,9 @@ function tapSticker(sticker, rule = {}) {
   sticker.classList.toggle("mega", clicks >= 10);
   sticker.querySelector(".sticker-count").textContent = String(clicks);
   sticker.classList.add("tapped");
+  sticker.classList.add("click-hold");
+  window.clearTimeout(sticker.clickHoldTimer);
+  sticker.clickHoldTimer = window.setTimeout(() => sticker.classList.remove("click-hold"), 1100);
   window.setTimeout(() => sticker.classList.remove("tapped"), 180);
   const words = rule.tapWords || [STICKER_ASSETS[rule.asset]?.label || "+1"];
   spawnTapText(sticker, `${words[clicks % words.length]} +1`, `fx-${rule.asset || "default"}`);
@@ -731,7 +888,7 @@ function tapSticker(sticker, rule = {}) {
       className: "sticker-bonus",
     });
   }
-  setStickerLifetime(sticker, 1000);
+  setStickerLifetime(sticker, rule.clickHoldMs || 1800);
 }
 
 function spawnVideoSticker(rule, index = 0, options = {}) {
@@ -749,6 +906,7 @@ function spawnVideoSticker(rule, index = 0, options = {}) {
   sticker.style.setProperty("--left", options.left || position?.left || `${8 + ((index * 23 + state.stickerSerial * 7) % 72)}%`);
   sticker.style.setProperty("--top", options.top || position?.top || `${8 + ((index * 17 + state.stickerSerial * 11) % 48)}%`);
   sticker.style.setProperty("--delay", `${options.delayMs ?? index * 90}ms`);
+  sticker.style.setProperty("--tap-color", rule.tapColor || "rgba(255, 122, 48, 0.72)");
   sticker.innerHTML = `<img src="${asset.src}" alt="${escapeHTML(asset.label)}" /><span class="sticker-count">0</span>`;
   if (options.interactive !== false) {
     sticker.addEventListener("click", (event) => {
@@ -757,32 +915,29 @@ function spawnVideoSticker(rule, index = 0, options = {}) {
     });
   }
   stickerLayer.appendChild(sticker);
-  setStickerLifetime(sticker, options.durationMs || 2400);
+  setStickerLifetime(sticker, options.durationMs || rule.durationMs || 3600);
   return sticker;
 }
 
 function spawnHighlightStickers(highlight) {
   const rules = getSceneStickerRules(highlight);
-  [...rules, ...rules].slice(0, 6).forEach((rule, index) => {
-    window.setTimeout(() => spawnVideoSticker(rule, index, { durationMs: 2800 }), index * 150);
+  const slot = stickerSlotForTime(Number(highlight.start_time_sec || 0));
+  const count = slot?.burstCount || 4;
+  [...rules, ...rules].slice(0, count).forEach((rule, index) => {
+    window.setTimeout(() => spawnVideoSticker(rule, index, { durationMs: rule.durationMs || 3800 }), index * 220);
   });
 }
 
 function ambientStickerRule() {
   const currentTime = player.currentTime || 0;
-  const nearHighlight = (state.currentEpisode?.highlights || []).find(
-    (item) => currentTime >= item.start_time_sec - 5 && currentTime <= item.end_time_sec + 4
-  );
-  if (nearHighlight) {
-    const rules = getSceneStickerRules(nearHighlight);
-    return rules[Math.floor(currentTime) % rules.length];
+  const slot = stickerSlotForTime(currentTime);
+  if (slot) {
+    const rules = stickerRulesFromSlot(slot);
+    if (!rules.length) return null;
+    const localTime = Math.max(0, currentTime - slot.start);
+    return rules[Math.floor(localTime / slot.cadenceSec) % rules.length];
   }
-  const title = state.currentEpisode?.drama?.title || "";
-  if (title.includes("北往")) {
-    const pool = ["debtCash", "wageStamp", "homePhone", "homeTicket", "smokeQuestion", "roadQuestion", "rockMoto"];
-    const asset = pool[Math.floor(currentTime / 3) % pool.length];
-    return STICKER_RULES.find((rule) => rule.asset === asset);
-  }
+  if (isBeiwangEpisode()) return null;
   return STICKER_RULES[Math.floor(currentTime / 4) % STICKER_RULES.length];
 }
 
@@ -790,15 +945,15 @@ function scheduleAmbientStickers() {
   window.clearTimeout(state.ambientStickerTimer);
   if (!state.currentEpisode || player.paused || views.watch.classList.contains("active") === false) return;
   const mode = getDanmakuMode();
-  const baseDelay = state.danmakuSettings.mode === "carnival" ? 980 : state.danmakuSettings.mode === "immerse" ? 3000 : 1800;
+  const baseDelay = state.danmakuSettings.mode === "carnival" ? 1250 : state.danmakuSettings.mode === "immerse" ? 3600 : 2300;
   state.ambientStickerTimer = window.setTimeout(() => {
-    const bursts = state.danmakuSettings.mode === "carnival" ? 3 : state.danmakuSettings.mode === "light" ? 2 : 1;
+    const bursts = state.danmakuSettings.mode === "carnival" ? 2 : 1;
     for (let index = 0; index < bursts; index += 1) {
       const rule = ambientStickerRule();
-      if (rule) spawnVideoSticker(rule, Math.floor(player.currentTime || 0) + index, { durationMs: mode.enabled ? 2500 : 1800 });
+      if (rule) spawnVideoSticker(rule, Math.floor(player.currentTime || 0) + index, { durationMs: rule.durationMs || (mode.enabled ? 3300 : 2200) });
     }
     scheduleAmbientStickers();
-  }, baseDelay + stableRatio(`${player.currentTime}-${state.sessionId}`) * 520);
+  }, baseDelay + stableRatio(`${player.currentTime}-${state.sessionId}`) * 620);
 }
 
 function checkDanmaku(currentTime) {
@@ -903,7 +1058,12 @@ function renderTimeline() {
   document.querySelectorAll(".timeline-item").forEach((button) => {
     button.addEventListener("click", () => {
       document.querySelector(".video-wrap")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      player.currentTime = Number(button.dataset.time);
+      const targetTime = Number(button.dataset.time);
+      const targetHighlight = state.currentEpisode?.highlights?.find((item) => Number(item.start_time_sec) === targetTime);
+      if (targetHighlight) state.firedHighlights.delete(targetHighlight.id);
+      hideInteraction();
+      state.lastInteractionTime = -Infinity;
+      player.currentTime = targetTime;
       player.play();
     });
   });
@@ -1123,7 +1283,9 @@ function showInteraction(highlight) {
     button.addEventListener("click", () => submitInteraction(button.dataset.key, button));
   });
   emitHighlightDanmaku(highlight, ui);
+  clearStickerLayer();
   spawnHighlightStickers(highlight);
+  if (!vehicleChoice) scheduleAmbientStickers();
   if (key === "comedy" && impactPad) {
     window.setTimeout(() => tapImpactPad(impactPad, ui), 120);
   }
