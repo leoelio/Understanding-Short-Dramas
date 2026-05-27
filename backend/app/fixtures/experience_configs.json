@@ -416,11 +416,11 @@
       }
     },
     {
-      "drama_title": "????",
+      "drama_title": "那年冬至",
       "episode_no": 1,
-      "version": 2,
+      "version": 3,
       "source": "human_review",
-      "model_version": "experience-config-winter-v2",
+      "model_version": "experience-config-winter-v3",
       "review_status": "human_reviewed",
       "config": {
         "player_theme": {
@@ -448,34 +448,37 @@
             "start_time_sec": 27,
             "end_time_sec": 36,
             "asset_ids": [
-              "winterMemory",
+              "winterBrokenHeart",
+              "winterWarmHug",
               "tear"
             ],
             "cadence_sec": 2,
             "burst_count": 3,
-            "meaning": "27s 安乐死话题出现，旧照片和泪滴承接伤心/难过情绪。"
+            "meaning": "27s 安乐死话题出现，使用心碎、抱抱和泪滴贴图承接伤心/难过情绪。"
           },
           {
             "start_time_sec": 50,
             "end_time_sec": 61,
             "asset_ids": [
               "winterWow",
+              "winterHoldBack",
               "question"
             ],
             "cadence_sec": 2,
-            "burst_count": 4,
-            "meaning": "50s 女主突然去脱男主衣服，使用哇塞和问号贴图强化震惊反应。"
+            "burst_count": 3,
+            "meaning": "50s 女主突然去脱男主衣服，使用哇塞、别冲动和问号贴图强化震惊反应。"
           },
           {
             "start_time_sec": 110,
             "end_time_sec": 122,
             "asset_ids": [
               "winterChoice",
+              "winterQuestionLove",
               "question"
             ],
             "cadence_sec": 2,
             "burst_count": 3,
-            "meaning": "1:50 男主面临选择，使用双选卡和问号提示用户预测。"
+            "meaning": "1:50 男主面临两个选择，使用双选卡、爱还是现实和问号贴图提示用户预测。"
           },
           {
             "start_time_sec": 160,
@@ -493,11 +496,12 @@
             "asset_ids": [
               "winterKiss",
               "winterHeart",
-              "winterWow"
+              "winterBlush",
+              "winterHeartbeat"
             ],
             "cadence_sec": 1,
-            "burst_count": 3,
-            "meaning": "2:50 女主突然亲吻男主，密集投放哇塞、亲吻和爱心贴图，点击后以小心心放大反馈表达心动。"
+            "burst_count": 4,
+            "meaning": "2:50 女主突然亲吻男主，使用亲吻、爱心、脸红和心跳贴图强化爱情片心动反馈。"
           }
         ],
         "danmaku_modes": {

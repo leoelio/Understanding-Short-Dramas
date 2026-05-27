@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="184" viewBox="0 0 256 184">
+  <defs>
+    <filter id="brokenShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="7" flood-color="#101722" flood-opacity=".34"/>
+    </filter>
+  </defs>
+  <g filter="url(#brokenShadow)">
+    <path d="M128 158S44 113 44 65c0-22 16-38 38-38 19 0 31 11 40 25 8-14 22-25 42-25 22 0 38 16 38 38 0 48-74 93-74 93Z" fill="#ff8ab3" stroke="#8a2559" stroke-width="7" stroke-linejoin="round"/>
+    <path d="m128 48-18 34 24 12-18 36 42-50-26-11 14-21Z" fill="#fff7d6" stroke="#8a2559" stroke-width="6" stroke-linejoin="round"/>
+    <text x="128" y="166" text-anchor="middle" font-family="Microsoft YaHei, Arial, sans-serif" font-size="24" font-weight="900" fill="#fff0f7" stroke="#8a2559" stroke-width="4" paint-order="stroke">破防了</text>
+  </g>
+</svg>

@@ -840,6 +840,12 @@ main {
 .sticker-winter-wow,
 .sticker-winter-kiss,
 .sticker-winter-choice,
+.sticker-winter-broken-heart,
+.sticker-winter-blush,
+.sticker-winter-heartbeat,
+.sticker-winter-hold-back,
+.sticker-winter-question-love,
+.sticker-winter-warm-hug,
 .sticker-vehicle {
   width: 128px;
   height: 92px;
@@ -870,6 +876,12 @@ main {
 .sticker-winter-wow img,
 .sticker-winter-kiss img,
 .sticker-winter-choice img,
+.sticker-winter-broken-heart img,
+.sticker-winter-blush img,
+.sticker-winter-heartbeat img,
+.sticker-winter-hold-back img,
+.sticker-winter-question-love img,
+.sticker-winter-warm-hug img,
 .sticker-vehicle img {
   width: 128px;
   height: 92px;
@@ -934,21 +946,25 @@ main {
 .sticker-xianxia-rain,
 .sticker-xianxia-spirit,
 .sticker-winter-snow,
-.sticker-winter-kiss {
+.sticker-winter-kiss,
+.sticker-winter-warm-hug {
   animation-name: smoke-rise;
 }
 
 .sticker-xianxia-seal,
 .sticker-treasure-compass,
 .sticker-winter-heart,
-.sticker-winter-wow {
+.sticker-winter-wow,
+.sticker-winter-blush,
+.sticker-winter-heartbeat {
   animation-name: ticket-float;
 }
 
 .sticker-treasure-map,
 .sticker-winter-memory,
 .sticker-winter-crow,
-.sticker-winter-choice {
+.sticker-winter-choice,
+.sticker-winter-question-love {
   animation-name: sign-swing;
 }
 
@@ -958,7 +974,9 @@ main {
 
 .sticker-winter-heart,
 .sticker-winter-wow,
-.sticker-winter-kiss {
+.sticker-winter-kiss,
+.sticker-winter-broken-heart,
+.sticker-winter-hold-back {
   animation-name: heart-pop-stay;
 }
 
@@ -1048,6 +1066,12 @@ main {
 .sticker-tap-fx.fx-winterWow,
 .sticker-tap-fx.fx-winterKiss,
 .sticker-tap-fx.fx-winterChoice,
+.sticker-tap-fx.fx-winterBrokenHeart,
+.sticker-tap-fx.fx-winterBlush,
+.sticker-tap-fx.fx-winterHeartbeat,
+.sticker-tap-fx.fx-winterHoldBack,
+.sticker-tap-fx.fx-winterQuestionLove,
+.sticker-tap-fx.fx-winterWarmHug,
 .sticker-tap-fx.fx-heart,
 .sticker-tap-fx.fx-heart-count {
   background: #f3fbff;
@@ -1129,7 +1153,13 @@ main {
 .burst-winterCrow,
 .burst-winterWow,
 .burst-winterKiss,
-.burst-winterChoice {
+.burst-winterChoice,
+.burst-winterBrokenHeart,
+.burst-winterBlush,
+.burst-winterHeartbeat,
+.burst-winterHoldBack,
+.burst-winterQuestionLove,
+.burst-winterWarmHug {
   background: #ff9bbd;
   box-shadow: 0 0 12px #9fd8ff;
 }
@@ -2411,6 +2441,22 @@ main {
   background: var(--panel);
 }
 
+.experience-card-head,
+.experience-slot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.experience-card-head > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .experience-card strong {
   display: block;
   margin-bottom: 6px;
@@ -2529,24 +2575,42 @@ textarea.experience-field-input {
   background: rgba(255, 255, 255, 0.03);
 }
 
-.experience-slot-card > strong {
+.experience-slot-head > strong {
   color: var(--gold);
 }
 
 .asset-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 8px;
   margin: 8px 0 10px;
 }
 
 .asset-chip {
+  display: grid;
+  gap: 5px;
+  min-height: 82px;
+  place-items: center;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 5px 8px;
+  border-radius: 8px;
+  padding: 7px 6px;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.04);
   font-size: 12px;
+}
+
+.asset-chip img {
+  width: 58px;
+  height: 42px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.32));
+}
+
+.asset-chip span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .asset-chip.selected {
@@ -2626,7 +2690,9 @@ textarea.experience-field-input {
   }
 
   .review-preview-head,
-  .review-card-title {
+  .review-card-title,
+  .experience-card-head,
+  .experience-slot-head {
     align-items: stretch;
     flex-direction: column;
   }

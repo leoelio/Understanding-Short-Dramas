@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="184" viewBox="0 0 256 184">
+  <defs>
+    <filter id="holdShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="7" flood-color="#101722" flood-opacity=".32"/>
+    </filter>
+  </defs>
+  <g filter="url(#holdShadow)">
+    <path d="M128 28c36 0 66 29 66 65s-30 65-66 65-66-29-66-65 30-65 66-65Z" fill="#fff6e6" stroke="#111720" stroke-width="7"/>
+    <path d="M90 84c11-12 25-12 36 0M132 84c11-12 25-12 36 0" fill="none" stroke="#111720" stroke-width="7" stroke-linecap="round"/>
+    <path d="M88 112c24 13 56 13 80 0" fill="none" stroke="#ff6a3d" stroke-width="8" stroke-linecap="round"/>
+    <rect x="38" y="20" width="82" height="34" rx="17" fill="#ff6a3d"/>
+    <text x="79" y="44" text-anchor="middle" font-family="Microsoft YaHei, Arial, sans-serif" font-size="22" font-weight="900" fill="#fff">等下</text>
+    <text x="128" y="171" text-anchor="middle" font-family="Microsoft YaHei, Arial, sans-serif" font-size="25" font-weight="900" fill="#111720">别冲动</text>
+  </g>
+</svg>

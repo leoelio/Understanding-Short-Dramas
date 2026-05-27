@@ -646,6 +646,12 @@ const STICKER_ASSETS = {
   winterWow: { src: "/assets/stickers/winter_wow.svg", label: "哇塞" },
   winterKiss: { src: "/assets/stickers/winter_kiss.svg", label: "突然亲吻" },
   winterChoice: { src: "/assets/stickers/winter_choice.svg", label: "选哪边" },
+  winterBrokenHeart: { src: "/assets/stickers/winter_broken_heart.svg", label: "心碎" },
+  winterBlush: { src: "/assets/stickers/winter_blush.svg", label: "脸红" },
+  winterHeartbeat: { src: "/assets/stickers/winter_heartbeat.svg", label: "心跳" },
+  winterHoldBack: { src: "/assets/stickers/winter_hold_back.svg", label: "别冲动" },
+  winterQuestionLove: { src: "/assets/stickers/winter_question_love.svg", label: "爱还是现实" },
+  winterWarmHug: { src: "/assets/stickers/winter_warm_hug.svg", label: "抱抱" },
   vehicleTrain: { src: "/assets/stickers/vehicle_train.svg", label: "火车" },
   vehicleCar: { src: "/assets/stickers/vehicle_car.svg", label: "小车" },
   vehicleMotorcycle: { src: "/assets/stickers/vehicle_motorcycle.svg", label: "摩托车" },
@@ -984,6 +990,84 @@ const STICKER_RULES = [
     ],
     durationMs: 2600,
     clickHoldMs: 1200,
+  },
+  {
+    asset: "winterBrokenHeart",
+    className: "sticker-winter-broken-heart",
+    keywords: ["安乐死", "伤心", "难过", "心疼", "破防", "沉重"],
+    tapWords: ["破防", "心碎", "抱抱"],
+    positions: [
+      { left: "58%", top: "21%" },
+      { left: "10%", top: "40%" },
+    ],
+    durationMs: 2700,
+    clickHoldMs: 1200,
+  },
+  {
+    asset: "winterBlush",
+    className: "sticker-winter-blush",
+    keywords: ["脸红", "心动", "暧昧", "亲吻", "撒糖"],
+    tapWords: ["脸红", "好甜", "磕到"],
+    positions: [
+      { left: "12%", top: "22%" },
+      { left: "61%", top: "39%" },
+    ],
+    durationMs: 2400,
+    clickHoldMs: 1000,
+    heartEffect: true,
+    maxScale: 2.12,
+  },
+  {
+    asset: "winterHeartbeat",
+    className: "sticker-winter-heartbeat",
+    keywords: ["心跳", "心动", "紧张", "亲吻", "选择"],
+    tapWords: ["心跳", "紧张", "加速"],
+    positions: [
+      { left: "58%", top: "18%" },
+      { left: "10%", top: "46%" },
+    ],
+    durationMs: 2400,
+    clickHoldMs: 1000,
+    heartEffect: true,
+    maxScale: 2.18,
+  },
+  {
+    asset: "winterHoldBack",
+    className: "sticker-winter-hold-back",
+    keywords: ["脱衣服", "别冲动", "突然", "震惊"],
+    tapWords: ["别冲动", "等一下", "我看傻"],
+    positions: [
+      { left: "61%", top: "22%" },
+      { left: "10%", top: "42%" },
+    ],
+    durationMs: 2500,
+    clickHoldMs: 1100,
+  },
+  {
+    asset: "winterQuestionLove",
+    className: "sticker-winter-question-love",
+    keywords: ["选择", "选哪一个", "现实", "心动", "期待"],
+    tapWords: ["选谁", "好难", "站心动"],
+    positions: [
+      { left: "13%", top: "22%" },
+      { left: "60%", top: "43%" },
+    ],
+    durationMs: 2600,
+    clickHoldMs: 1200,
+  },
+  {
+    asset: "winterWarmHug",
+    className: "sticker-winter-warm-hug",
+    keywords: ["抱抱", "难过", "心疼", "安慰", "共情"],
+    tapWords: ["抱抱", "别怕", "心疼"],
+    positions: [
+      { left: "58%", top: "40%" },
+      { left: "9%", top: "26%" },
+    ],
+    durationMs: 2600,
+    clickHoldMs: 1200,
+    heartEffect: true,
+    maxScale: 2.08,
   },
   { asset: "charge", className: "sticker-charge", keywords: ["冲", "干", "走"], tapWords: ["冲"] },
   { asset: "question", className: "sticker-question", keywords: ["悬念", "疑问"], tapWords: ["?"] },
@@ -1975,11 +2059,145 @@ function renderStickerAssetPicker(assets, slotIndex) {
           const active = selected.has(assetId);
           return `<button class="asset-chip ${active ? "selected" : ""}" type="button" data-slot-index="${slotIndex}" data-asset-id="${escapeHTML(
             assetId
-          )}" title="${escapeHTML(assetId)}">${escapeHTML(asset.label)}</button>`;
+          )}" title="${escapeHTML(assetId)}">
+            <img src="${escapeHTML(asset.src)}" alt="" />
+            <span>${escapeHTML(asset.label)}</span>
+          </button>`;
         })
         .join("")}
     </div>
   `;
+}
+
+function suggestedStickerAssetsForHighlight(highlight) {
+  const key = getHighlightKey(highlight.highlight_type);
+  const source = highlightText(highlight);
+  const picks = [];
+  const add = (...assetIds) => {
+    assetIds.forEach((assetId) => {
+      if (STICKER_ASSETS[assetId] && !picks.includes(assetId)) picks.push(assetId);
+    });
+  };
+
+  if (source.includes("安乐死") || source.includes("难过") || source.includes("心疼") || source.includes("破防")) {
+    add("winterBrokenHeart", "winterWarmHug", "tear");
+  }
+  if (source.includes("亲") || source.includes("心动") || source.includes("撒糖") || source.includes("磕")) {
+    add("winterKiss", "winterHeart", "winterBlush", "winterHeartbeat");
+  }
+  if (source.includes("脱") || source.includes("震惊") || (source.includes("突然") && !source.includes("亲"))) {
+    add("winterWow", "winterHoldBack", "question");
+  }
+  if (source.includes("选择") || source.includes("选哪") || source.includes("现实")) {
+    add("winterChoice", "winterQuestionLove", "question");
+  }
+  if (source.includes("无语") || source.includes("尴尬") || source.includes("沉默")) add("winterCrow");
+
+  if (!picks.length && key === "tear") add("winterBrokenHeart", "winterWarmHug", "tear");
+  if (!picks.length && key === "reveal") add("winterWow", "question");
+  if (!picks.length && key === "suspense") add("winterChoice", "winterQuestionLove", "question");
+  if (!picks.length && key === "sweet") add("winterKiss", "winterHeart", "winterBlush");
+  if (!picks.length && key === "comedy") add("laugh", "winterCrow");
+  if (!picks.length) add("question", "winterSnow");
+  return picks.slice(0, 4);
+}
+
+function highlightSlotMeaning(highlight, assets) {
+  return `按高光《${highlight.title || "未命名"}》自动生成：${highlight.highlight_type || "高光"} / ${
+    highlight.emotion || "情绪待定"
+  }，推荐贴图 ${assets.join(" / ")}，需人工复核是否遮挡关键画面。`;
+}
+
+function defaultExperienceSlot(payload) {
+  const timeline = payload.config?.sticker_timeline || [];
+  const duration = Number(parseReviewJson().duration_sec || 0);
+  const ranges = timeline
+    .map((slot) => ({
+      start: Number(slot.start_time_sec ?? slot.start ?? 0),
+      end: Number(slot.end_time_sec ?? slot.end ?? 0),
+    }))
+    .filter((slot) => Number.isFinite(slot.start) && Number.isFinite(slot.end))
+    .sort((left, right) => left.start - right.start);
+  let start = ranges.reduce((max, slot) => Math.max(max, slot.end), 0) + 2;
+  if (duration && start + 8 > duration) {
+    start = 0;
+    for (let candidate = 0; candidate <= Math.max(0, duration - 8); candidate += 5) {
+      const candidateEnd = candidate + 8;
+      if (ranges.every((range) => candidateEnd <= range.start || candidate >= range.end)) {
+        start = candidate;
+        break;
+      }
+    }
+  }
+  const end = duration ? Math.min(duration, start + 8) : start + 8;
+  return {
+    start_time_sec: Number(start.toFixed(2)),
+    end_time_sec: Number(end.toFixed(2)),
+    asset_ids: ["question"],
+    cadence_sec: 2,
+    burst_count: 2,
+    meaning: "人工新增贴图时间窗，请选择贴图素材并补充含义。",
+  };
+}
+
+function addExperienceSlot() {
+  const payload = parseExperienceJson();
+  payload.config ||= {};
+  payload.config.sticker_timeline ||= [];
+  payload.config.sticker_timeline.push(defaultExperienceSlot(payload));
+  syncExperienceJson(payload);
+  renderExperiencePreview(payload);
+  setReviewStatus("已新增贴图时间窗，点击保存体验配置后生效");
+}
+
+function deleteExperienceSlot(button) {
+  const index = Number(button.dataset.index);
+  const payload = parseExperienceJson();
+  const slot = payload.config?.sticker_timeline?.[index];
+  if (!slot) return;
+  payload.config.sticker_timeline.splice(index, 1);
+  syncExperienceJson(payload);
+  renderExperiencePreview(payload);
+  setReviewStatus(`已删除贴图时间窗 ${index + 1}，点击保存体验配置后生效`);
+}
+
+function generateStickerSlotsFromHighlights() {
+  const reviewPayload = parseReviewJson();
+  const experiencePayload = parseExperienceJson();
+  const highlights = Array.isArray(reviewPayload.highlights) ? reviewPayload.highlights : [];
+  experiencePayload.config ||= {};
+  const existing = Array.isArray(experiencePayload.config.sticker_timeline)
+    ? experiencePayload.config.sticker_timeline
+    : [];
+  let changed = 0;
+
+  highlights.forEach((highlight) => {
+    const start = Number(highlight.start_time_sec || 0);
+    const end = Number(highlight.end_time_sec || start + 8);
+    const assets = suggestedStickerAssetsForHighlight(highlight);
+    const matched = existing.find((slot) => Math.abs(Number(slot.start_time_sec ?? slot.start ?? -999) - start) < 1);
+    const nextSlot = {
+      start_time_sec: Number(start.toFixed(2)),
+      end_time_sec: Number(Math.max(end, start + 4).toFixed(2)),
+      asset_ids: assets,
+      cadence_sec: getHighlightKey(highlight.highlight_type) === "sweet" ? 1 : 2,
+      burst_count: getHighlightKey(highlight.highlight_type) === "sweet" ? 4 : 3,
+      meaning: highlightSlotMeaning(highlight, assets),
+    };
+    if (matched) {
+      Object.assign(matched, nextSlot);
+    } else {
+      existing.push(nextSlot);
+    }
+    changed += 1;
+  });
+
+  experiencePayload.config.sticker_timeline = existing.sort(
+    (left, right) => Number(left.start_time_sec ?? left.start ?? 0) - Number(right.start_time_sec ?? right.start ?? 0)
+  );
+  syncExperienceJson(experiencePayload);
+  renderExperiencePreview(experiencePayload);
+  setReviewStatus(`已按 ${changed} 个高光生成/更新贴图时间窗，点击保存体验配置后生效`);
 }
 
 function toggleStickerAsset(button) {
@@ -2209,7 +2427,13 @@ function renderExperiencePreview(payload) {
       </label>
     </article>
     <article class="experience-card">
-      <strong>贴图时间轴</strong>
+      <div class="experience-card-head">
+        <strong>贴图时间轴</strong>
+        <div>
+          <button class="ghost-button generate-highlight-slots-button" type="button">按高光生成</button>
+          <button class="ghost-button add-slot-button" type="button">新增时间窗</button>
+        </div>
+      </div>
       ${
         timeline.length
           ? `<div class="experience-slot-list">${timeline
@@ -2219,7 +2443,10 @@ function renderExperiencePreview(payload) {
                 const assets = slot.asset_ids || slot.assets || [];
                 return `
                   <div class="experience-slot-card">
-                    <strong>${formatTime(start)}-${formatTime(end)}</strong>
+                    <div class="experience-slot-head">
+                      <strong>${formatTime(start)}-${formatTime(end)}</strong>
+                      <button class="danger-button delete-slot-button" type="button" data-index="${index}">删除</button>
+                    </div>
                     <div class="experience-field-grid">
                       <label>
                         开始秒
@@ -2481,8 +2708,19 @@ $("#experiencePreview").addEventListener("change", (event) => {
   }
 });
 $("#experiencePreview").addEventListener("click", (event) => {
-  if (event.target.classList.contains("asset-chip")) {
-    toggleStickerAsset(event.target);
+  const assetChip = event.target.closest(".asset-chip");
+  if (assetChip) {
+    toggleStickerAsset(assetChip);
+    return;
+  }
+  if (event.target.classList.contains("add-slot-button")) {
+    addExperienceSlot();
+  }
+  if (event.target.classList.contains("delete-slot-button")) {
+    deleteExperienceSlot(event.target);
+  }
+  if (event.target.classList.contains("generate-highlight-slots-button")) {
+    generateStickerSlotsFromHighlights();
   }
 });
 $("#danmakuForm").addEventListener("submit", sendDanmaku);
