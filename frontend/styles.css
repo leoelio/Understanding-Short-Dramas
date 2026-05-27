@@ -52,6 +52,10 @@ select {
   border-bottom: 1px solid var(--line);
 }
 
+.topbar > div:first-child {
+  min-width: 0;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent-2);
@@ -102,6 +106,21 @@ h3 {
   background: var(--text);
 }
 
+.user-bar {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
+
+.user-bar span {
+  max-width: 112px;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
 main {
   padding: 18px;
 }
@@ -112,6 +131,96 @@ main {
 
 .view.active {
   display: block;
+}
+
+.auth-panel {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  background: var(--panel);
+}
+
+.auth-panel p {
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 10px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.auth-form input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--text);
+  background: #080c12;
+  font: inherit;
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.demo-accounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.demo-accounts button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.watch-history {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.watch-history:empty {
+  display: none;
+}
+
+.history-title {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.035);
+  text-align: left;
+}
+
+.history-row span {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .section-head {

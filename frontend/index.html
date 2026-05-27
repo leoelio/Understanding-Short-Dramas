@@ -18,17 +18,54 @@
           <button id="adminTab" class="tab" type="button">统计</button>
           <button id="reviewTab" class="tab" type="button">复核</button>
         </nav>
+        <div id="userBar" class="user-bar" hidden>
+          <span id="currentUserLabel">未登录</span>
+          <button id="logoutButton" class="ghost-button" type="button">退出</button>
+        </div>
       </header>
 
       <main>
-        <section id="homeView" class="view active">
+        <section id="authView" class="view active">
+          <div class="auth-panel">
+            <p class="eyebrow">Product V2</p>
+            <h2>登录后进入短剧互动体验</h2>
+            <p>账号体系会作为后续同看房间、用户画像、AI 二创和用户带入功能的数据底座。</p>
+            <form id="authForm" class="auth-form">
+              <label>
+                用户名
+                <input id="authUsername" autocomplete="username" value="admin_demo" />
+              </label>
+              <label id="displayNameField" hidden>
+                昵称
+                <input id="authDisplayName" autocomplete="nickname" />
+              </label>
+              <label>
+                密码
+                <input id="authPassword" autocomplete="current-password" type="password" value="Admin12345!" />
+              </label>
+              <div class="auth-actions">
+                <button id="authSubmit" class="primary-button" type="submit">登录</button>
+                <button id="toggleAuthMode" class="ghost-button" type="button">注册新用户</button>
+              </div>
+            </form>
+            <div id="authStatus" class="review-status">演示管理员：admin_demo / Admin12345!</div>
+            <div class="demo-accounts">
+              <button type="button" data-demo-user="admin_demo" data-demo-pass="Admin12345!">管理员</button>
+              <button type="button" data-demo-user="reviewer_demo" data-demo-pass="Review12345!">复核员</button>
+              <button type="button" data-demo-user="user_demo" data-demo-pass="User12345!">普通用户</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="homeView" class="view">
           <div class="section-head">
             <div>
-              <h2>短剧列表</h2>
-              <p>选择一部短剧，进入移动端播放互动体验。</p>
+              <h2>选片首页</h2>
+              <p>登录后选择一部短剧，进入移动端播放互动体验。</p>
             </div>
             <span id="dramaCount" class="pill">加载中</span>
           </div>
+          <div id="watchHistory" class="watch-history"></div>
           <div id="dramaGrid" class="drama-grid"></div>
         </section>
 
@@ -167,6 +204,6 @@
       </main>
     </div>
 
-    <script type="module" src="/app.js?v=20260528-sticker-import"></script>
+    <script type="module" src="/app.js?v=20260528-auth-foundation"></script>
   </body>
 </html>

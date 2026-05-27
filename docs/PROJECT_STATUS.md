@@ -1,22 +1,26 @@
 # Project Status
 
-更新时间：2026-05-28 06:56:24
+更新时间：2026-05-28 07:23:50
 
 ## 当前目标
 
-完善贴图建议导入：素材分组搜索、建议文件加载、导入合并和大模型贴图建议脚本。
+进入 V2 产品底座：新增本地账号体系、角色权限、登录后选片和观看历史。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`9cc3c3d`
+- 最新提交：`01da710`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
+- `M backend/app/main.py`
+- `M backend/app/migrations.py`
+- `M backend/app/models.py`
+- `M backend/app/schemas.py`
 - `M frontend/app.js`
 - `M frontend/index.html`
 - `M frontend/styles.css`
-- `?? frontend/assets/sticker_suggestions/`
-- `?? scripts/generate_sticker_suggestions_with_llm.py`
+- `?? backend/app/auth.py`
+- `?? docs/V2_ROADMAP.md`
 
 ## 数据状态
 
@@ -26,7 +30,7 @@
 - 高光点：65
 - 已复核剧集：4
 - 待复核剧集：16
-- 互动记录：41
+- 互动记录：44
 - 弹幕记录：220
 - 体验配置：4
 
@@ -48,16 +52,17 @@
 
 ## 本次变更摘要
 
-- 复核页贴图素材选择器按题材分组，并支持搜索和只看已选。
-- 新增大模型贴图建议导入区，支持加载当前剧集建议文件、生成样例、导入并合并到贴图时间轴。
-- 新增 scripts/generate_sticker_suggestions_with_llm.py，生成复核页可导入的贴图建议 JSON，不写数据库、不打印密钥。
-- 已用模型为那年冬至第1集生成 episode_19_sticker_suggestions.json 供复核调试。
+- 新增 users、auth_sessions、watch_history 数据模型，并让互动和弹幕预留 user_id 归属。
+- 新增注册、登录、当前用户、退出和观看历史接口，默认种子管理员、复核员、普通用户演示账号。
+- 统计页、复核页和体验配置接口已按管理员/复核员角色保护。
+- 前端新增登录页、演示账号入口、登录态恢复、登录后选片页和最近观看入口。
+- 新增 docs/V2_ROADMAP.md，记录当前阶段和好友同看、AI二创、用户带入、客户端、语音智能人等后续路线。
 
 ## 下一步建议
 
-- 复核人员在页面导入模型建议后，逐项检查是否遮挡画面，再保存体验配置。
-- 下一步可做贴图素材分组折叠默认策略和更多剧集建议文件批量生成。
-- 随后进入下一部样片复核，验证该导入流程跨题材是否稳定。
+- 继续把后台从 JSON 复核台升级为更完整的管理后台，优先做用户管理和剧集/高光管理分区。
+- 再做好友开房前，需要先确认房间同步范围：播放进度、弹幕、互动是否都实时同步。
+- AI二创下一步建议先做文本续写和分镜，不直接做视频生成。
 
 ## 安全提醒
 

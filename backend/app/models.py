@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -34,6 +34,34 @@ class Episode(Base):
     experience_config = relationship(
         "EpisodeExperienceConfig", back_populates="episode", cascade="all, delete-orphan", uselist=False
     )
+    watch_history = relationship("WatchHistory", back_populates="episode", cascade="all, delete-orphan")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(64), unique=True, nullable=False, index=True)
+    display_name = Column(String(64), nullable=False)
+    password_hash = Column(Text, nullable=False)
+    role = Column(String(32), default="user", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    sessions = relationship("AuthSession", back_populates="user", cascade="all, delete-orphan")
+    watch_history = relationship("WatchHistory", back_populates="user", cascade="all, delete-orphan")
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String(64), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="sessions")
 
 
 class Highlight(Base):
@@ -65,11 +93,13 @@ class Interaction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     highlight_id = Column(Integer, ForeignKey("highlights.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     option_key = Column(String(64), nullable=False)
     session_id = Column(String(128), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     highlight = relationship("Highlight", back_populates="interactions")
+    user = relationship("User")
 
 
 class DanmakuComment(Base):
@@ -77,6 +107,7 @@ class DanmakuComment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     episode_id = Column(Integer, ForeignKey("episodes.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     time_sec = Column(Float, nullable=False, index=True)
     text = Column(String(80), nullable=False)
     mode = Column(String(32), default="light")
@@ -84,6 +115,20 @@ class DanmakuComment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     episode = relationship("Episode")
+    user = relationship("User")
+
+
+class WatchHistory(Base):
+    __tablename__ = "watch_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    episode_id = Column(Integer, ForeignKey("episodes.id"), nullable=False, index=True)
+    progress_sec = Column(Float, default=0)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="watch_history")
+    episode = relationship("Episode", back_populates="watch_history")
 
 
 class EpisodeExperienceConfig(Base):

@@ -23,3 +23,19 @@ class ExperienceConfigUpdate(BaseModel):
     model_version: str = Field(default="experience-config-v1", max_length=64)
     review_status: str = Field(default="human_reviewed", max_length=64)
     config: dict[str, Any]
+
+
+class RegisterRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=8, max_length=128)
+    display_name: str = Field(min_length=1, max_length=64)
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class WatchHistoryUpdate(BaseModel):
+    episode_id: int
+    progress_sec: float = Field(default=0, ge=0)

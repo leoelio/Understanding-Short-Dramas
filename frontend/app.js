@@ -191,6 +191,11 @@ const state = {
   reviewEpisodes: [],
   reviewExperience: null,
   reviewFilter: "all",
+  currentUser: null,
+  authToken: localStorage.getItem("auth_token") || "",
+  authMode: "login",
+  watchHistory: [],
+  watchHistoryTimer: null,
   danmakuFeedbackTimer: null,
   interactionMode: "choice",
   tapHideDelayMs: 2200,
@@ -207,6 +212,7 @@ localStorage.setItem("session_id", state.sessionId);
 const $ = (selector) => document.querySelector(selector);
 
 const views = {
+  auth: $("#authView"),
   home: $("#homeView"),
   watch: $("#watchView"),
   admin: $("#adminView"),
@@ -289,15 +295,135 @@ function saveDanmakuSettings() {
 }
 
 async function fetchJSON(url, options = {}) {
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  if (state.authToken) headers.Authorization = `Bearer ${state.authToken}`;
   const response = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers,
   });
   if (!response.ok) {
     const message = await response.text();
+    if (response.status === 401 && !url.startsWith("/api/auth/")) {
+      clearAuth();
+      setView("auth");
+    }
     throw new Error(message || `请求失败：${response.status}`);
   }
   return response.json();
+}
+
+function roleLabel(role) {
+  return { admin: "管理员", reviewer: "复核员", user: "普通用户" }[role] || role || "用户";
+}
+
+function canManage() {
+  return ["admin", "reviewer"].includes(state.currentUser?.role);
+}
+
+function updateAuthUI() {
+  const signedIn = Boolean(state.currentUser);
+  $("#userBar").hidden = !signedIn;
+  if (signedIn) {
+    $("#currentUserLabel").textContent = `${state.currentUser.display_name} · ${roleLabel(state.currentUser.role)}`;
+  }
+  homeTab.hidden = !signedIn;
+  adminTab.hidden = !signedIn || !canManage();
+  reviewTab.hidden = !signedIn || !canManage();
+}
+
+function clearAuth() {
+  state.authToken = "";
+  state.currentUser = null;
+  state.watchHistory = [];
+  localStorage.removeItem("auth_token");
+  updateAuthUI();
+}
+
+function setAuthStatus(message, isError = false) {
+  const status = $("#authStatus");
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function syncAuthMode() {
+  const isRegister = state.authMode === "register";
+  $("#displayNameField").hidden = !isRegister;
+  $("#authSubmit").textContent = isRegister ? "注册并登录" : "登录";
+  $("#toggleAuthMode").textContent = isRegister ? "返回登录" : "注册新用户";
+  $("#authPassword").autocomplete = isRegister ? "new-password" : "current-password";
+}
+
+async function restoreAuth() {
+  if (!state.authToken) {
+    updateAuthUI();
+    return false;
+  }
+  try {
+    const payload = await fetchJSON("/api/auth/me");
+    state.currentUser = payload.user;
+    updateAuthUI();
+    return true;
+  } catch {
+    clearAuth();
+    return false;
+  }
+}
+
+async function afterAuth() {
+  updateAuthUI();
+  await loadDramas();
+  await loadWatchHistory();
+  await routeAfterAuth();
+}
+
+async function routeAfterAuth() {
+  const episodeId = Number(new URLSearchParams(location.search).get("episode"));
+  if (location.hash === "#admin") {
+    setView("admin");
+  } else if (location.hash === "#review") {
+    setView("review");
+  } else if (Number.isFinite(episodeId) && episodeId > 0) {
+    await openEpisodeFromUrl(episodeId);
+  } else {
+    setView("home");
+  }
+}
+
+async function submitAuth(event) {
+  event.preventDefault();
+  const username = $("#authUsername").value.trim();
+  const password = $("#authPassword").value;
+  const displayName = $("#authDisplayName").value.trim() || username;
+  if (!username || !password) {
+    setAuthStatus("请输入用户名和密码", true);
+    return;
+  }
+  try {
+    const url = state.authMode === "register" ? "/api/auth/register" : "/api/auth/login";
+    const payload = await fetchJSON(url, {
+      method: "POST",
+      body: JSON.stringify(
+        state.authMode === "register" ? { username, password, display_name: displayName } : { username, password }
+      ),
+    });
+    state.authToken = payload.token;
+    state.currentUser = payload.user;
+    localStorage.setItem("auth_token", payload.token);
+    setAuthStatus(`已登录：${payload.user.display_name}`);
+    await afterAuth();
+  } catch (error) {
+    setAuthStatus(errorMessage(error), true);
+  }
+}
+
+async function logout() {
+  try {
+    await fetchJSON("/api/auth/logout", { method: "POST" });
+  } catch {
+    // Local logout should still complete even if the server session has expired.
+  }
+  clearAuth();
+  setView("auth");
 }
 
 function errorMessage(error) {
@@ -324,6 +450,12 @@ function setDanmakuFeedback(message, isError = false) {
 }
 
 function setView(name) {
+  if (name !== "auth" && !state.currentUser) {
+    name = "auth";
+  }
+  if ((name === "admin" || name === "review") && !canManage()) {
+    name = "home";
+  }
   Object.entries(views).forEach(([key, element]) => element.classList.toggle("active", key === name));
   homeTab.classList.toggle("active", name === "home");
   adminTab.classList.toggle("active", name === "admin");
@@ -1412,6 +1544,56 @@ function renderDramas() {
   });
 }
 
+function renderWatchHistory() {
+  const host = $("#watchHistory");
+  if (!host) return;
+  if (!state.watchHistory.length) {
+    host.innerHTML = "";
+    return;
+  }
+  host.innerHTML = `
+    <div class="history-title">最近观看</div>
+    ${state.watchHistory
+      .slice(0, 4)
+      .map(
+        (item) => `
+          <button class="history-row" type="button" data-episode-id="${item.episode_id}">
+            <div>
+              <strong>${escapeHTML(item.drama.title)} · ${escapeHTML(item.episode_title)}</strong>
+              <span>${escapeHTML(item.drama.genre)} · 进度 ${formatTime(item.progress_sec)}</span>
+            </div>
+            <span>继续</span>
+          </button>
+        `
+      )
+      .join("")}
+  `;
+  host.querySelectorAll(".history-row").forEach((button) => {
+    button.addEventListener("click", () => openEpisodeFromUrl(Number(button.dataset.episodeId)));
+  });
+}
+
+async function loadWatchHistory() {
+  if (!state.currentUser) return;
+  try {
+    state.watchHistory = await fetchJSON("/api/users/me/watch-history");
+  } catch {
+    state.watchHistory = [];
+  }
+  renderWatchHistory();
+}
+
+function recordWatchHistory(progressSec = 0) {
+  if (!state.currentUser || !state.currentEpisode) return;
+  window.clearTimeout(state.watchHistoryTimer);
+  state.watchHistoryTimer = window.setTimeout(() => {
+    fetchJSON("/api/users/me/watch-history", {
+      method: "POST",
+      body: JSON.stringify({ episode_id: state.currentEpisode.id, progress_sec: progressSec }),
+    }).catch(() => {});
+  }, 400);
+}
+
 async function loadDramas() {
   state.dramas = await fetchJSON("/api/dramas");
   renderDramas();
@@ -1451,6 +1633,7 @@ async function openEpisode(episodeId) {
   renderTimeline();
   renderDanmakuHint();
   syncEpisodeUrl(episodeId);
+  recordWatchHistory(0);
 }
 
 async function openEpisodeFromUrl(episodeId) {
@@ -1784,10 +1967,15 @@ function renderEvidence(item) {
 }
 
 async function loadStats() {
-  const [summary, highlights] = await Promise.all([
-    fetchJSON("/api/stats/summary"),
-    fetchJSON("/api/stats/highlights"),
-  ]);
+  let summary;
+  let highlights;
+  try {
+    [summary, highlights] = await Promise.all([fetchJSON("/api/stats/summary"), fetchJSON("/api/stats/highlights")]);
+  } catch (error) {
+    $("#summaryCards").innerHTML = "";
+    $("#statsList").innerHTML = `<div class="empty-state">无法加载统计：${escapeHTML(errorMessage(error))}</div>`;
+    return;
+  }
   $("#summaryCards").innerHTML = [
     ["短剧", summary.drama_count],
     ["剧集", summary.episode_count],
@@ -1884,7 +2072,15 @@ async function renderReviewEpisodeOptions(preferredEpisodeId) {
 }
 
 async function loadReviewEpisodes() {
-  state.reviewEpisodes = await fetchJSON("/api/admin/episodes");
+  try {
+    state.reviewEpisodes = await fetchJSON("/api/admin/episodes");
+  } catch (error) {
+    $("#reviewSummaryCards").innerHTML = "";
+    $("#reviewPreview").innerHTML = `<div class="empty-state">无法加载复核列表：${escapeHTML(errorMessage(error))}</div>`;
+    $("#experiencePreview").innerHTML = "";
+    setReviewStatus(errorMessage(error), true);
+    return;
+  }
   renderReviewSummary();
   const urlEpisodeId = Number(new URLSearchParams(location.search).get("episode"));
   const preferredEpisodeId = state.currentEpisode?.id || (Number.isFinite(urlEpisodeId) ? urlEpisodeId : 0);
@@ -2866,6 +3062,7 @@ player.addEventListener("play", () => {
 player.addEventListener("pause", () => {
   updatePlayerControls();
   window.clearTimeout(state.ambientStickerTimer);
+  recordWatchHistory(player.currentTime || 0);
 });
 
 player.addEventListener("seeked", () => {
@@ -2896,6 +3093,21 @@ progressSlider.addEventListener("input", () => {
 homeTab.addEventListener("click", () => setView("home"));
 adminTab.addEventListener("click", () => setView("admin"));
 reviewTab.addEventListener("click", () => setView("review"));
+$("#authForm").addEventListener("submit", submitAuth);
+$("#toggleAuthMode").addEventListener("click", () => {
+  state.authMode = state.authMode === "login" ? "register" : "login";
+  syncAuthMode();
+});
+$("#logoutButton").addEventListener("click", logout);
+document.querySelectorAll(".demo-accounts button").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.authMode = "login";
+    syncAuthMode();
+    $("#authUsername").value = button.dataset.demoUser;
+    $("#authPassword").value = button.dataset.demoPass;
+    setAuthStatus(`已填入${button.textContent}演示账号`);
+  });
+});
 $("#backButton").addEventListener("click", () => setView("home"));
 $("#refreshStats").addEventListener("click", loadStats);
 $("#reviewStatusFilter").addEventListener("change", async (event) => {
@@ -3000,25 +3212,23 @@ $("#danmakuOpacity").addEventListener("input", (event) => {
   applyDanmakuSettings();
 });
 
-if (location.hash === "#admin") {
-  setView("admin");
-} else if (location.hash === "#review") {
-  setView("review");
-} else {
-  setView("home");
-}
-
+syncAuthMode();
+updateAuthUI();
 applyDanmakuSettings();
 renderDanmakuHint();
 
 async function bootstrap() {
-  await loadDramas();
-  const episodeId = Number(new URLSearchParams(location.search).get("episode"));
-  if (Number.isFinite(episodeId) && episodeId > 0 && !location.hash) {
-    await openEpisodeFromUrl(episodeId);
+  const signedIn = await restoreAuth();
+  if (!signedIn) {
+    setView("auth");
+    return;
   }
+  await loadDramas();
+  await loadWatchHistory();
+  await routeAfterAuth();
 }
 
 bootstrap().catch((error) => {
-  $("#dramaGrid").innerHTML = `<div class="empty-state">加载失败：${error.message}</div>`;
+  const target = state.currentUser ? $("#dramaGrid") : $("#authStatus");
+  target.innerHTML = `加载失败：${escapeHTML(errorMessage(error))}`;
 });

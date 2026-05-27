@@ -1,10 +1,11 @@
 import json
 import hashlib
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
@@ -14,10 +15,38 @@ from .config import APP_NAME, FRONTEND_DIR
 from .database import SessionLocal, get_db
 from .danmaku_moderation import moderate_danmaku, moderation_rules_payload
 from .migrations import ensure_database_schema
-from .models import DanmakuComment, Drama, Episode, EpisodeExperienceConfig, Highlight, Interaction
-from .schemas import DanmakuCreate, ExperienceConfigUpdate, InteractionCreate
+from .models import (
+    AuthSession,
+    DanmakuComment,
+    Drama,
+    Episode,
+    EpisodeExperienceConfig,
+    Highlight,
+    Interaction,
+    User,
+    WatchHistory,
+)
+from .schemas import (
+    DanmakuCreate,
+    ExperienceConfigUpdate,
+    InteractionCreate,
+    LoginRequest,
+    RegisterRequest,
+    WatchHistoryUpdate,
+)
 from .seed import seed_from_video_library
 from .annotation_schema import validate_annotation_payload
+from .auth import (
+    create_session,
+    ensure_default_users,
+    get_current_user,
+    get_optional_user,
+    hash_password,
+    public_user,
+    require_roles,
+    token_digest,
+    verify_password,
+)
 from .taxonomy import normalize_highlight_type, taxonomy_payload
 
 
@@ -29,6 +58,7 @@ def on_startup() -> None:
     ensure_database_schema()
     with SessionLocal() as db:
         seed_from_video_library(db)
+        ensure_default_users(db)
 
 
 def parse_options(highlight: Highlight) -> list[dict]:
@@ -117,6 +147,13 @@ def option_stats(db: Session, highlight: Highlight) -> dict:
 
 
 def danmaku_user_payload(comment: DanmakuComment) -> dict:
+    if comment.user:
+        return {
+            "id": f"user-{comment.user.id}",
+            "nickname": comment.user.display_name,
+            "role": comment.user.role,
+            "relation_ready": True,
+        }
     raw = comment.session_id or "anonymous"
     digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:8]
     suffix = int(digest[:4], 16) % 1000
@@ -187,6 +224,59 @@ def parse_experience_config(row: EpisodeExperienceConfig | None, episode: Episod
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True, "request_id": str(uuid4())}
+
+
+@app.post("/api/auth/register")
+def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
+    username = payload.username.strip().lower()
+    if db.query(User).filter(User.username == username).first():
+        raise HTTPException(status_code=400, detail="用户名已存在")
+    user = User(
+        username=username,
+        display_name=payload.display_name.strip(),
+        password_hash=hash_password(payload.password),
+        role="user",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    token = create_session(db, user)
+    return {"token": token, "user": public_user(user)}
+
+
+@app.post("/api/auth/login")
+def login(payload: LoginRequest, db: Session = Depends(get_db)) -> dict:
+    username = payload.username.strip().lower()
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="账号不可用")
+    token = create_session(db, user)
+    return {"token": token, "user": public_user(user)}
+
+
+@app.get("/api/auth/me")
+def me(user: User = Depends(get_current_user)) -> dict:
+    return {"user": public_user(user)}
+
+
+@app.post("/api/auth/logout")
+def logout(
+    user: User = Depends(get_current_user),
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    # Authorization is parsed manually here to remove only the current session.
+    token = None
+    if authorization:
+        scheme, _, raw_token = authorization.partition(" ")
+        if scheme.lower() == "bearer":
+            token = raw_token
+    if token:
+        db.query(AuthSession).filter(AuthSession.user_id == user.id, AuthSession.token_hash == token_digest(token)).delete()
+        db.commit()
+    return {"ok": True}
 
 
 @app.get("/api/taxonomy/highlights")
@@ -267,7 +357,11 @@ def episode_media(episode_id: int, db: Session = Depends(get_db)) -> FileRespons
 
 
 @app.post("/api/interactions")
-def create_interaction(payload: InteractionCreate, db: Session = Depends(get_db)) -> dict:
+def create_interaction(
+    payload: InteractionCreate,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> dict:
     highlight = db.get(Highlight, payload.highlight_id)
     if not highlight:
         raise HTTPException(status_code=404, detail="高光点不存在")
@@ -277,6 +371,7 @@ def create_interaction(payload: InteractionCreate, db: Session = Depends(get_db)
 
     interaction = Interaction(
         highlight_id=payload.highlight_id,
+        user_id=user.id if user else None,
         option_key=payload.option_key,
         session_id=payload.session_id,
     )
@@ -325,7 +420,11 @@ def danmaku_moderation_rules() -> dict:
 
 
 @app.post("/api/danmaku")
-def create_danmaku(payload: DanmakuCreate, db: Session = Depends(get_db)) -> dict:
+def create_danmaku(
+    payload: DanmakuCreate,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> dict:
     episode = db.get(Episode, payload.episode_id)
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
@@ -341,6 +440,7 @@ def create_danmaku(payload: DanmakuCreate, db: Session = Depends(get_db)) -> dic
         )
     comment = DanmakuComment(
         episode_id=episode.id,
+        user_id=user.id if user else None,
         time_sec=round(max(0, safe_time), 2),
         text=moderation.text,
         session_id=payload.session_id,
@@ -360,8 +460,59 @@ def create_danmaku(payload: DanmakuCreate, db: Session = Depends(get_db)) -> dic
     }
 
 
+@app.get("/api/users/me/watch-history")
+def get_watch_history(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[dict]:
+    rows = (
+        db.query(WatchHistory)
+        .filter(WatchHistory.user_id == user.id)
+        .order_by(WatchHistory.updated_at.desc())
+        .limit(12)
+        .all()
+    )
+    return [
+        {
+            "episode_id": row.episode_id,
+            "progress_sec": row.progress_sec,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            "episode_title": row.episode.title,
+            "episode_no": row.episode.episode_no,
+            "drama": {
+                "id": row.episode.drama.id,
+                "title": row.episode.drama.title,
+                "genre": row.episode.drama.genre,
+            },
+        }
+        for row in rows
+    ]
+
+
+@app.post("/api/users/me/watch-history")
+def upsert_watch_history(
+    payload: WatchHistoryUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    episode = db.get(Episode, payload.episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    row = (
+        db.query(WatchHistory)
+        .filter(WatchHistory.user_id == user.id, WatchHistory.episode_id == episode.id)
+        .first()
+    )
+    if not row:
+        row = WatchHistory(user_id=user.id, episode_id=episode.id)
+        db.add(row)
+    row.progress_sec = min(float(payload.progress_sec), float(episode.duration_sec or payload.progress_sec))
+    row.updated_at = datetime.utcnow()
+    db.commit()
+    return {"ok": True}
+
+
 @app.get("/api/stats/summary")
-def stats_summary(db: Session = Depends(get_db)) -> dict:
+def stats_summary(
+    db: Session = Depends(get_db), _user: User = Depends(require_roles("admin", "reviewer"))
+) -> dict:
     return {
         "drama_count": db.query(Drama).count(),
         "episode_count": db.query(Episode).count(),
@@ -373,7 +524,9 @@ def stats_summary(db: Session = Depends(get_db)) -> dict:
 
 
 @app.get("/api/stats/highlights")
-def stats_highlights(db: Session = Depends(get_db)) -> list[dict]:
+def stats_highlights(
+    db: Session = Depends(get_db), _user: User = Depends(require_roles("admin", "reviewer"))
+) -> list[dict]:
     highlights = (
         db.query(Highlight)
         .join(Episode)
@@ -397,7 +550,9 @@ def stats_highlights(db: Session = Depends(get_db)) -> list[dict]:
 
 
 @app.get("/api/admin/episodes")
-def admin_list_episodes(db: Session = Depends(get_db)) -> list[dict]:
+def admin_list_episodes(
+    db: Session = Depends(get_db), _user: User = Depends(require_roles("admin", "reviewer"))
+) -> list[dict]:
     episodes = db.query(Episode).join(Drama).order_by(Drama.id.asc(), Episode.episode_no.asc()).all()
     rows = []
     for episode in episodes:
@@ -421,7 +576,9 @@ def admin_list_episodes(db: Session = Depends(get_db)) -> list[dict]:
 
 
 @app.get("/api/admin/review-status")
-def admin_review_status(db: Session = Depends(get_db)) -> dict:
+def admin_review_status(
+    db: Session = Depends(get_db), _user: User = Depends(require_roles("admin", "reviewer"))
+) -> dict:
     episodes = db.query(Episode).all()
     metas = [episode_review_meta(episode) for episode in episodes]
     reviewed_episode_count = sum(1 for meta in metas if meta["review_status"] == "reviewed")
@@ -436,7 +593,11 @@ def admin_review_status(db: Session = Depends(get_db)) -> dict:
 
 
 @app.get("/api/admin/episodes/{episode_id}/highlights")
-def admin_get_episode_highlights(episode_id: int, db: Session = Depends(get_db)) -> dict:
+def admin_get_episode_highlights(
+    episode_id: int,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles("admin", "reviewer")),
+) -> dict:
     episode = db.get(Episode, episode_id)
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
@@ -457,7 +618,11 @@ def admin_get_episode_highlights(episode_id: int, db: Session = Depends(get_db))
 
 
 @app.get("/api/admin/episodes/{episode_id}/experience")
-def admin_get_episode_experience(episode_id: int, db: Session = Depends(get_db)) -> dict:
+def admin_get_episode_experience(
+    episode_id: int,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles("admin", "reviewer")),
+) -> dict:
     episode = db.get(Episode, episode_id)
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
@@ -467,7 +632,10 @@ def admin_get_episode_experience(episode_id: int, db: Session = Depends(get_db))
 
 @app.put("/api/admin/episodes/{episode_id}/experience")
 def admin_save_episode_experience(
-    episode_id: int, payload: ExperienceConfigUpdate, db: Session = Depends(get_db)
+    episode_id: int,
+    payload: ExperienceConfigUpdate,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles("admin", "reviewer")),
 ) -> dict:
     episode = db.get(Episode, episode_id)
     if not episode:
@@ -490,7 +658,12 @@ def admin_save_episode_experience(
 
 
 @app.put("/api/admin/episodes/{episode_id}/highlights")
-def admin_replace_episode_highlights(episode_id: int, payload: dict, db: Session = Depends(get_db)) -> dict:
+def admin_replace_episode_highlights(
+    episode_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles("admin", "reviewer")),
+) -> dict:
     episode = db.get(Episode, episode_id)
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
