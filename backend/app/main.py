@@ -32,6 +32,7 @@ from .schemas import (
     InteractionCreate,
     LoginRequest,
     RegisterRequest,
+    UserAdminUpdate,
     WatchHistoryUpdate,
 )
 from .seed import seed_from_video_library
@@ -547,6 +548,60 @@ def stats_highlights(
             }
         )
     return rows
+
+
+def admin_user_payload(user: User, db: Session) -> dict:
+    now = datetime.utcnow()
+    return {
+        "id": user.id,
+        "username": user.username,
+        "display_name": user.display_name,
+        "role": user.role,
+        "is_active": user.is_active,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "active_session_count": db.query(AuthSession)
+        .filter(AuthSession.user_id == user.id, AuthSession.expires_at > now)
+        .count(),
+        "watch_history_count": db.query(WatchHistory).filter(WatchHistory.user_id == user.id).count(),
+        "interaction_count": db.query(Interaction).filter(Interaction.user_id == user.id).count(),
+        "danmaku_count": db.query(DanmakuComment).filter(DanmakuComment.user_id == user.id).count(),
+    }
+
+
+@app.get("/api/admin/users")
+def admin_list_users(
+    db: Session = Depends(get_db), _user: User = Depends(require_roles("admin"))
+) -> list[dict]:
+    users = db.query(User).order_by(User.id.asc()).all()
+    return [admin_user_payload(user, db) for user in users]
+
+
+@app.patch("/api/admin/users/{user_id}")
+def admin_update_user(
+    user_id: int,
+    payload: UserAdminUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("admin")),
+) -> dict:
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if payload.role is not None and payload.role not in {"user", "reviewer", "admin"}:
+        raise HTTPException(status_code=400, detail="角色只能是 user、reviewer 或 admin")
+    if user.id == current_user.id:
+        if payload.role is not None and payload.role != "admin":
+            raise HTTPException(status_code=400, detail="不能降低自己的管理员权限")
+        if payload.is_active is False:
+            raise HTTPException(status_code=400, detail="不能停用当前登录的管理员账号")
+    if payload.display_name is not None:
+        user.display_name = payload.display_name.strip()
+    if payload.role is not None:
+        user.role = payload.role
+    if payload.is_active is not None:
+        user.is_active = payload.is_active
+    db.commit()
+    db.refresh(user)
+    return admin_user_payload(user, db)
 
 
 @app.get("/api/admin/episodes")

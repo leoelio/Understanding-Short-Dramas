@@ -39,3 +39,9 @@ class LoginRequest(BaseModel):
 class WatchHistoryUpdate(BaseModel):
     episode_id: int
     progress_sec: float = Field(default=0, ge=0)
+
+
+class UserAdminUpdate(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=64)
+    role: str | None = Field(default=None, max_length=32)
+    is_active: bool | None = None

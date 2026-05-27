@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260528-sticker-admin" />
+    <link rel="stylesheet" href="/styles.css?v=20260528-admin-users" />
   </head>
   <body>
     <div class="app-shell">
@@ -145,12 +145,20 @@
         <section id="adminView" class="view">
           <div class="section-head">
             <div>
-              <h2>后台统计</h2>
-              <p>查看高光点点击量、选择比例和互动榜。</p>
+              <h2>后台管理</h2>
+              <p>查看互动数据，并管理用户、角色和后续产品能力入口。</p>
             </div>
             <button id="refreshStats" class="primary-button" type="button">刷新</button>
           </div>
+          <div id="adminStatus" class="review-status"></div>
           <div id="summaryCards" class="summary-grid"></div>
+          <div id="userManagementCard" class="table-card user-management-card" hidden>
+            <div class="table-title">
+              <h3>用户管理</h3>
+              <span class="muted">仅管理员可见</span>
+            </div>
+            <div id="adminUserList" class="admin-user-list"></div>
+          </div>
           <div class="table-card">
             <div class="table-title">
               <h3>高光互动榜</h3>
@@ -204,6 +212,6 @@
       </main>
     </div>
 
-    <script type="module" src="/app.js?v=20260528-auth-foundation"></script>
+    <script type="module" src="/app.js?v=20260528-admin-users"></script>
   </body>
 </html>

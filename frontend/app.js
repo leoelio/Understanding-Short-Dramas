@@ -192,6 +192,7 @@ const state = {
   reviewExperience: null,
   reviewFilter: "all",
   currentUser: null,
+  adminUsers: [],
   authToken: localStorage.getItem("auth_token") || "",
   authMode: "login",
   watchHistory: [],
@@ -1976,6 +1977,7 @@ async function loadStats() {
     $("#statsList").innerHTML = `<div class="empty-state">无法加载统计：${escapeHTML(errorMessage(error))}</div>`;
     return;
   }
+  $("#adminStatus").textContent = canManage() ? "后台数据已加载" : "";
   $("#summaryCards").innerHTML = [
     ["短剧", summary.drama_count],
     ["剧集", summary.episode_count],
@@ -2006,6 +2008,105 @@ async function loadStats() {
       `;
     })
     .join("");
+  await loadAdminUsers();
+}
+
+function roleSelectOptions(role) {
+  return [
+    ["user", "普通用户"],
+    ["reviewer", "复核员"],
+    ["admin", "管理员"],
+  ]
+    .map(([value, label]) => `<option value="${value}" ${role === value ? "selected" : ""}>${label}</option>`)
+    .join("");
+}
+
+function renderAdminUsers() {
+  const card = $("#userManagementCard");
+  const list = $("#adminUserList");
+  if (!card || !list) return;
+  card.hidden = state.currentUser?.role !== "admin";
+  if (card.hidden) {
+    list.innerHTML = "";
+    return;
+  }
+  list.innerHTML = state.adminUsers
+    .map(
+      (user) => `
+        <article class="admin-user-row" data-user-id="${user.id}">
+          <div>
+            <strong>${escapeHTML(user.display_name)}</strong>
+            <span>${escapeHTML(user.username)} · ${roleLabel(user.role)} · ${
+              user.is_active ? "启用" : "停用"
+            }</span>
+            <small>会话 ${user.active_session_count} · 观看 ${user.watch_history_count} · 互动 ${
+              user.interaction_count
+            } · 弹幕 ${user.danmaku_count}</small>
+          </div>
+          <label>
+            昵称
+            <input class="admin-user-input" data-user-field="display_name" value="${escapeHTML(user.display_name)}" />
+          </label>
+          <label>
+            角色
+            <select class="admin-user-input" data-user-field="role">${roleSelectOptions(user.role)}</select>
+          </label>
+          <label class="admin-user-active">
+            <input class="admin-user-input" type="checkbox" data-user-field="is_active" ${
+              user.is_active ? "checked" : ""
+            } />
+            启用
+          </label>
+          <button class="ghost-button save-admin-user-button" type="button" data-user-id="${user.id}">保存</button>
+        </article>
+      `
+    )
+    .join("");
+}
+
+async function loadAdminUsers() {
+  if (state.currentUser?.role !== "admin") {
+    renderAdminUsers();
+    return;
+  }
+  try {
+    state.adminUsers = await fetchJSON("/api/admin/users");
+    renderAdminUsers();
+  } catch (error) {
+    $("#adminUserList").innerHTML = `<div class="empty-state">无法加载用户：${escapeHTML(errorMessage(error))}</div>`;
+  }
+}
+
+async function saveAdminUser(button) {
+  const row = button.closest(".admin-user-row");
+  const userId = Number(button.dataset.userId);
+  if (!row || !userId) return;
+  const displayName = row.querySelector('[data-user-field="display_name"]').value.trim();
+  const role = row.querySelector('[data-user-field="role"]').value;
+  const isActive = row.querySelector('[data-user-field="is_active"]').checked;
+  try {
+    $("#adminStatus").classList.remove("error");
+    const updated = await fetchJSON(`/api/admin/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ display_name: displayName, role, is_active: isActive }),
+    });
+    state.adminUsers = state.adminUsers.map((user) => (user.id === updated.id ? updated : user));
+    renderAdminUsers();
+    $("#adminStatus").textContent = `已保存用户：${updated.display_name}`;
+    $("#adminStatus").classList.remove("error");
+    if (state.currentUser?.id === updated.id) {
+      state.currentUser = {
+        id: updated.id,
+        username: updated.username,
+        display_name: updated.display_name,
+        role: updated.role,
+      };
+      updateAuthUI();
+    }
+  } catch (error) {
+    $("#adminStatus").textContent = errorMessage(error);
+    $("#adminStatus").classList.add("error");
+  }
 }
 
 function getFilteredReviewEpisodes() {
@@ -3110,6 +3211,11 @@ document.querySelectorAll(".demo-accounts button").forEach((button) => {
 });
 $("#backButton").addEventListener("click", () => setView("home"));
 $("#refreshStats").addEventListener("click", loadStats);
+$("#adminView").addEventListener("click", (event) => {
+  if (event.target.classList.contains("save-admin-user-button")) {
+    saveAdminUser(event.target);
+  }
+});
 $("#reviewStatusFilter").addEventListener("change", async (event) => {
   state.reviewFilter = event.target.value;
   await renderReviewEpisodeOptions(Number($("#reviewEpisodeSelect").value));

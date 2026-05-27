@@ -2327,6 +2327,63 @@ main {
   border-top: 1px solid var(--line);
 }
 
+.admin-user-list {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+}
+
+.admin-user-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(96px, 0.8fr) minmax(96px, 0.7fr) auto auto;
+  align-items: end;
+  gap: 10px;
+  padding: 13px 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-user-row > div {
+  min-width: 0;
+}
+
+.admin-user-row strong,
+.admin-user-row span,
+.admin-user-row small {
+  display: block;
+}
+
+.admin-user-row span,
+.admin-user-row small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.admin-user-row label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.admin-user-row input,
+.admin-user-row select {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--text);
+  background: #080c12;
+  font: inherit;
+}
+
+.admin-user-active {
+  align-items: center;
+  grid-template-columns: auto auto;
+  padding-bottom: 9px;
+}
+
 .stats-row {
   display: grid;
   grid-template-columns: 1fr 82px;
@@ -2859,7 +2916,8 @@ textarea.experience-field-input {
   .review-field-grid,
   .review-options-editor,
   .experience-field-grid,
-  .review-time-editor {
+  .review-time-editor,
+  .admin-user-row {
     grid-template-columns: 1fr;
   }
 
