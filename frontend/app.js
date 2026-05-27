@@ -7,6 +7,8 @@ const DEFAULT_DANMAKU_SETTINGS = {
 };
 
 const MIN_INTERACTION_GAP_SEC = 18;
+const REVIEW_MIN_HIGHLIGHT_GAP_SEC = 20;
+const REVIEW_MAX_HIGHLIGHTS = 5;
 
 const DANMAKU_MODES = {
   light: { label: "轻聊", enabled: true, density: 0.72, includeModes: ["light"] },
@@ -1799,6 +1801,206 @@ function renderSelectOptions(values, selected) {
   return values.map((value) => `<option value="${escapeHTML(value)}" ${value === selected ? "selected" : ""}>${escapeHTML(value)}</option>`).join("");
 }
 
+function renderValidationSummary(kind, title, validation) {
+  const errors = validation.errors || [];
+  const warnings = validation.warnings || [];
+  const status = errors.length ? "error" : warnings.length ? "warning" : "ok";
+  const messages = errors.length || warnings.length ? [...errors, ...warnings] : ["可以保存"];
+  return `
+    <div class="validation-summary ${status}" data-validation="${escapeHTML(kind)}">
+      <strong>${escapeHTML(title)}</strong>
+      <ul>
+        ${messages.map((message) => `<li>${escapeHTML(message)}</li>`).join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function refreshValidationSummary(kind, title, validation) {
+  const element = document.querySelector(`[data-validation="${kind}"]`);
+  if (element) element.outerHTML = renderValidationSummary(kind, title, validation);
+}
+
+function validateReviewPayload(payload) {
+  const errors = [];
+  const warnings = [];
+  const highlights = Array.isArray(payload.highlights) ? payload.highlights : [];
+  if (!highlights.length) errors.push("至少保留 1 个高光点");
+  if (highlights.length > REVIEW_MAX_HIGHLIGHTS) errors.push(`单集高光点不超过 ${REVIEW_MAX_HIGHLIGHTS} 个，避免互动过密`);
+
+  highlights.forEach((item, index) => {
+    const label = `高光点 ${index + 1}`;
+    const start = Number(item.start_time_sec);
+    const end = Number(item.end_time_sec);
+    if (!Number.isFinite(start) || start < 0) errors.push(`${label} 的开始秒必须是非负数字`);
+    if (!Number.isFinite(end) || end <= start) errors.push(`${label} 的结束秒必须大于开始秒`);
+    if (!item.title?.trim()) errors.push(`${label} 缺少高光名称`);
+    if (!REVIEW_TYPE_LABELS.includes(item.highlight_type)) errors.push(`${label} 的高光类型不在允许范围`);
+    if (!REVIEW_EMOTIONS.includes(item.emotion)) errors.push(`${label} 的情绪不在允许范围`);
+    if (!Array.isArray(item.evidence_segment_ids) || !item.evidence_segment_ids.length) errors.push(`${label} 缺少证据片段ID`);
+    if (!String(item.evidence_text || "").trim()) warnings.push(`${label} 缺少证据文本，建议补充台词或画面描述`);
+
+    const options = Array.isArray(item.options) ? item.options : [];
+    if (options.length < 2 || options.length > 4) errors.push(`${label} 需要 2-4 个互动按钮`);
+    const keys = new Set();
+    options.forEach((option, optionIndex) => {
+      const optionLabel = `${label} 按钮 ${optionIndex + 1}`;
+      if (!option.key) errors.push(`${optionLabel} 缺少 key`);
+      if (keys.has(option.key)) errors.push(`${optionLabel} key 重复`);
+      keys.add(option.key);
+      const text = String(option.label || "").trim();
+      if (!text || text.length > 8) errors.push(`${optionLabel} 文案必须是 1-8 个字`);
+    });
+  });
+
+  const sorted = highlights
+    .map((item) => Number(item.start_time_sec))
+    .filter(Number.isFinite)
+    .sort((left, right) => left - right);
+  for (let index = 1; index < sorted.length; index += 1) {
+    if (sorted[index] - sorted[index - 1] < REVIEW_MIN_HIGHLIGHT_GAP_SEC) {
+      errors.push(`${formatTime(sorted[index - 1])} 与 ${formatTime(sorted[index])} 间隔不足 ${REVIEW_MIN_HIGHLIGHT_GAP_SEC} 秒`);
+    }
+  }
+
+  return { errors, warnings };
+}
+
+function validateExperiencePayload(payload) {
+  const errors = [];
+  const warnings = [];
+  const config = payload.config || {};
+  const theme = config.player_theme || {};
+  const timeline = Array.isArray(config.sticker_timeline) ? config.sticker_timeline : [];
+  const availableAssets = new Set(Object.keys(STICKER_ASSETS));
+  if (!theme.name?.trim()) warnings.push("播放器主题名为空，建议补充");
+  if (!timeline.length) warnings.push("暂无贴图时间窗，播放时不会出现剧情贴图");
+
+  timeline.forEach((slot, index) => {
+    const label = `贴图窗 ${index + 1}`;
+    const start = Number(slot.start_time_sec ?? slot.start);
+    const end = Number(slot.end_time_sec ?? slot.end);
+    if (!Number.isFinite(start) || start < 0) errors.push(`${label} 的开始秒必须是非负数字`);
+    if (!Number.isFinite(end) || end <= start) errors.push(`${label} 的结束秒必须大于开始秒`);
+    const assets = slot.asset_ids || slot.assets || [];
+    if (!Array.isArray(assets) || !assets.length) warnings.push(`${label} 未选择贴图素材`);
+    assets.forEach((asset) => {
+      if (!availableAssets.has(asset)) errors.push(`${label} 引用了不存在的贴图：${asset}`);
+    });
+    if (Number(slot.cadence_sec || 0) <= 0) errors.push(`${label} 的频率秒必须大于 0`);
+    if (Number(slot.burst_count || 0) <= 0) errors.push(`${label} 的出现数量必须大于 0`);
+  });
+
+  const ordered = timeline
+    .map((slot) => ({
+      start: Number(slot.start_time_sec ?? slot.start),
+      end: Number(slot.end_time_sec ?? slot.end),
+    }))
+    .filter((slot) => Number.isFinite(slot.start) && Number.isFinite(slot.end))
+    .sort((left, right) => left.start - right.start);
+  for (let index = 1; index < ordered.length; index += 1) {
+    if (ordered[index].start < ordered[index - 1].end) {
+      warnings.push(`${formatTime(ordered[index - 1].start)}-${formatTime(ordered[index - 1].end)} 与 ${formatTime(ordered[index].start)}-${formatTime(ordered[index].end)} 有重叠`);
+    }
+  }
+
+  return { errors, warnings };
+}
+
+function defaultReviewHighlight(payload) {
+  const highlights = Array.isArray(payload.highlights) ? payload.highlights : [];
+  const duration = Number(payload.duration_sec || 0);
+  const starts = highlights.map((item) => Number(item.start_time_sec)).filter(Number.isFinite);
+  let start = starts.length ? Math.max(...starts) + REVIEW_MIN_HIGHLIGHT_GAP_SEC : 0;
+  if (duration && start + 8 > duration) {
+    start = 0;
+    for (let candidate = REVIEW_MIN_HIGHLIGHT_GAP_SEC; candidate <= Math.max(0, duration - 8); candidate += 5) {
+      if (starts.every((existing) => Math.abs(existing - candidate) >= REVIEW_MIN_HIGHLIGHT_GAP_SEC)) {
+        start = candidate;
+        break;
+      }
+    }
+  }
+  const end = Number(Math.min(duration || start + 8, start + 8).toFixed(2));
+  const index = highlights.length + 1;
+  return {
+    start_time_sec: Number(start.toFixed(2)),
+    end_time_sec: end > start ? end : Number((start + 8).toFixed(2)),
+    title: `待复核高光 ${index}`,
+    description: "请补充这一段剧情说明。",
+    highlight_type: "悬念钩子",
+    emotion: "期待",
+    confidence: 0.7,
+    reason: "复核台人工新增，待确认。",
+    evidence_segment_ids: [`manual-new-${Date.now()}`],
+    evidence_text: "请补充台词或画面证据。",
+    options: [
+      { key: `option_${index}_a`, label: "想看" },
+      { key: `option_${index}_b`, label: "好奇" },
+      { key: `option_${index}_c`, label: "等等" },
+    ],
+  };
+}
+
+function addReviewHighlight() {
+  const payload = parseReviewJson();
+  payload.highlights ||= [];
+  if (payload.highlights.length >= REVIEW_MAX_HIGHLIGHTS) {
+    setReviewStatus(`最多保留 ${REVIEW_MAX_HIGHLIGHTS} 个高光点，先删除不需要的高光`, true);
+    return;
+  }
+  payload.highlights.push(defaultReviewHighlight(payload));
+  syncReviewJson(payload);
+  renderReviewPreview(payload);
+  setReviewStatus("已新增 1 个待复核高光点，修改后点击保存生效");
+}
+
+function deleteReviewHighlight(button) {
+  const index = Number(button.dataset.index);
+  const payload = parseReviewJson();
+  const item = payload.highlights?.[index];
+  if (!item) return;
+  payload.highlights.splice(index, 1);
+  syncReviewJson(payload);
+  renderReviewPreview(payload);
+  setReviewStatus(`已删除「${item.title}」，点击保存后生效`);
+}
+
+function renderStickerAssetPicker(assets, slotIndex) {
+  const selected = new Set(assets);
+  return `
+    <div class="asset-picker" data-slot-index="${slotIndex}">
+      ${Object.entries(STICKER_ASSETS)
+        .map(([assetId, asset]) => {
+          const active = selected.has(assetId);
+          return `<button class="asset-chip ${active ? "selected" : ""}" type="button" data-slot-index="${slotIndex}" data-asset-id="${escapeHTML(
+            assetId
+          )}" title="${escapeHTML(assetId)}">${escapeHTML(asset.label)}</button>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function toggleStickerAsset(button) {
+  const index = Number(button.dataset.slotIndex);
+  const assetId = button.dataset.assetId;
+  const payload = parseExperienceJson();
+  const slot = payload.config?.sticker_timeline?.[index];
+  if (!slot || !assetId) return;
+  const assets = new Set(slot.asset_ids || slot.assets || []);
+  if (assets.has(assetId)) {
+    assets.delete(assetId);
+  } else {
+    assets.add(assetId);
+  }
+  slot.asset_ids = [...assets];
+  delete slot.assets;
+  syncExperienceJson(payload);
+  renderExperiencePreview(payload);
+  setReviewStatus("已调整贴图素材，点击保存体验配置后生效");
+}
+
 function updateReviewTimeInput(input) {
   const value = Number(input.value);
   if (!Number.isFinite(value) || value < 0) return;
@@ -1817,6 +2019,7 @@ function updateReviewTimeInput(input) {
     input.value = item.end_time_sec;
   }
   syncReviewJson(payload);
+  refreshValidationSummary("review", "高光保存前检查", validateReviewPayload(payload));
   const card = input.closest(".review-card");
   const timeLabel = card?.querySelector("[data-time-label]");
   if (timeLabel) {
@@ -1833,6 +2036,7 @@ function updateReviewFieldInput(input) {
   if (!item || !field) return;
   item[field] = input.value;
   syncReviewJson(payload);
+  refreshValidationSummary("review", "高光保存前检查", validateReviewPayload(payload));
   const card = input.closest(".review-card");
   const title = card?.querySelector("[data-review-title]");
   if (title && field === "title") title.textContent = input.value || `高光点 ${index + 1}`;
@@ -1848,6 +2052,7 @@ function updateReviewOptionInput(input) {
   if (!option || !field) return;
   option[field] = input.value;
   syncReviewJson(payload);
+  refreshValidationSummary("review", "高光保存前检查", validateReviewPayload(payload));
   setReviewStatus(`已调整高光点 ${index + 1} 的互动按钮，点击保存后生效`);
 }
 
@@ -1879,6 +2084,7 @@ function updateExperienceFieldInput(input) {
     }
   }
   syncExperienceJson(payload);
+  refreshValidationSummary("experience", "体验配置保存前检查", validateExperiencePayload(payload));
   setReviewStatus("已调整体验配置，点击保存后生效");
 }
 
@@ -1886,17 +2092,24 @@ function renderReviewPreview(payload) {
   const highlights = payload.highlights || [];
   $("#reviewPreview").innerHTML = `
     <div class="review-preview-head">
-      <span>片名</span>
-      <strong>${escapeHTML(payload.drama_title)} · ${escapeHTML(payload.episode_title)}</strong>
-      <small>${highlights.length} 个高光点 · 总时长 ${formatTime(payload.duration_sec)}</small>
+      <div>
+        <span>片名</span>
+        <strong>${escapeHTML(payload.drama_title)} · ${escapeHTML(payload.episode_title)}</strong>
+        <small>${highlights.length} 个高光点 · 总时长 ${formatTime(payload.duration_sec)}</small>
+      </div>
+      <button class="ghost-button add-highlight-button" type="button">新增高光</button>
     </div>
+    ${renderValidationSummary("review", "高光保存前检查", validateReviewPayload(payload))}
     ${highlights
       .map(
         (item, index) => `
           <article class="review-card" data-index="${index}">
             <div class="review-card-title">
-              <span>高光点 ${index + 1}</span>
-              <h4 data-review-title>${escapeHTML(item.title)}</h4>
+              <div>
+                <span>高光点 ${index + 1}</span>
+                <h4 data-review-title>${escapeHTML(item.title)}</h4>
+              </div>
+              <button class="danger-button delete-highlight-button" type="button" data-index="${index}">删除</button>
             </div>
             <div class="review-field-grid">
               <label>
@@ -1977,6 +2190,7 @@ function renderExperiencePreview(payload) {
       )}</p>
       <small>${payload.persisted ? "已存入数据库" : "系统默认草稿，保存后进入数据库"}</small>
     </article>
+    ${renderValidationSummary("experience", "体验配置保存前检查", validateExperiencePayload(payload))}
     <article class="experience-card">
       <strong>播放器主题</strong>
       <div class="experience-field-grid">
@@ -2020,6 +2234,7 @@ function renderExperiencePreview(payload) {
                       贴图ID，用逗号分隔
                       <input class="experience-field-input" data-section="slot" data-index="${index}" data-field="asset_ids" value="${assets.map(escapeHTML).join(", ")}" />
                     </label>
+                    ${renderStickerAssetPicker(assets, index)}
                     <div class="experience-field-grid">
                       <label>
                         频率秒
@@ -2089,6 +2304,12 @@ function formatExperienceJson() {
 async function saveReviewPayload() {
   try {
     const payload = parseReviewJson();
+    const validation = validateReviewPayload(payload);
+    if (validation.errors.length) {
+      renderReviewPreview(payload);
+      setReviewStatus(`保存前检查失败：${validation.errors.slice(0, 2).join("；")}`, true);
+      return;
+    }
     const episodeId = Number($("#reviewEpisodeSelect").value || payload.episode_id);
     const result = await fetchJSON(`/api/admin/episodes/${episodeId}/highlights`, {
       method: "PUT",
@@ -2110,6 +2331,12 @@ async function saveReviewPayload() {
 async function saveExperiencePayload() {
   try {
     const payload = parseExperienceJson();
+    const validation = validateExperiencePayload(payload);
+    if (validation.errors.length) {
+      renderExperiencePreview(payload);
+      setReviewStatus(`体验配置检查失败：${validation.errors.slice(0, 2).join("；")}`, true);
+      return;
+    }
     const episodeId = Number($("#reviewEpisodeSelect").value || payload.episode_id);
     const result = await fetchJSON(`/api/admin/episodes/${episodeId}/experience`, {
       method: "PUT",
@@ -2235,6 +2462,14 @@ $("#reviewPreview").addEventListener("change", (event) => {
     updateReviewFieldInput(event.target);
   }
 });
+$("#reviewPreview").addEventListener("click", (event) => {
+  if (event.target.classList.contains("add-highlight-button")) {
+    addReviewHighlight();
+  }
+  if (event.target.classList.contains("delete-highlight-button")) {
+    deleteReviewHighlight(event.target);
+  }
+});
 $("#experiencePreview").addEventListener("input", (event) => {
   if (event.target.classList.contains("experience-field-input")) {
     updateExperienceFieldInput(event.target);
@@ -2243,6 +2478,11 @@ $("#experiencePreview").addEventListener("input", (event) => {
 $("#experiencePreview").addEventListener("change", (event) => {
   if (event.target.classList.contains("experience-field-input")) {
     updateExperienceFieldInput(event.target);
+  }
+});
+$("#experiencePreview").addEventListener("click", (event) => {
+  if (event.target.classList.contains("asset-chip")) {
+    toggleStickerAsset(event.target);
   }
 });
 $("#danmakuForm").addEventListener("submit", sendDanmaku);

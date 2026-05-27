@@ -38,12 +38,12 @@ def parse_options(highlight: Highlight) -> list[dict]:
         return []
 
 
-def parse_evidence_segment_ids(highlight: Highlight) -> list[int]:
+def parse_evidence_segment_ids(highlight: Highlight) -> list[int | str]:
     try:
         values = json.loads(highlight.evidence_segment_ids_json or "[]")
     except json.JSONDecodeError:
         return []
-    return [int(value) for value in values if isinstance(value, (int, float, str)) and str(value).isdigit()]
+    return [value for value in values if isinstance(value, (int, float, str)) and str(value)]
 
 
 def highlight_payload(highlight: Highlight) -> dict:

@@ -1,29 +1,20 @@
 # Project Status
 
-更新时间：2026-05-27 09:53:00
+更新时间：2026-05-27 11:38:48
 
 ## 当前目标
 
-完善复核页可操作性，并重做那年冬至第1集高光、贴图和爱情点击体验。
+把复核页推进为后台管理雏形，支持高光增删、贴图选择和保存前校验。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`c2fa0e0`
+- 最新提交：`83fa5f5`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M backend/app/fixtures/danmaku_comments.json`
-- `M backend/app/fixtures/experience_configs.json`
-- `M backend/app/fixtures/reviewed_highlights.json`
-- `M backend/app/taxonomy.py`
+- `M backend/app/main.py`
 - `M frontend/app.js`
-- `M frontend/assets/themes/episode_19_experience_config.json`
-- `M frontend/index.html`
 - `M frontend/styles.css`
-- `?? frontend/assets/stickers/winter_choice.svg`
-- `?? frontend/assets/stickers/winter_crow.svg`
-- `?? frontend/assets/stickers/winter_kiss.svg`
-- `?? frontend/assets/stickers/winter_wow.svg`
 
 ## 数据状态
 
@@ -55,17 +46,17 @@
 
 ## 本次变更摘要
 
-- 复核页新增表单化编辑：高光名称、类型、情绪、时间、剧情说明、按钮文案、证据文本均可直接改，体验配置可直接编辑主题和贴图时间窗。
-- 那年冬至第1集改为4个人工复核高光：27s安乐死难过、50s震惊、1:50选择悬念、2:50突然亲吻心动。
-- 新增冬至爱情贴图资产：乌鸦无语、哇塞、突然亲吻、双选卡，并将2:42乌鸦无语和2:50亲吻爱心特效写入体验配置。
-- 爱情点击贴图支持99/MAX计数、小心心粒子、5次后心动增强，并修复贴图被面板遮挡和重叠导致点击不准的问题。
-- 补充那年冬至弹幕fixture，轻聊/狂欢/沉浸模式差异更明显。
+- 复核页新增高光操作：支持一键新增待复核高光，并支持删除单个高光，所有修改仍通过保存按钮统一写回服务端。
+- 新增高光会自动寻找与现有高光间隔足够的时间空档，减少默认时间触发校验失败的问题。
+- 体验配置新增贴图素材选择器，可通过贴图按钮直接勾选/取消素材，不再只依赖手输 asset_id。
+- 新增高光保存前检查和体验配置保存前检查，错误会直接阻止保存，警告会在页面展示给复核人员。
+- 修复人工证据ID读取逻辑，保留 manual-ep19-027 这类字符串证据标识，避免复核后再次加载丢失。
 
 ## 下一步建议
 
-- 继续按单部剧复核方式处理下一部爱情或强冲突短剧，先保证2-3部体验足够稳定。
-- 把复核页进一步升级为后台管理雏形：新增一键新增/删除高光点、贴图素材选择器、保存前校验提示。
-- 讨论是否接入图像生成服务，把当前SVG贴图替换或补充为模型生成的透明PNG/动图资产。
+- 继续完善复核页：增加贴图时间窗新增/删除、素材缩略图预览和按高光自动生成贴图窗。
+- 开始处理下一部样片，优先选择冲突强或甜宠强的剧，验证后台流程能否稳定复用。
+- 讨论图像生成服务接入方案：先生成透明PNG贴图资产，再纳入素材库选择器。
 
 ## 安全提醒
 
