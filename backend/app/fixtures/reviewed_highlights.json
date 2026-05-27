@@ -380,6 +380,132 @@
           ]
         }
       ]
+    },
+    {
+      "drama_title": "那年冬至",
+      "episode_no": 1,
+      "highlights": [
+        {
+          "start_time_sec": 27.0,
+          "end_time_sec": 35.0,
+          "title": "安乐死话题刺痛人心",
+          "description": "安乐死相关台词出现，爱情故事里先抛出沉重情绪，让用户产生心疼和难过。",
+          "highlight_type": "虐心共情",
+          "emotion": "难过",
+          "confidence": 0.96,
+          "source": "human_review",
+          "model_version": "human-review-winter-v2",
+          "annotation_reason": "用户复核指定：27s 安乐死出现，情绪为伤心，按系统情绪枚举映射为难过。",
+          "evidence_segment_ids": [
+            "manual-ep19-027"
+          ],
+          "evidence_text": "27s 安乐死出现，触发伤心/难过共情。",
+          "options": [
+            {
+              "key": "sad",
+              "label": "破防了"
+            },
+            {
+              "key": "hug",
+              "label": "抱抱她"
+            },
+            {
+              "key": "hard",
+              "label": "太难了"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 50.0,
+          "end_time_sec": 60.0,
+          "title": "女主突然去脱男主衣服",
+          "description": "女主动作用强反差制造震惊点，适合用夸张表情和弹幕反应承接。",
+          "highlight_type": "反转揭秘",
+          "emotion": "震惊",
+          "confidence": 0.96,
+          "source": "human_review",
+          "model_version": "human-review-winter-v2",
+          "annotation_reason": "用户复核指定：50s 震惊，女主去脱男主衣服。",
+          "evidence_segment_ids": [
+            "manual-ep19-050"
+          ],
+          "evidence_text": "50s 女主去脱男主衣服，观众会感到突然和震惊。",
+          "options": [
+            {
+              "key": "shock",
+              "label": "我看傻"
+            },
+            {
+              "key": "cover",
+              "label": "别冲动"
+            },
+            {
+              "key": "sudden",
+              "label": "太突然"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 110.0,
+          "end_time_sec": 122.0,
+          "title": "男主会选择哪一个",
+          "description": "剧情进入选择悬念，用户用两难预测表达站队和期待。",
+          "highlight_type": "悬念钩子",
+          "emotion": "期待",
+          "confidence": 0.95,
+          "source": "human_review",
+          "model_version": "human-review-winter-v2",
+          "annotation_reason": "用户复核指定：1:50 两个选择，男主会选择哪一个。",
+          "evidence_segment_ids": [
+            "manual-ep19-110"
+          ],
+          "evidence_text": "1:50 出现两个选择，悬念点是男主会选择哪一个。",
+          "options": [
+            {
+              "key": "love",
+              "label": "选心动"
+            },
+            {
+              "key": "reality",
+              "label": "选现实"
+            },
+            {
+              "key": "wait",
+              "label": "先观望"
+            }
+          ]
+        },
+        {
+          "start_time_sec": 170.0,
+          "end_time_sec": 182.0,
+          "title": "女主突然亲吻男主",
+          "description": "突然亲吻带来爱情片核心甜点，适合爱心、哇塞、连点心动反馈。",
+          "highlight_type": "甜蜜心动",
+          "emotion": "心动",
+          "confidence": 0.98,
+          "source": "human_review",
+          "model_version": "human-review-winter-v2",
+          "annotation_reason": "用户复核指定：2:50 女主突然亲吻男主。",
+          "evidence_segment_ids": [
+            "manual-ep19-170"
+          ],
+          "evidence_text": "2:50 女主突然亲吻男主，触发心动和撒糖互动。",
+          "options": [
+            {
+              "key": "wow",
+              "label": "哇塞"
+            },
+            {
+              "key": "sweet",
+              "label": "磕到了"
+            },
+            {
+              "key": "heart",
+              "label": "小心心"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

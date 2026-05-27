@@ -100,7 +100,7 @@ ALLOWED_EMOTIONS = {
 }
 
 MAX_HIGHLIGHTS_PER_EPISODE = 5
-MIN_HIGHLIGHT_GAP_SEC = 25
+MIN_HIGHLIGHT_GAP_SEC = 20
 
 
 def normalize_highlight_type(value: str) -> str:

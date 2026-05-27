@@ -414,6 +414,126 @@
           "校验冬日主题的两个色值在不同移动端机型上的显示效果，避免出现色偏影响冬日情绪氛围传递"
         ]
       }
+    },
+    {
+      "drama_title": "????",
+      "episode_no": 1,
+      "version": 2,
+      "source": "human_review",
+      "model_version": "experience-config-winter-v2",
+      "review_status": "human_reviewed",
+      "config": {
+        "player_theme": {
+          "theme_key": "winter",
+          "name": "那年冬至·雪夜心动",
+          "class_name": "theme-winter",
+          "badge": "安乐死阴影 · 选择拉扯 · 突然亲吻",
+          "signal": "雪点 / 旧照片 / 乌鸦无语 / 哇塞气泡 / 心动连点",
+          "accent": "#9fd8ff",
+          "soft": "#ff9bbd",
+          "endpoint_label": "心"
+        },
+        "sticker_timeline": [
+          {
+            "start_time_sec": 0,
+            "end_time_sec": 26,
+            "asset_ids": [
+              "winterSnow"
+            ],
+            "cadence_sec": 5,
+            "burst_count": 1,
+            "meaning": "片头保留轻量冬日氛围，不抢剧情，只用雪点建立爱情片基调。"
+          },
+          {
+            "start_time_sec": 27,
+            "end_time_sec": 36,
+            "asset_ids": [
+              "winterMemory",
+              "tear"
+            ],
+            "cadence_sec": 2,
+            "burst_count": 3,
+            "meaning": "27s 安乐死话题出现，旧照片和泪滴承接伤心/难过情绪。"
+          },
+          {
+            "start_time_sec": 50,
+            "end_time_sec": 61,
+            "asset_ids": [
+              "winterWow",
+              "question"
+            ],
+            "cadence_sec": 2,
+            "burst_count": 4,
+            "meaning": "50s 女主突然去脱男主衣服，使用哇塞和问号贴图强化震惊反应。"
+          },
+          {
+            "start_time_sec": 110,
+            "end_time_sec": 122,
+            "asset_ids": [
+              "winterChoice",
+              "question"
+            ],
+            "cadence_sec": 2,
+            "burst_count": 3,
+            "meaning": "1:50 男主面临选择，使用双选卡和问号提示用户预测。"
+          },
+          {
+            "start_time_sec": 160,
+            "end_time_sec": 168,
+            "asset_ids": [
+              "winterCrow"
+            ],
+            "cadence_sec": 2,
+            "burst_count": 3,
+            "meaning": "2:42 配合尴尬/无语台词或表情，投放乌鸦无语表情包。"
+          },
+          {
+            "start_time_sec": 170,
+            "end_time_sec": 184,
+            "asset_ids": [
+              "winterKiss",
+              "winterHeart",
+              "winterWow"
+            ],
+            "cadence_sec": 1,
+            "burst_count": 3,
+            "meaning": "2:50 女主突然亲吻男主，密集投放哇塞、亲吻和爱心贴图，点击后以小心心放大反馈表达心动。"
+          }
+        ],
+        "danmaku_modes": {
+          "light": {
+            "label": "轻聊",
+            "enabled": true,
+            "density": 0.8,
+            "include_modes": [
+              "light",
+              "curated"
+            ]
+          },
+          "carnival": {
+            "label": "狂欢",
+            "enabled": true,
+            "density": 1.25,
+            "include_modes": [
+              "light",
+              "curated",
+              "seed",
+              "carnival"
+            ]
+          },
+          "immerse": {
+            "label": "沉浸",
+            "enabled": false,
+            "density": 0,
+            "include_modes": []
+          }
+        },
+        "draft_notes": [
+          "本配置基于用户人工复核点重做，贴图时间必须随正片二次检查。",
+          "爱情片点击贴图使用 99/MAX 计数，5 次后出现心动放大，16 次后进入更强心动状态。",
+          "后续如接入图像生成模型，应把 asset_ids 替换为模型生成的透明贴图资源，并保留本地审核记录。"
+        ]
+      }
     }
   ]
 }

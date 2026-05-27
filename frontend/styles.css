@@ -672,7 +672,7 @@ main {
 .sticker-layer {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 6;
   overflow: hidden;
   pointer-events: none;
 }
@@ -711,6 +711,7 @@ main {
   display: none;
   min-width: 25px;
   height: 25px;
+  padding: 0 6px;
   place-items: center;
   border: 2px solid #111720;
   border-radius: 999px;
@@ -718,6 +719,13 @@ main {
   background: #fff7d6;
   font-size: 12px;
   font-weight: 900;
+}
+
+.scene-sticker[data-mood="heart"] .sticker-count {
+  border-color: #8a2559;
+  color: #8a2559;
+  background: #fff0f7;
+  box-shadow: 0 0 16px rgba(255, 126, 172, 0.52);
 }
 
 .scene-sticker[data-clicks]:not([data-clicks="0"]) .sticker-count {
@@ -763,6 +771,32 @@ main {
   animation: sticker-flame 360ms ease-in-out infinite alternate;
 }
 
+.scene-sticker.heart-hot::before,
+.scene-sticker.heart-mega::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  z-index: -1;
+  border-radius: 48% 52% 50% 50%;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255, 238, 247, 0.92), rgba(255, 126, 172, 0.42) 34%, transparent 66%),
+    radial-gradient(circle at 68% 32%, rgba(255, 238, 247, 0.82), rgba(255, 126, 172, 0.34) 30%, transparent 62%),
+    radial-gradient(circle at 50% 64%, rgba(255, 126, 172, 0.42), transparent 62%);
+  animation: heart-pulse 780ms ease-in-out infinite alternate;
+}
+
+.scene-sticker.heart-mega::after {
+  content: "♥";
+  position: absolute;
+  right: -12px;
+  bottom: 0;
+  z-index: 1;
+  color: #ff6fa8;
+  font-size: 38px;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.85), 0 0 24px rgba(255, 126, 172, 0.75);
+  animation: heart-float 920ms ease-in-out infinite alternate;
+}
+
 .scene-sticker.mega img {
   filter: drop-shadow(0 0 26px rgba(255, 195, 91, 0.96)) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.34));
 }
@@ -794,6 +828,10 @@ main {
 .sticker-winter-snow,
 .sticker-winter-heart,
 .sticker-winter-memory,
+.sticker-winter-crow,
+.sticker-winter-wow,
+.sticker-winter-kiss,
+.sticker-winter-choice,
 .sticker-vehicle {
   width: 128px;
   height: 92px;
@@ -820,6 +858,10 @@ main {
 .sticker-winter-snow img,
 .sticker-winter-heart img,
 .sticker-winter-memory img,
+.sticker-winter-crow img,
+.sticker-winter-wow img,
+.sticker-winter-kiss img,
+.sticker-winter-choice img,
 .sticker-vehicle img {
   width: 128px;
   height: 92px;
@@ -883,23 +925,33 @@ main {
 
 .sticker-xianxia-rain,
 .sticker-xianxia-spirit,
-.sticker-winter-snow {
+.sticker-winter-snow,
+.sticker-winter-kiss {
   animation-name: smoke-rise;
 }
 
 .sticker-xianxia-seal,
 .sticker-treasure-compass,
-.sticker-winter-heart {
+.sticker-winter-heart,
+.sticker-winter-wow {
   animation-name: ticket-float;
 }
 
 .sticker-treasure-map,
-.sticker-winter-memory {
+.sticker-winter-memory,
+.sticker-winter-crow,
+.sticker-winter-choice {
   animation-name: sign-swing;
 }
 
 .sticker-treasure-trap {
   animation-name: stamp-slam;
+}
+
+.sticker-winter-heart,
+.sticker-winter-wow,
+.sticker-winter-kiss {
+  animation-name: heart-pop-stay;
 }
 
 .sticker-bonus {
@@ -983,11 +1035,24 @@ main {
 
 .sticker-tap-fx.fx-winterSnow,
 .sticker-tap-fx.fx-winterHeart,
-.sticker-tap-fx.fx-winterMemory {
+.sticker-tap-fx.fx-winterMemory,
+.sticker-tap-fx.fx-winterCrow,
+.sticker-tap-fx.fx-winterWow,
+.sticker-tap-fx.fx-winterKiss,
+.sticker-tap-fx.fx-winterChoice,
+.sticker-tap-fx.fx-heart,
+.sticker-tap-fx.fx-heart-count {
   background: #f3fbff;
   color: #7a2e55;
   border-color: #ff9bbd;
   box-shadow: 0 0 18px rgba(255, 155, 189, 0.45);
+}
+
+.sticker-tap-fx.fx-heart,
+.sticker-tap-fx.fx-heart-count {
+  background: #fff0f7;
+  color: #af2d68;
+  border-color: #ff79ad;
 }
 
 .sticker-burst-dot {
@@ -1052,9 +1117,24 @@ main {
 
 .burst-winterSnow,
 .burst-winterHeart,
-.burst-winterMemory {
+.burst-winterMemory,
+.burst-winterCrow,
+.burst-winterWow,
+.burst-winterKiss,
+.burst-winterChoice {
   background: #ff9bbd;
   box-shadow: 0 0 12px #9fd8ff;
+}
+
+.sticker-heart-dot {
+  width: auto;
+  height: auto;
+  color: #ff79ad;
+  background: transparent;
+  border-radius: 0;
+  font-size: 18px;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.86), 0 0 16px rgba(255, 126, 172, 0.76);
 }
 
 .scene-sticker.click-hold img {
@@ -1375,6 +1455,38 @@ main {
   to {
     transform: translateY(-5px) scaleX(1.14);
     opacity: 0.78;
+  }
+}
+
+@keyframes heart-pulse {
+  to {
+    transform: scale(1.16) rotate(4deg);
+    opacity: 0.86;
+  }
+}
+
+@keyframes heart-float {
+  to {
+    transform: translateY(-8px) scale(1.18) rotate(9deg);
+  }
+}
+
+@keyframes heart-pop-stay {
+  0% {
+    opacity: 0;
+    transform: scale(0.76) rotate(-5deg);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1.06) rotate(3deg);
+  }
+  78% {
+    opacity: 1;
+    transform: scale(1) rotate(-2deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.94) rotate(4deg);
   }
 }
 
@@ -2298,6 +2410,72 @@ main {
   display: block;
   margin-top: 8px;
   line-height: 1.5;
+}
+
+.review-field-grid,
+.experience-field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.experience-field-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.review-field-grid label,
+.review-wide-field,
+.review-options-editor label,
+.experience-field-grid label,
+.experience-wide-field {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-field-input,
+.review-option-input,
+.experience-field-input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--text);
+  background: #080c12;
+  font: inherit;
+}
+
+textarea.review-field-input,
+textarea.experience-field-input {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.review-options-editor {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.experience-slot-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.experience-slot-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.experience-slot-card > strong {
+  color: var(--gold);
 }
 
 .review-time-editor {

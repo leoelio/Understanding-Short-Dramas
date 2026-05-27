@@ -78,6 +78,44 @@
         { "time_sec": 298, "text": "下一集我想继续看", "mode": "carnival" },
         { "time_sec": 299, "text": "北往两个字出来就有味了", "mode": "seed" }
       ]
+    },
+    {
+      "drama_title": "那年冬至",
+      "episode_no": 1,
+      "comments": [
+        { "time_sec": 6, "text": "冬至这个氛围先到了", "mode": "light" },
+        { "time_sec": 14, "text": "开头就有点冷感爱情片", "mode": "light" },
+        { "time_sec": 24, "text": "前面情绪压得很低", "mode": "seed" },
+        { "time_sec": 27, "text": "安乐死这个词一出来心沉了", "mode": "light" },
+        { "time_sec": 29, "text": "这句太难受了", "mode": "light" },
+        { "time_sec": 31, "text": "先别甜 我已经破防", "mode": "carnival" },
+        { "time_sec": 34, "text": "这段像在埋一根刺", "mode": "seed" },
+        { "time_sec": 45, "text": "等等她要干嘛", "mode": "light" },
+        { "time_sec": 50, "text": "啊？她直接上手了？", "mode": "carnival" },
+        { "time_sec": 52, "text": "我看傻了", "mode": "carnival" },
+        { "time_sec": 54, "text": "这也太突然了吧", "mode": "light" },
+        { "time_sec": 57, "text": "哇塞贴图很对味", "mode": "carnival" },
+        { "time_sec": 72, "text": "别剧透 我想自己猜", "mode": "light" },
+        { "time_sec": 88, "text": "两个人的关系有点复杂", "mode": "light" },
+        { "time_sec": 106, "text": "感觉要到选择题了", "mode": "seed" },
+        { "time_sec": 110, "text": "来了 男主会选谁", "mode": "light" },
+        { "time_sec": 112, "text": "我站心动这边", "mode": "light" },
+        { "time_sec": 114, "text": "现实线也不是不能理解", "mode": "light" },
+        { "time_sec": 116, "text": "弹幕别吵 让我投票", "mode": "carnival" },
+        { "time_sec": 121, "text": "这个选择会影响后面吧", "mode": "seed" },
+        { "time_sec": 145, "text": "气氛开始变微妙了", "mode": "light" },
+        { "time_sec": 158, "text": "这沉默有点尴尬", "mode": "light" },
+        { "time_sec": 162, "text": "乌鸦无语哈哈哈", "mode": "carnival" },
+        { "time_sec": 164, "text": "这表情包出现得刚好", "mode": "carnival" },
+        { "time_sec": 168, "text": "等一下是不是要亲", "mode": "seed" },
+        { "time_sec": 170, "text": "亲了亲了！", "mode": "carnival" },
+        { "time_sec": 172, "text": "哇塞这一下太突然", "mode": "carnival" },
+        { "time_sec": 174, "text": "小心心给我刷起来", "mode": "carnival" },
+        { "time_sec": 176, "text": "磕到了", "mode": "light" },
+        { "time_sec": 178, "text": "爱情片就该这样给反馈", "mode": "carnival" },
+        { "time_sec": 182, "text": "这段适合疯狂点爱心", "mode": "carnival" },
+        { "time_sec": 190, "text": "别停 我要看下一集", "mode": "light" }
+      ]
     }
   ]
 }

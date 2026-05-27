@@ -225,6 +225,31 @@ const playerTime = $("#playerTime");
 const HIGHLIGHT_ALIAS_TO_KEY = Object.fromEntries(
   Object.entries(HIGHLIGHT_UI).flatMap(([key, config]) => config.aliases.map((alias) => [alias, key]))
 );
+const REVIEW_TYPE_LABELS = Object.values(HIGHLIGHT_UI).map((config) => config.label);
+const REVIEW_EMOTIONS = [
+  "爽",
+  "震惊",
+  "心疼",
+  "愤怒",
+  "好笑",
+  "心动",
+  "紧张",
+  "期待",
+  "站队",
+  "意外",
+  "恍然大悟",
+  "解气",
+  "燃",
+  "磕到了",
+  "甜",
+  "难过",
+  "破防",
+  "好奇",
+  "离谱",
+  "欢乐",
+  "担心",
+  "屏息",
+];
 
 function escapeHTML(value) {
   return String(value ?? "")
@@ -615,6 +640,10 @@ const STICKER_ASSETS = {
   winterSnow: { src: "/assets/stickers/winter_snow.svg", label: "冬至雪" },
   winterHeart: { src: "/assets/stickers/winter_heart.svg", label: "心事" },
   winterMemory: { src: "/assets/stickers/winter_memory.svg", label: "旧照片" },
+  winterCrow: { src: "/assets/stickers/winter_crow.svg", label: "乌鸦无语" },
+  winterWow: { src: "/assets/stickers/winter_wow.svg", label: "哇塞" },
+  winterKiss: { src: "/assets/stickers/winter_kiss.svg", label: "突然亲吻" },
+  winterChoice: { src: "/assets/stickers/winter_choice.svg", label: "选哪边" },
   vehicleTrain: { src: "/assets/stickers/vehicle_train.svg", label: "火车" },
   vehicleCar: { src: "/assets/stickers/vehicle_car.svg", label: "小车" },
   vehicleMotorcycle: { src: "/assets/stickers/vehicle_motorcycle.svg", label: "摩托车" },
@@ -876,19 +905,22 @@ const STICKER_RULES = [
   {
     asset: "winterHeart",
     className: "sticker-winter-heart",
-    keywords: ["爱情", "心动", "相遇", "喜欢", "遗憾"],
-    tapWords: ["心动", "别错过", "拉扯"],
+    keywords: ["爱情", "心动", "相遇", "喜欢", "遗憾", "亲吻", "小心心"],
+    tapWords: ["心动", "小心心", "磕到了"],
     positions: [
-      { left: "58%", top: "24%" },
+      { left: "64%", top: "12%" },
       { left: "12%", top: "42%" },
     ],
-    durationMs: 4000,
-    clickHoldMs: 2400,
+    durationMs: 2200,
+    clickHoldMs: 1000,
+    tapColor: "rgba(255, 126, 172, 0.82)",
+    heartEffect: true,
+    maxScale: 2.22,
   },
   {
     asset: "winterMemory",
     className: "sticker-winter-memory",
-    keywords: ["回忆", "那年", "旧事", "误会", "反转"],
+    keywords: ["回忆", "那年", "旧事", "误会", "反转", "安乐死", "难过"],
     tapWords: ["想起了", "有故事", "破防"],
     positions: [
       { left: "10%", top: "44%" },
@@ -896,6 +928,60 @@ const STICKER_RULES = [
     ],
     durationMs: 4000,
     clickHoldMs: 2400,
+  },
+  {
+    asset: "winterCrow",
+    className: "sticker-winter-crow",
+    keywords: ["乌鸦", "无语", "尴尬", "沉默"],
+    tapWords: ["无语", "沉默了", "这也行"],
+    positions: [
+      { left: "56%", top: "20%" },
+      { left: "12%", top: "36%" },
+    ],
+    durationMs: 2400,
+    clickHoldMs: 1000,
+    tapColor: "rgba(159, 216, 255, 0.72)",
+  },
+  {
+    asset: "winterWow",
+    className: "sticker-winter-wow",
+    keywords: ["震惊", "突然", "脱衣服", "哇塞"],
+    tapWords: ["哇塞", "我看傻", "太突然"],
+    positions: [
+      { left: "12%", top: "20%" },
+      { left: "62%", top: "44%" },
+    ],
+    durationMs: 2400,
+    clickHoldMs: 1000,
+    tapColor: "rgba(255, 203, 111, 0.82)",
+  },
+  {
+    asset: "winterKiss",
+    className: "sticker-winter-kiss",
+    keywords: ["亲吻", "亲嘴", "撒糖", "磕到了", "甜"],
+    tapWords: ["哇塞", "亲了", "甜疯了"],
+    positions: [
+      { left: "56%", top: "26%" },
+      { left: "11%", top: "44%" },
+      { left: "43%", top: "18%" },
+    ],
+    durationMs: 2200,
+    clickHoldMs: 1000,
+    tapColor: "rgba(255, 126, 172, 0.9)",
+    heartEffect: true,
+    maxScale: 2.38,
+  },
+  {
+    asset: "winterChoice",
+    className: "sticker-winter-choice",
+    keywords: ["选择", "选哪一个", "男主会选择", "期待"],
+    tapWords: ["选谁", "站哪边", "等答案"],
+    positions: [
+      { left: "10%", top: "25%" },
+      { left: "60%", top: "44%" },
+    ],
+    durationMs: 2600,
+    clickHoldMs: 1200,
   },
   { asset: "charge", className: "sticker-charge", keywords: ["冲", "干", "走"], tapWords: ["冲"] },
   { asset: "question", className: "sticker-question", keywords: ["悬念", "疑问"], tapWords: ["?"] },
@@ -1032,12 +1118,15 @@ function spawnStickerBurst(sticker, rule, clicks) {
   const hostRect = stickerLayer.getBoundingClientRect();
   const centerX = rect.left - hostRect.left + rect.width / 2;
   const centerY = rect.top - hostRect.top + rect.height / 2;
-  const count = clicks >= 10 ? 14 : clicks >= 5 ? 10 : 7;
+  const isHeart = Boolean(rule?.heartEffect);
+  const count = isHeart ? (clicks >= 24 ? 18 : clicks >= 8 ? 14 : 9) : clicks >= 10 ? 14 : clicks >= 5 ? 10 : 7;
   for (let index = 0; index < count; index += 1) {
     const particle = document.createElement("i");
-    particle.className = `sticker-burst-dot burst-${rule?.asset || "default"}`;
+    particle.className = `sticker-burst-dot ${isHeart ? "sticker-heart-dot" : ""} burst-${rule?.asset || "default"}`;
+    if (isHeart) particle.textContent = "♥";
     const angle = (Math.PI * 2 * index) / count;
-    const distance = 22 + stableRatio(`${rule?.asset}-${clicks}-${index}`) * (clicks >= 10 ? 46 : 30);
+    const distance =
+      22 + stableRatio(`${rule?.asset}-${clicks}-${index}`) * (isHeart ? Math.min(76, 34 + clicks * 1.2) : clicks >= 10 ? 46 : 30);
     particle.style.left = `${centerX}px`;
     particle.style.top = `${centerY}px`;
     particle.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
@@ -1049,22 +1138,28 @@ function spawnStickerBurst(sticker, rule, clicks) {
 
 function tapSticker(sticker, rule = {}) {
   const clicks = Number(sticker.dataset.clicks || "0") + 1;
+  const isHeart = Boolean(rule.heartEffect);
+  const displayClicks = clicks > 99 ? "MAX" : String(clicks);
   state.stickerCombo += 1;
   sticker.dataset.clicks = String(clicks);
-  sticker.style.setProperty("--tap-scale", `${Math.min(1.75, 1 + clicks * 0.065)}`);
-  sticker.classList.toggle("hot", clicks >= 5);
-  sticker.classList.toggle("mega", clicks >= 10);
-  sticker.querySelector(".sticker-count").textContent = String(clicks);
+  sticker.style.setProperty("--tap-scale", `${Math.min(rule.maxScale || (isHeart ? 2.2 : 1.75), 1 + clicks * (isHeart ? 0.045 : 0.065))}`);
+  sticker.classList.toggle("hot", !isHeart && clicks >= 5);
+  sticker.classList.toggle("mega", !isHeart && clicks >= 10);
+  sticker.classList.toggle("heart-hot", isHeart && clicks >= 5);
+  sticker.classList.toggle("heart-mega", isHeart && clicks >= 16);
+  sticker.querySelector(".sticker-count").textContent = displayClicks;
   sticker.classList.add("tapped");
   sticker.classList.add("click-hold");
   window.clearTimeout(sticker.clickHoldTimer);
   sticker.clickHoldTimer = window.setTimeout(() => sticker.classList.remove("click-hold"), 1100);
   window.setTimeout(() => sticker.classList.remove("tapped"), 180);
   const words = rule.tapWords || [STICKER_ASSETS[rule.asset]?.label || "+1"];
-  spawnTapText(sticker, `${words[clicks % words.length]} +1`, `fx-${rule.asset || "default"}`);
-  spawnTapText(sticker, `总${clicks}`, "fx-count");
+  spawnTapText(sticker, `${words[clicks % words.length]} +1`, `fx-${rule.asset || "default"} ${isHeart ? "fx-heart" : ""}`);
+  spawnTapText(sticker, `总${displayClicks}`, `fx-count ${isHeart ? "fx-heart-count" : ""}`);
   spawnStickerBurst(sticker, rule, clicks);
-  if (clicks === 5 || clicks === 10 || clicks % 15 === 0) {
+  if (isHeart && (clicks === 5 || clicks === 16 || clicks % 25 === 0)) {
+    spawnTapText(sticker, clicks >= 16 ? "心动MAX" : "爱心变大", "fx-heart");
+  } else if (!isHeart && (clicks === 5 || clicks === 10 || clicks % 15 === 0)) {
     spawnTapText(sticker, clicks >= 10 ? "爆了!" : "冒火!", "fx-hot");
     spawnVideoSticker(rule.asset ? rule : STICKER_RULES.find((item) => item.asset === "wageStamp"), clicks, {
       interactive: false,
@@ -1085,6 +1180,7 @@ function spawnVideoSticker(rule, index = 0, options = {}) {
   sticker.dataset.stickerId = id;
   sticker.dataset.clicks = "0";
   sticker.dataset.asset = rule.asset;
+  if (rule.heartEffect) sticker.dataset.mood = "heart";
   if (options.interactive !== false) sticker.type = "button";
   const position = rule.positions?.[index % rule.positions.length];
   sticker.style.setProperty("--left", options.left || position?.left || `${8 + ((index * 23 + state.stickerSerial * 7) % 72)}%`);
@@ -1129,7 +1225,7 @@ function ambientStickerRule() {
 
 function scheduleAmbientStickers() {
   window.clearTimeout(state.ambientStickerTimer);
-  if (!state.currentEpisode || player.paused || views.watch.classList.contains("active") === false) return;
+  if (!state.currentEpisode || state.activeHighlight || player.paused || views.watch.classList.contains("active") === false) return;
   const mode = getDanmakuMode();
   const baseDelay = state.danmakuSettings.mode === "carnival" ? 1250 : state.danmakuSettings.mode === "immerse" ? 3600 : 2300;
   state.ambientStickerTimer = window.setTimeout(() => {
@@ -1485,6 +1581,7 @@ function hideInteraction() {
   state.activeHighlight = null;
   interactionLayer.className = "interaction-layer hidden";
   interactionLayer.innerHTML = "";
+  scheduleAmbientStickers();
 }
 
 function burstReaction(anchor) {
@@ -1698,6 +1795,10 @@ function syncExperienceJson(payload) {
   $("#experienceJson").value = JSON.stringify(payload, null, 2);
 }
 
+function renderSelectOptions(values, selected) {
+  return values.map((value) => `<option value="${escapeHTML(value)}" ${value === selected ? "selected" : ""}>${escapeHTML(value)}</option>`).join("");
+}
+
 function updateReviewTimeInput(input) {
   const value = Number(input.value);
   if (!Number.isFinite(value) || value < 0) return;
@@ -1724,6 +1825,63 @@ function updateReviewTimeInput(input) {
   setReviewStatus(`已调整 ${item.title} 的${field === "start_time_sec" ? "开始" : "结束"}时间，点击保存后生效`);
 }
 
+function updateReviewFieldInput(input) {
+  const index = Number(input.dataset.index);
+  const field = input.dataset.field;
+  const payload = parseReviewJson();
+  const item = payload.highlights?.[index];
+  if (!item || !field) return;
+  item[field] = input.value;
+  syncReviewJson(payload);
+  const card = input.closest(".review-card");
+  const title = card?.querySelector("[data-review-title]");
+  if (title && field === "title") title.textContent = input.value || `高光点 ${index + 1}`;
+  setReviewStatus(`已调整高光点 ${index + 1} 的${input.dataset.label || field}，点击保存后生效`);
+}
+
+function updateReviewOptionInput(input) {
+  const index = Number(input.dataset.index);
+  const optionIndex = Number(input.dataset.optionIndex);
+  const field = input.dataset.field;
+  const payload = parseReviewJson();
+  const option = payload.highlights?.[index]?.options?.[optionIndex];
+  if (!option || !field) return;
+  option[field] = input.value;
+  syncReviewJson(payload);
+  setReviewStatus(`已调整高光点 ${index + 1} 的互动按钮，点击保存后生效`);
+}
+
+function updateExperienceFieldInput(input) {
+  const payload = parseExperienceJson();
+  const section = input.dataset.section;
+  const field = input.dataset.field;
+  if (!section || !field) return;
+  if (section === "theme") {
+    payload.config ||= {};
+    payload.config.player_theme ||= {};
+    payload.config.player_theme[field] = input.value;
+  }
+  if (section === "slot") {
+    const index = Number(input.dataset.index);
+    const slot = payload.config?.sticker_timeline?.[index];
+    if (!slot) return;
+    if (["start_time_sec", "end_time_sec", "cadence_sec", "burst_count"].includes(field)) {
+      const value = Number(input.value);
+      if (!Number.isFinite(value) || value < 0) return;
+      slot[field] = Number(value.toFixed(2));
+    } else if (field === "asset_ids") {
+      slot.asset_ids = input.value
+        .split(/[,/，、\s]+/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    } else {
+      slot[field] = input.value;
+    }
+  }
+  syncExperienceJson(payload);
+  setReviewStatus("已调整体验配置，点击保存后生效");
+}
+
 function renderReviewPreview(payload) {
   const highlights = payload.highlights || [];
   $("#reviewPreview").innerHTML = `
@@ -1738,9 +1896,26 @@ function renderReviewPreview(payload) {
           <article class="review-card" data-index="${index}">
             <div class="review-card-title">
               <span>高光点 ${index + 1}</span>
-              <h4>${escapeHTML(item.title)}</h4>
+              <h4 data-review-title>${escapeHTML(item.title)}</h4>
             </div>
-            <p>${escapeHTML(item.highlight_type)} · ${escapeHTML(item.emotion)}</p>
+            <div class="review-field-grid">
+              <label>
+                高光名称
+                <input class="review-field-input" data-index="${index}" data-field="title" data-label="高光名称" value="${escapeHTML(item.title)}" />
+              </label>
+              <label>
+                高光类型
+                <select class="review-field-input" data-index="${index}" data-field="highlight_type" data-label="高光类型">
+                  ${renderSelectOptions(REVIEW_TYPE_LABELS, item.highlight_type)}
+                </select>
+              </label>
+              <label>
+                情绪
+                <select class="review-field-input" data-index="${index}" data-field="emotion" data-label="情绪">
+                  ${renderSelectOptions(REVIEW_EMOTIONS, item.emotion)}
+                </select>
+              </label>
+            </div>
             <div class="review-time-editor">
               <label>
                 开始秒
@@ -1756,8 +1931,32 @@ function renderReviewPreview(payload) {
               </label>
               <strong data-time-label>${formatTime(item.start_time_sec)}-${formatTime(item.end_time_sec)}</strong>
             </div>
-            <span>${(item.options || []).map((option) => escapeHTML(option.label)).join(" / ")}</span>
-            ${item.evidence_text ? `<small>${escapeHTML(item.evidence_text)}</small>` : ""}
+            <label class="review-wide-field">
+              剧情说明
+              <textarea class="review-field-input" data-index="${index}" data-field="description" data-label="剧情说明" rows="2">${escapeHTML(
+                item.description || ""
+              )}</textarea>
+            </label>
+            <div class="review-options-editor">
+              ${(item.options || [])
+                .map(
+                  (option, optionIndex) => `
+                    <label>
+                      按钮 ${optionIndex + 1}
+                      <input class="review-option-input" data-index="${index}" data-option-index="${optionIndex}" data-field="label" value="${escapeHTML(
+                        option.label
+                      )}" />
+                    </label>
+                  `
+                )
+                .join("")}
+            </div>
+            <label class="review-wide-field">
+              证据文本
+              <textarea class="review-field-input" data-index="${index}" data-field="evidence_text" data-label="证据文本" rows="2">${escapeHTML(
+                item.evidence_text || ""
+              )}</textarea>
+            </label>
           </article>
         `
       )
@@ -1780,21 +1979,71 @@ function renderExperiencePreview(payload) {
     </article>
     <article class="experience-card">
       <strong>播放器主题</strong>
-      <p>${escapeHTML(theme.name || "未配置")} · ${escapeHTML(theme.badge || "")}</p>
-      <small>${escapeHTML(theme.signal || "")}</small>
+      <div class="experience-field-grid">
+        <label>
+          主题名
+          <input class="experience-field-input" data-section="theme" data-field="name" value="${escapeHTML(theme.name || "")}" />
+        </label>
+        <label>
+          主题标识
+          <input class="experience-field-input" data-section="theme" data-field="badge" value="${escapeHTML(theme.badge || "")}" />
+        </label>
+      </div>
+      <label class="experience-wide-field">
+        风格信号
+        <input class="experience-field-input" data-section="theme" data-field="signal" value="${escapeHTML(theme.signal || "")}" />
+      </label>
     </article>
     <article class="experience-card">
       <strong>贴图时间轴</strong>
       ${
         timeline.length
-          ? `<ul>${timeline
-              .map((slot) => {
+          ? `<div class="experience-slot-list">${timeline
+              .map((slot, index) => {
                 const start = Number(slot.start_time_sec ?? slot.start ?? 0);
                 const end = Number(slot.end_time_sec ?? slot.end ?? start);
                 const assets = slot.asset_ids || slot.assets || [];
-                return `<li>${formatTime(start)}-${formatTime(end)}：${assets.map(escapeHTML).join(" / ")}</li>`;
+                return `
+                  <div class="experience-slot-card">
+                    <strong>${formatTime(start)}-${formatTime(end)}</strong>
+                    <div class="experience-field-grid">
+                      <label>
+                        开始秒
+                        <input class="experience-field-input" type="number" min="0" step="0.1" data-section="slot" data-index="${index}" data-field="start_time_sec" value="${start}" />
+                      </label>
+                      <label>
+                        结束秒
+                        <input class="experience-field-input" type="number" min="0" step="0.1" data-section="slot" data-index="${index}" data-field="end_time_sec" value="${end}" />
+                      </label>
+                    </div>
+                    <label class="experience-wide-field">
+                      贴图ID，用逗号分隔
+                      <input class="experience-field-input" data-section="slot" data-index="${index}" data-field="asset_ids" value="${assets.map(escapeHTML).join(", ")}" />
+                    </label>
+                    <div class="experience-field-grid">
+                      <label>
+                        频率秒
+                        <input class="experience-field-input" type="number" min="1" step="1" data-section="slot" data-index="${index}" data-field="cadence_sec" value="${Number(
+                          slot.cadence_sec || 3
+                        )}" />
+                      </label>
+                      <label>
+                        出现数量
+                        <input class="experience-field-input" type="number" min="1" step="1" data-section="slot" data-index="${index}" data-field="burst_count" value="${Number(
+                          slot.burst_count || 2
+                        )}" />
+                      </label>
+                    </div>
+                    <label class="experience-wide-field">
+                      贴图含义
+                      <textarea class="experience-field-input" data-section="slot" data-index="${index}" data-field="meaning" rows="2">${escapeHTML(
+                        slot.meaning || ""
+                      )}</textarea>
+                    </label>
+                  </div>
+                `;
               })
-              .join("")}</ul>`
+              .join("")}</div>`
           : "<p>暂无贴图时间窗</p>"
       }
     </article>
@@ -1973,6 +2222,27 @@ $("#saveExperience").addEventListener("click", saveExperiencePayload);
 $("#reviewPreview").addEventListener("input", (event) => {
   if (event.target.classList.contains("review-time-input")) {
     updateReviewTimeInput(event.target);
+  }
+  if (event.target.classList.contains("review-field-input")) {
+    updateReviewFieldInput(event.target);
+  }
+  if (event.target.classList.contains("review-option-input")) {
+    updateReviewOptionInput(event.target);
+  }
+});
+$("#reviewPreview").addEventListener("change", (event) => {
+  if (event.target.classList.contains("review-field-input")) {
+    updateReviewFieldInput(event.target);
+  }
+});
+$("#experiencePreview").addEventListener("input", (event) => {
+  if (event.target.classList.contains("experience-field-input")) {
+    updateExperienceFieldInput(event.target);
+  }
+});
+$("#experiencePreview").addEventListener("change", (event) => {
+  if (event.target.classList.contains("experience-field-input")) {
+    updateExperienceFieldInput(event.target);
   }
 });
 $("#danmakuForm").addEventListener("submit", sendDanmaku);

@@ -1,51 +1,46 @@
 # Project Status
 
-更新时间：2026-05-27 07:33:16
+更新时间：2026-05-27 09:53:00
 
 ## 当前目标
 
-批量生成三类题材体验配置草稿：修仙、寻宝、冬至爱情
+完善复核页可操作性，并重做那年冬至第1集高光、贴图和爱情点击体验。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`700e06e`
+- 最新提交：`c2fa0e0`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
+- `M backend/app/fixtures/danmaku_comments.json`
 - `M backend/app/fixtures/experience_configs.json`
+- `M backend/app/fixtures/reviewed_highlights.json`
+- `M backend/app/taxonomy.py`
 - `M frontend/app.js`
+- `M frontend/assets/themes/episode_19_experience_config.json`
 - `M frontend/index.html`
 - `M frontend/styles.css`
-- `M scripts/generate_episode_experience_with_llm.py`
-- `?? frontend/assets/stickers/treasure_compass.svg`
-- `?? frontend/assets/stickers/treasure_map.svg`
-- `?? frontend/assets/stickers/treasure_trap.svg`
-- `?? frontend/assets/stickers/winter_heart.svg`
-- `?? frontend/assets/stickers/winter_memory.svg`
-- `?? frontend/assets/stickers/winter_snow.svg`
-- `?? frontend/assets/stickers/xianxia_rain.svg`
-- `?? frontend/assets/stickers/xianxia_seal.svg`
-- `?? frontend/assets/stickers/xianxia_spirit.svg`
-- `?? frontend/assets/themes/episode_19_experience_config.json`
-- `?? frontend/assets/themes/episode_1_experience_config.json`
-- `?? frontend/assets/themes/episode_5_experience_config.json`
+- `?? frontend/assets/stickers/winter_choice.svg`
+- `?? frontend/assets/stickers/winter_crow.svg`
+- `?? frontend/assets/stickers/winter_kiss.svg`
+- `?? frontend/assets/stickers/winter_wow.svg`
 
 ## 数据状态
 
 - 数据库存在：是
 - 短剧：10
 - 剧集：20
-- 高光点：64
-- 已复核剧集：3
-- 待复核剧集：17
-- 互动记录：38
-- 弹幕记录：187
+- 高光点：65
+- 已复核剧集：4
+- 待复核剧集：16
+- 互动记录：40
+- 弹幕记录：220
 - 体验配置：4
 
 ## 高光来源
 
-- `human_review`: 13
-- `manual_seed`: 51
+- `human_review`: 17
+- `manual_seed`: 48
 
 ## 已完成能力
 
@@ -60,16 +55,17 @@
 
 ## 本次变更摘要
 
-- 为《云渺1》第1集生成并写入修仙主题体验配置，增加灵雨、法阵、灵气贴图策略
-- 为《北派寻宝》第63集生成并写入寻宝主题体验配置，增加地图、罗盘、机关贴图策略；因缺少字幕/画面备注，标记为 llm_draft 待复核
-- 为《那年冬至》第1集生成并写入冬至爱情主题体验配置，增加雪、心事、回忆贴图策略；因缺少字幕/画面备注，标记为 llm_draft 待复核
-- 补充新增题材播放器主题和贴图资产，播放页已能按服务端配置展示不同风格
+- 复核页新增表单化编辑：高光名称、类型、情绪、时间、剧情说明、按钮文案、证据文本均可直接改，体验配置可直接编辑主题和贴图时间窗。
+- 那年冬至第1集改为4个人工复核高光：27s安乐死难过、50s震惊、1:50选择悬念、2:50突然亲吻心动。
+- 新增冬至爱情贴图资产：乌鸦无语、哇塞、突然亲吻、双选卡，并将2:42乌鸦无语和2:50亲吻爱心特效写入体验配置。
+- 爱情点击贴图支持99/MAX计数、小心心粒子、5次后心动增强，并修复贴图被面板遮挡和重叠导致点击不准的问题。
+- 补充那年冬至弹幕fixture，轻聊/狂欢/沉浸模式差异更明显。
 
 ## 下一步建议
 
-- 在复核台人工查看《北派寻宝》和《那年冬至》正片画面，修正贴图时间窗和语义描述
-- 下一步可把体验配置 JSON 的核心字段做成表单，降低人工复核成本
-- 再扩大到每部剧第1集前，先确保这4部样例能稳定展示题材差异
+- 继续按单部剧复核方式处理下一部爱情或强冲突短剧，先保证2-3部体验足够稳定。
+- 把复核页进一步升级为后台管理雏形：新增一键新增/删除高光点、贴图素材选择器、保存前校验提示。
+- 讨论是否接入图像生成服务，把当前SVG贴图替换或补充为模型生成的透明PNG/动图资产。
 
 ## 安全提醒
 
