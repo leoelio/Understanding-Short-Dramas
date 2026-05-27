@@ -2579,6 +2579,71 @@ textarea.experience-field-input {
   color: var(--gold);
 }
 
+.sticker-suggestion-json {
+  width: 100%;
+  min-height: 136px;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--text);
+  background: #080c12;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  resize: vertical;
+}
+
+.asset-picker-shell {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+
+.asset-filter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.asset-filter-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.asset-filter-input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--text);
+  background: rgba(8, 12, 18, 0.88);
+  font: inherit;
+}
+
+.asset-group {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 7px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.asset-group summary {
+  cursor: pointer;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.asset-group summary span {
+  float: right;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .asset-picker {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
@@ -2695,6 +2760,10 @@ textarea.experience-field-input {
   .experience-slot-head {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .asset-filter-row {
+    grid-template-columns: 1fr;
   }
 
   .experience-head {

@@ -1,0 +1,63 @@
+{
+  "episode_id": 19,
+  "drama_title": "那年冬至",
+  "episode_title": "第1集",
+  "source": "llm_sticker_suggestion",
+  "model_version": "sticker-suggestion-v1",
+  "slots": [
+    {
+      "start_time_sec": 27.0,
+      "end_time_sec": 35.0,
+      "asset_ids": [
+        "winterBrokenHeart",
+        "tear",
+        "winterHeart"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "这段剧情抛出安乐死沉重话题，触发观众虐心共情，用伤心心疼类贴图呼应难过情绪，强化观众代入感",
+      "asset_prompt": "冬至爱情主题的虐心心碎、心疼落泪、心事沉重的软萌弹幕贴图"
+    },
+    {
+      "start_time_sec": 50.0,
+      "end_time_sec": 60.0,
+      "asset_ids": [
+        "winterWow",
+        "question",
+        "winterBlush"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "女主突然做出脱男主衣服的强反差动作，观众瞬间错愕震惊脸红，用夸张反应贴图承接反转情绪，匹配剧情的强冲击感",
+      "asset_prompt": "震惊哇塞、问号脸、脸红发烫的夸张搞笑弹幕反应贴图"
+    },
+    {
+      "start_time_sec": 110.0,
+      "end_time_sec": 122.0,
+      "asset_ids": [
+        "winterChoice",
+        "winterQuestionLove",
+        "question"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "剧情抛出男主二选一的两难悬念，引导观众站队猜测选择方向，强化用户对后续剧情的期待感",
+      "asset_prompt": "两难选择、爱与现实抉择、问号疑惑的悬念类互动贴图"
+    },
+    {
+      "start_time_sec": 170.0,
+      "end_time_sec": 182.0,
+      "asset_ids": [
+        "winterKiss",
+        "winterHeartbeat",
+        "winterWarmHug",
+        "winterWow"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 4,
+      "meaning": "女主突然亲吻男主的核心撒糖高光点，用心动相关贴图放大甜蜜氛围感，触发观众的心动互动情绪，符合爱情甜点的互动需求",
+      "asset_prompt": "突然亲吻、心跳加速、暖心拥抱、惊喜哇塞的甜宠恋爱类弹幕贴图"
+    }
+  ],
+  "import_note": "在复核页点击“加载建议文件”或复制本 JSON 到导入框，再点击“导入并合并”。"
+}

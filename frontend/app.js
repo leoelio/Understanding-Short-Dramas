@@ -199,6 +199,7 @@ const state = {
   stickerHideTimers: new Map(),
   stickerCombo: 0,
   danmakuActionTimer: null,
+  stickerSuggestionDraft: "",
 };
 
 localStorage.setItem("session_id", state.sessionId);
@@ -661,6 +662,55 @@ const STICKER_ASSETS = {
   rock: { src: "/assets/stickers/effect_rock.svg", label: "摇滚" },
   tear: { src: "/assets/stickers/effect_tear.svg", label: "心疼" },
 };
+
+const STICKER_ASSET_GROUPS = [
+  {
+    key: "road",
+    label: "北往返乡",
+    assetIds: [
+      "mealSteam",
+      "noPayBill",
+      "goSign",
+      "debtCash",
+      "homePhone",
+      "homeLantern",
+      "smokeQuestion",
+      "wageStamp",
+      "homeTicket",
+      "roadQuestion",
+      "rockWord",
+      "rockMoto",
+      "northTitle",
+    ],
+  },
+  { key: "xianxia", label: "仙侠悬念", assetIds: ["xianxiaRain", "xianxiaSeal", "xianxiaSpirit"] },
+  { key: "treasure", label: "寻宝机关", assetIds: ["treasureMap", "treasureCompass", "treasureTrap"] },
+  {
+    key: "winter",
+    label: "冬至爱情",
+    assetIds: [
+      "winterSnow",
+      "winterHeart",
+      "winterMemory",
+      "winterCrow",
+      "winterWow",
+      "winterKiss",
+      "winterChoice",
+      "winterBrokenHeart",
+      "winterBlush",
+      "winterHeartbeat",
+      "winterHoldBack",
+      "winterQuestionLove",
+      "winterWarmHug",
+    ],
+  },
+  { key: "vehicle", label: "交通选择", assetIds: ["vehicleTrain", "vehicleCar", "vehicleMotorcycle"] },
+  { key: "common", label: "通用情绪", assetIds: ["charge", "question", "laugh", "rock", "tear"] },
+];
+
+const STICKER_ASSET_GROUP_BY_ID = Object.fromEntries(
+  STICKER_ASSET_GROUPS.flatMap((group) => group.assetIds.map((assetId) => [assetId, group]))
+);
 
 const STICKER_RULES = [
   {
@@ -2052,17 +2102,45 @@ function deleteReviewHighlight(button) {
 
 function renderStickerAssetPicker(assets, slotIndex) {
   const selected = new Set(assets);
+  const ungrouped = Object.keys(STICKER_ASSETS).filter((assetId) => !STICKER_ASSET_GROUP_BY_ID[assetId]);
+  const groups = ungrouped.length
+    ? [...STICKER_ASSET_GROUPS, { key: "other", label: "其他", assetIds: ungrouped }]
+    : STICKER_ASSET_GROUPS;
   return `
-    <div class="asset-picker" data-slot-index="${slotIndex}">
-      ${Object.entries(STICKER_ASSETS)
-        .map(([assetId, asset]) => {
-          const active = selected.has(assetId);
-          return `<button class="asset-chip ${active ? "selected" : ""}" type="button" data-slot-index="${slotIndex}" data-asset-id="${escapeHTML(
-            assetId
-          )}" title="${escapeHTML(assetId)}">
-            <img src="${escapeHTML(asset.src)}" alt="" />
-            <span>${escapeHTML(asset.label)}</span>
-          </button>`;
+    <div class="asset-picker-shell" data-slot-index="${slotIndex}">
+      <div class="asset-filter-row">
+        <input class="asset-filter-input" type="search" placeholder="搜索贴图名称、ID、题材" data-slot-index="${slotIndex}" />
+        <label>
+          <input class="asset-selected-only-filter" type="checkbox" data-slot-index="${slotIndex}" />
+          只看已选
+        </label>
+      </div>
+      ${groups
+        .map((group) => {
+          const availableAssetIds = group.assetIds.filter((assetId) => STICKER_ASSETS[assetId]);
+          if (!availableAssetIds.length) return "";
+          const selectedCount = availableAssetIds.filter((assetId) => selected.has(assetId)).length;
+          const open = selectedCount > 0 || group.key === "common";
+          return `
+            <details class="asset-group" data-group="${escapeHTML(group.key)}" ${open ? "open" : ""}>
+              <summary>${escapeHTML(group.label)} <span>${selectedCount}/${availableAssetIds.length}</span></summary>
+              <div class="asset-picker" data-slot-index="${slotIndex}">
+                ${availableAssetIds
+                  .map((assetId) => {
+                    const asset = STICKER_ASSETS[assetId];
+                    const active = selected.has(assetId);
+                    const searchText = `${assetId} ${asset.label} ${group.label}`.toLowerCase();
+                    return `<button class="asset-chip ${active ? "selected" : ""}" type="button" data-slot-index="${slotIndex}" data-asset-id="${escapeHTML(
+                      assetId
+                    )}" data-search="${escapeHTML(searchText)}" title="${escapeHTML(assetId)}">
+                      <img src="${escapeHTML(asset.src)}" alt="" />
+                      <span>${escapeHTML(asset.label)}</span>
+                    </button>`;
+                  })
+                  .join("")}
+              </div>
+            </details>
+          `;
         })
         .join("")}
     </div>
@@ -2198,6 +2276,149 @@ function generateStickerSlotsFromHighlights() {
   syncExperienceJson(experiencePayload);
   renderExperiencePreview(experiencePayload);
   setReviewStatus(`已按 ${changed} 个高光生成/更新贴图时间窗，点击保存体验配置后生效`);
+}
+
+function stickerSuggestionSlotsFromHighlights() {
+  const reviewPayload = parseReviewJson();
+  const highlights = Array.isArray(reviewPayload.highlights) ? reviewPayload.highlights : [];
+  return highlights.map((highlight) => {
+    const start = Number(highlight.start_time_sec || 0);
+    const end = Number(highlight.end_time_sec || start + 8);
+    const assets = suggestedStickerAssetsForHighlight(highlight);
+    return {
+      start_time_sec: Number(start.toFixed(2)),
+      end_time_sec: Number(Math.max(end, start + 4).toFixed(2)),
+      asset_ids: assets,
+      cadence_sec: getHighlightKey(highlight.highlight_type) === "sweet" ? 1 : 2,
+      burst_count: getHighlightKey(highlight.highlight_type) === "sweet" ? 4 : 3,
+      meaning: highlightSlotMeaning(highlight, assets),
+      review_note: "本地样例用于验证导入格式；正式版本应由大模型脚本生成后人工复核。",
+    };
+  });
+}
+
+function fillStickerSuggestionSample() {
+  const reviewPayload = parseReviewJson();
+  const sample = {
+    episode_id: reviewPayload.episode_id,
+    drama_title: reviewPayload.drama_title,
+    episode_title: reviewPayload.episode_title,
+    source: "local_review_sample",
+    model_version: "sticker-suggestion-sample-v1",
+    slots: stickerSuggestionSlotsFromHighlights(),
+  };
+  state.stickerSuggestionDraft = JSON.stringify(sample, null, 2);
+  renderExperiencePreview(parseExperienceJson());
+  setReviewStatus("已生成当前高光的贴图建议样例，可导入并合并");
+}
+
+function normalizeSuggestionSlot(slot) {
+  const start = Number(slot.start_time_sec ?? slot.start ?? slot.highlight_start_sec ?? 0);
+  const end = Number(slot.end_time_sec ?? slot.end ?? slot.highlight_end_sec ?? start + 8);
+  const rawAssets = slot.asset_ids ?? slot.assets ?? slot.assetIds ?? [];
+  const assetIds = (Array.isArray(rawAssets) ? rawAssets : String(rawAssets).split(","))
+    .map((assetId) => String(assetId).trim())
+    .filter((assetId) => STICKER_ASSETS[assetId]);
+  if (!assetIds.length || !Number.isFinite(start)) return null;
+  return {
+    start_time_sec: Number(start.toFixed(2)),
+    end_time_sec: Number(Math.max(Number.isFinite(end) ? end : start + 8, start + 1).toFixed(2)),
+    asset_ids: [...new Set(assetIds)].slice(0, 5),
+    cadence_sec: Math.max(1, Number(slot.cadence_sec ?? slot.cadence ?? 2)),
+    burst_count: Math.max(1, Number(slot.burst_count ?? slot.burst ?? 3)),
+    meaning: String(slot.meaning || slot.reason || slot.review_note || "大模型贴图建议，需人工复核。"),
+  };
+}
+
+function stickerSuggestionSlotsFromPayload(payload) {
+  const rawSlots =
+    payload.slots ||
+    payload.suggestions ||
+    payload.sticker_timeline ||
+    payload.config?.sticker_timeline ||
+    payload.config?.slots ||
+    [];
+  if (!Array.isArray(rawSlots)) return [];
+  return rawSlots.map(normalizeSuggestionSlot).filter(Boolean);
+}
+
+function mergeStickerSuggestionSlots(experiencePayload, slots, meta = {}) {
+  experiencePayload.config ||= {};
+  const existing = Array.isArray(experiencePayload.config.sticker_timeline)
+    ? experiencePayload.config.sticker_timeline
+    : [];
+  slots.forEach((slot) => {
+    const matched = existing.find(
+      (item) => Math.abs(Number(item.start_time_sec ?? item.start ?? -999) - Number(slot.start_time_sec)) < 1
+    );
+    if (matched) {
+      Object.assign(matched, slot);
+    } else {
+      existing.push(slot);
+    }
+  });
+  experiencePayload.config.sticker_timeline = existing.sort(
+    (left, right) => Number(left.start_time_sec ?? left.start ?? 0) - Number(right.start_time_sec ?? right.start ?? 0)
+  );
+  experiencePayload.config.sticker_suggestion_meta = {
+    source: meta.source || "manual_import",
+    model_version: meta.model_version || "unknown",
+    imported_slot_count: slots.length,
+    imported_at: new Date().toISOString(),
+  };
+  return experiencePayload;
+}
+
+function importStickerSuggestionJson() {
+  try {
+    const raw = $("#stickerSuggestionJson")?.value || state.stickerSuggestionDraft || "";
+    const suggestionPayload = JSON.parse(raw);
+    const slots = stickerSuggestionSlotsFromPayload(suggestionPayload);
+    if (!slots.length) {
+      setReviewStatus("导入失败：贴图建议 JSON 中没有可用 slots/sticker_timeline", true);
+      return;
+    }
+    const experiencePayload = mergeStickerSuggestionSlots(parseExperienceJson(), slots, suggestionPayload);
+    syncExperienceJson(experiencePayload);
+    renderExperiencePreview(experiencePayload);
+    setReviewStatus(`已导入并合并 ${slots.length} 个贴图建议时间窗，点击保存体验配置后生效`);
+  } catch (error) {
+    setReviewStatus(`导入失败：${error.message}`, true);
+  }
+}
+
+async function loadStickerSuggestionFile() {
+  try {
+    const episodeId = Number($("#reviewEpisodeSelect").value || parseReviewJson().episode_id);
+    const response = await fetch(`/assets/sticker_suggestions/episode_${episodeId}_sticker_suggestions.json`, {
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error(`未找到 episode_${episodeId}_sticker_suggestions.json`);
+    state.stickerSuggestionDraft = JSON.stringify(await response.json(), null, 2);
+    renderExperiencePreview(parseExperienceJson());
+    setReviewStatus("已加载当前剧集的大模型贴图建议 JSON，可导入并合并");
+  } catch (error) {
+    setReviewStatus(`加载建议文件失败：${error.message}`, true);
+  }
+}
+
+function filterAssetPicker(control) {
+  const shell = control.closest(".asset-picker-shell");
+  if (!shell) return;
+  const query = (shell.querySelector(".asset-filter-input")?.value || "").trim().toLowerCase();
+  const selectedOnly = Boolean(shell.querySelector(".asset-selected-only-filter")?.checked);
+  shell.querySelectorAll(".asset-group").forEach((group) => {
+    let visibleCount = 0;
+    group.querySelectorAll(".asset-chip").forEach((chip) => {
+      const matchesQuery = !query || chip.dataset.search.includes(query);
+      const matchesSelected = !selectedOnly || chip.classList.contains("selected");
+      const visible = matchesQuery && matchesSelected;
+      chip.hidden = !visible;
+      if (visible) visibleCount += 1;
+    });
+    group.hidden = visibleCount === 0;
+    if (query && visibleCount > 0) group.open = true;
+  });
 }
 
 function toggleStickerAsset(button) {
@@ -2425,6 +2646,20 @@ function renderExperiencePreview(payload) {
         风格信号
         <input class="experience-field-input" data-section="theme" data-field="signal" value="${escapeHTML(theme.signal || "")}" />
       </label>
+    </article>
+    <article class="experience-card">
+      <div class="experience-card-head">
+        <strong>大模型贴图建议导入</strong>
+        <div>
+          <button class="ghost-button load-sticker-suggestion-file-button" type="button">加载建议文件</button>
+          <button class="ghost-button fill-sticker-suggestion-sample-button" type="button">生成导入样例</button>
+          <button class="primary-button import-sticker-suggestion-button" type="button">导入并合并</button>
+        </div>
+      </div>
+      <small>支持导入 slots、suggestions、sticker_timeline 或完整 config.sticker_timeline。导入只更新当前编辑区，保存后才写入服务端。</small>
+      <textarea id="stickerSuggestionJson" class="sticker-suggestion-json" spellcheck="false" rows="7" placeholder='{"slots":[{"start_time_sec":27,"end_time_sec":36,"asset_ids":["winterBrokenHeart"],"meaning":"..."}]}'>${escapeHTML(
+        state.stickerSuggestionDraft
+      )}</textarea>
     </article>
     <article class="experience-card">
       <div class="experience-card-head">
@@ -2701,10 +2936,19 @@ $("#experiencePreview").addEventListener("input", (event) => {
   if (event.target.classList.contains("experience-field-input")) {
     updateExperienceFieldInput(event.target);
   }
+  if (event.target.id === "stickerSuggestionJson") {
+    state.stickerSuggestionDraft = event.target.value;
+  }
+  if (event.target.classList.contains("asset-filter-input")) {
+    filterAssetPicker(event.target);
+  }
 });
 $("#experiencePreview").addEventListener("change", (event) => {
   if (event.target.classList.contains("experience-field-input")) {
     updateExperienceFieldInput(event.target);
+  }
+  if (event.target.classList.contains("asset-selected-only-filter")) {
+    filterAssetPicker(event.target);
   }
 });
 $("#experiencePreview").addEventListener("click", (event) => {
@@ -2721,6 +2965,15 @@ $("#experiencePreview").addEventListener("click", (event) => {
   }
   if (event.target.classList.contains("generate-highlight-slots-button")) {
     generateStickerSlotsFromHighlights();
+  }
+  if (event.target.classList.contains("fill-sticker-suggestion-sample-button")) {
+    fillStickerSuggestionSample();
+  }
+  if (event.target.classList.contains("import-sticker-suggestion-button")) {
+    importStickerSuggestionJson();
+  }
+  if (event.target.classList.contains("load-sticker-suggestion-file-button")) {
+    loadStickerSuggestionFile();
   }
 });
 $("#danmakuForm").addEventListener("submit", sendDanmaku);

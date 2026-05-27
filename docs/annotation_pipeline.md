@@ -99,6 +99,20 @@ data/context/episode_1/contact_sheet_5s.jpg
 .\.venv\Scripts\python.exe scripts\apply_annotations.py --file data\annotations\episode_1_llm.json --replace --source human_review
 ```
 
+7. 生成贴图建议 JSON：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\generate_sticker_suggestions_with_llm.py --episode-id 19 --require-llm
+```
+
+输出位置类似：
+
+```text
+frontend/assets/sticker_suggestions/episode_19_sticker_suggestions.json
+```
+
+这个文件不会直接写库。打开复核页后，点击“加载建议文件”，再点击“导入并合并”，逐项检查时间、贴图和遮挡风险，最后点击“保存体验配置”才会写入服务端。
+
 ## 输出 JSON 格式
 
 `highlight_type` 使用固定 8 类：`冲突对抗`、`反转揭秘`、`爽点逆袭`、`甜蜜心动`、`虐心共情`、`悬念钩子`、`搞笑解压`、`危机紧张`。
