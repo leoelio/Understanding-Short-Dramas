@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260529-watch-panel" />
+    <link rel="stylesheet" href="/styles.css?v=20260529-cowatch" />
   </head>
   <body>
     <div class="app-shell">
@@ -104,6 +104,18 @@
                 <button class="mode-button" type="button" data-mode="immerse">沉浸</button>
               </div>
               <button id="danmakuSettingsToggle" class="ghost-button icon-button" type="button">弹幕</button>
+            </div>
+            <div class="co-watch-card">
+              <div>
+                <strong>双人同看</strong>
+                <span id="roomStatus">未开房</span>
+              </div>
+              <div class="co-watch-actions">
+                <button id="createRoomButton" class="primary-button" type="button">开房</button>
+                <input id="roomCodeInput" maxlength="12" placeholder="输入房间码" />
+                <button id="joinRoomButton" class="ghost-button" type="button">加入</button>
+                <button id="leaveRoomButton" class="ghost-button" type="button" hidden>离开</button>
+              </div>
             </div>
             <div id="danmakuSettings" class="danmaku-settings">
               <label>
@@ -214,6 +226,6 @@
       </main>
     </div>
 
-    <script type="module" src="/app.js?v=20260529-watch-panel"></script>
+    <script type="module" src="/app.js?v=20260529-cowatch"></script>
   </body>
 </html>

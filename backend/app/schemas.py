@@ -41,6 +41,22 @@ class WatchHistoryUpdate(BaseModel):
     progress_sec: float = Field(default=0, ge=0)
 
 
+class WatchRoomCreate(BaseModel):
+    episode_id: int | None = None
+    progress_sec: float = Field(default=0, ge=0)
+    playback_state: str = Field(default="paused", max_length=16)
+
+
+class WatchRoomJoin(BaseModel):
+    code: str = Field(min_length=4, max_length=12)
+
+
+class WatchRoomSync(BaseModel):
+    episode_id: int
+    progress_sec: float = Field(default=0, ge=0)
+    playback_state: str = Field(default="paused", max_length=16)
+
+
 class UserAdminUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=64)
     role: str | None = Field(default=None, max_length=32)

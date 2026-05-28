@@ -199,6 +199,10 @@ const state = {
   watchHistoryTimer: null,
   pendingResume: null,
   lastHistoryRecordAt: 0,
+  watchRoom: null,
+  roomPollTimer: null,
+  roomLastSyncAt: 0,
+  roomApplyingRemote: false,
   danmakuFeedbackTimer: null,
   interactionMode: "choice",
   tapHideDelayMs: 2200,
@@ -235,6 +239,8 @@ const progressSlider = $("#progressSlider");
 const playerTime = $("#playerTime");
 const episodePanel = $("#episodePanel");
 const playerStatus = $("#playerStatus");
+const roomStatus = $("#roomStatus");
+const roomCodeInput = $("#roomCodeInput");
 
 const HIGHLIGHT_ALIAS_TO_KEY = Object.fromEntries(
   Object.entries(HIGHLIGHT_UI).flatMap(([key, config]) => config.aliases.map((alias) => [alias, key]))
@@ -340,6 +346,7 @@ function clearAuth() {
   state.authToken = "";
   state.currentUser = null;
   state.watchHistory = [];
+  leaveWatchRoom();
   localStorage.removeItem("auth_token");
   updateAuthUI();
 }
@@ -1687,6 +1694,133 @@ function renderEpisodePanel() {
   episodePanel.querySelectorAll(".episode-pill").forEach((button) => {
     button.addEventListener("click", () => openEpisode(Number(button.dataset.episodeId), { resumeTime: Number(button.dataset.progress || 0) }));
   });
+}
+
+function renderWatchRoom() {
+  const room = state.watchRoom;
+  if (!roomStatus) return;
+  $("#leaveRoomButton").hidden = !room;
+  $("#createRoomButton").textContent = room ? "新开房" : "开房";
+  roomCodeInput.value = room?.code || roomCodeInput.value;
+  if (!room) {
+    roomStatus.textContent = "未开房";
+    roomStatus.classList.remove("live");
+    return;
+  }
+  const guest = room.guest?.display_name || "等待好友";
+  const stateLabel = room.playback_state === "playing" ? "播放中" : "已暂停";
+  roomStatus.textContent = `房间 ${room.code} · ${room.member_count}/2 · ${guest} · ${stateLabel}`;
+  roomStatus.classList.add("live");
+}
+
+function leaveWatchRoom() {
+  window.clearInterval(state.roomPollTimer);
+  state.roomPollTimer = null;
+  state.watchRoom = null;
+  state.roomLastSyncAt = 0;
+  renderWatchRoom();
+}
+
+function startRoomPolling() {
+  window.clearInterval(state.roomPollTimer);
+  if (!state.watchRoom) return;
+  state.roomPollTimer = window.setInterval(fetchRoomState, 2400);
+}
+
+async function fetchRoomState() {
+  if (!state.watchRoom) return;
+  try {
+    const room = await fetchJSON(`/api/watch-rooms/${state.watchRoom.code}`);
+    await applyRoomState(room);
+  } catch (error) {
+    setDanmakuFeedback(errorMessage(error), true);
+    leaveWatchRoom();
+  }
+}
+
+async function applyRoomState(room) {
+  state.watchRoom = room;
+  renderWatchRoom();
+  if (!room.episode_id || room.updated_by?.id === state.currentUser?.id) return;
+  state.roomApplyingRemote = true;
+  try {
+    if (state.currentEpisode?.id !== room.episode_id) {
+      await openEpisode(room.episode_id, { resumeTime: room.progress_sec });
+    } else if (Math.abs((player.currentTime || 0) - Number(room.progress_sec || 0)) > 2.2) {
+      player.currentTime = Number(room.progress_sec || 0);
+    }
+    if (room.playback_state === "playing" && player.paused) {
+      player.play().catch(() => {});
+    }
+    if (room.playback_state !== "playing" && !player.paused) {
+      player.pause();
+    }
+  } finally {
+    window.setTimeout(() => {
+      state.roomApplyingRemote = false;
+    }, 600);
+  }
+}
+
+async function syncRoomState(immediate = false) {
+  if (!state.watchRoom || !state.currentEpisode || state.roomApplyingRemote) return;
+  const now = Date.now();
+  if (!immediate && now - state.roomLastSyncAt < 2600) return;
+  state.roomLastSyncAt = now;
+  try {
+    state.watchRoom = await fetchJSON(`/api/watch-rooms/${state.watchRoom.code}/sync`, {
+      method: "POST",
+      body: JSON.stringify({
+        episode_id: state.currentEpisode.id,
+        progress_sec: player.currentTime || 0,
+        playback_state: player.paused ? "paused" : "playing",
+      }),
+    });
+    renderWatchRoom();
+  } catch (error) {
+    setDanmakuFeedback(errorMessage(error), true);
+  }
+}
+
+async function createWatchRoom() {
+  if (!state.currentEpisode) {
+    setDanmakuFeedback("请先打开一集短剧", true);
+    return;
+  }
+  try {
+    state.watchRoom = await fetchJSON("/api/watch-rooms", {
+      method: "POST",
+      body: JSON.stringify({
+        episode_id: state.currentEpisode.id,
+        progress_sec: player.currentTime || 0,
+        playback_state: player.paused ? "paused" : "playing",
+      }),
+    });
+    renderWatchRoom();
+    startRoomPolling();
+    setDanmakuFeedback(`同看房间已创建：${state.watchRoom.code}`);
+  } catch (error) {
+    setDanmakuFeedback(errorMessage(error), true);
+  }
+}
+
+async function joinWatchRoom() {
+  const code = roomCodeInput.value.trim();
+  if (!code) {
+    setDanmakuFeedback("请输入房间码", true);
+    return;
+  }
+  try {
+    const room = await fetchJSON("/api/watch-rooms/join", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    await applyRoomState(room);
+    startRoomPolling();
+    setDanmakuFeedback(`已加入同看房间：${room.code}`);
+  } catch (error) {
+    setDanmakuFeedback(errorMessage(error), true);
+  }
 }
 
 async function openDrama(dramaId, preferredEpisodeId = null, resumeTime = 0) {
@@ -3267,6 +3401,7 @@ player.addEventListener("timeupdate", () => {
     state.lastHistoryRecordAt = player.currentTime;
     recordWatchHistory(player.currentTime || 0);
   }
+  syncRoomState();
   updatePlayerControls();
 });
 
@@ -3285,18 +3420,21 @@ player.addEventListener("error", () => {
 player.addEventListener("play", () => {
   updatePlayerControls();
   scheduleAmbientStickers();
+  syncRoomState(true);
 });
 
 player.addEventListener("pause", () => {
   updatePlayerControls();
   window.clearTimeout(state.ambientStickerTimer);
   recordWatchHistory(player.currentTime || 0, true);
+  syncRoomState(true);
 });
 
 player.addEventListener("seeked", () => {
   clearDanmakuLayer();
   clearStickerLayer();
   scheduleAmbientStickers();
+  syncRoomState(true);
 });
 
 playToggle.addEventListener("click", () => {
@@ -3424,6 +3562,15 @@ $("#experiencePreview").addEventListener("click", (event) => {
 $("#danmakuForm").addEventListener("submit", sendDanmaku);
 $("#danmakuSettingsToggle").addEventListener("click", () => {
   $("#danmakuSettings").classList.toggle("open");
+});
+$("#createRoomButton").addEventListener("click", createWatchRoom);
+$("#joinRoomButton").addEventListener("click", joinWatchRoom);
+$("#leaveRoomButton").addEventListener("click", () => {
+  leaveWatchRoom();
+  setDanmakuFeedback("已离开同看房间");
+});
+roomCodeInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") joinWatchRoom();
 });
 document.querySelectorAll(".mode-button").forEach((button) => {
   button.addEventListener("click", () => {

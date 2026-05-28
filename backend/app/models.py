@@ -131,6 +131,26 @@ class WatchHistory(Base):
     episode = relationship("Episode", back_populates="watch_history")
 
 
+class WatchRoom(Base):
+    __tablename__ = "watch_rooms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(12), unique=True, nullable=False, index=True)
+    host_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    guest_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    episode_id = Column(Integer, ForeignKey("episodes.id"), nullable=True, index=True)
+    progress_sec = Column(Float, default=0)
+    playback_state = Column(String(16), default="paused")
+    updated_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    host = relationship("User", foreign_keys=[host_user_id])
+    guest = relationship("User", foreign_keys=[guest_user_id])
+    updated_by = relationship("User", foreign_keys=[updated_by_user_id])
+    episode = relationship("Episode")
+
+
 class EpisodeExperienceConfig(Base):
     __tablename__ = "episode_experience_configs"
 

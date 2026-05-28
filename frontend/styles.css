@@ -1790,6 +1790,51 @@ main {
   min-width: 68px;
 }
 
+.co-watch-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 14px 0;
+  border: 1px solid color-mix(in srgb, var(--player-accent, var(--accent)) 36%, var(--line));
+  border-radius: 8px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--player-accent, var(--accent)) 8%, rgba(255, 255, 255, 0.04));
+}
+
+.co-watch-card strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.co-watch-card span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.co-watch-card span.live {
+  color: var(--player-accent, var(--accent-2));
+  font-weight: 800;
+}
+
+.co-watch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.co-watch-actions input {
+  width: 116px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--text);
+  background: #0b1018;
+  text-transform: uppercase;
+}
+
 .danmaku-settings {
   display: none;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3023,9 +3068,14 @@ textarea.experience-field-input {
 
 @media (max-width: 720px) {
   .watch-tools,
+  .co-watch-card,
   .danmaku-form,
   .danmaku-settings {
     grid-template-columns: 1fr;
+  }
+
+  .co-watch-actions {
+    justify-content: flex-start;
   }
 
   .review-toolbar,

@@ -25,6 +25,7 @@ from .models import (
     Interaction,
     User,
     WatchHistory,
+    WatchRoom,
 )
 from .schemas import (
     DanmakuCreate,
@@ -34,6 +35,9 @@ from .schemas import (
     RegisterRequest,
     UserAdminUpdate,
     WatchHistoryUpdate,
+    WatchRoomCreate,
+    WatchRoomJoin,
+    WatchRoomSync,
 )
 from .seed import seed_from_video_library
 from .annotation_schema import validate_annotation_payload
@@ -163,6 +167,66 @@ def danmaku_user_payload(comment: DanmakuComment) -> dict:
         "nickname": f"游客{suffix:03d}",
         "relation_ready": False,
     }
+
+
+def user_brief(user: User | None) -> dict | None:
+    if not user:
+        return None
+    return {
+        "id": user.id,
+        "display_name": user.display_name,
+        "role": user.role,
+    }
+
+
+def normalize_room_code(code: str) -> str:
+    return "".join(code.strip().upper().split())
+
+
+def normalize_playback_state(value: str) -> str:
+    return "playing" if value == "playing" else "paused"
+
+
+def safe_episode_progress(episode: Episode | None, progress_sec: float) -> float:
+    if not episode:
+        return 0
+    return round(min(max(0, float(progress_sec)), float(episode.duration_sec or progress_sec)), 2)
+
+
+def make_room_code(db: Session) -> str:
+    for _ in range(12):
+        code = uuid4().hex[:6].upper()
+        if not db.query(WatchRoom).filter(WatchRoom.code == code).first():
+            return code
+    return uuid4().hex[:8].upper()
+
+
+def room_payload(room: WatchRoom, current_user: User) -> dict:
+    return {
+        "code": room.code,
+        "host": user_brief(room.host),
+        "guest": user_brief(room.guest),
+        "member_count": 1 + int(bool(room.guest_user_id)),
+        "is_host": room.host_user_id == current_user.id,
+        "episode_id": room.episode_id,
+        "progress_sec": room.progress_sec,
+        "playback_state": room.playback_state,
+        "updated_by": user_brief(room.updated_by),
+        "updated_at": room.updated_at.isoformat() if room.updated_at else None,
+        "created_at": room.created_at.isoformat() if room.created_at else None,
+    }
+
+
+def get_watch_room(code: str, db: Session) -> WatchRoom:
+    room = db.query(WatchRoom).filter(WatchRoom.code == normalize_room_code(code)).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="同看房间不存在")
+    return room
+
+
+def ensure_room_member(room: WatchRoom, user: User) -> None:
+    if user.id not in {room.host_user_id, room.guest_user_id}:
+        raise HTTPException(status_code=403, detail="你还没有加入这个同看房间")
 
 
 def default_experience_config(episode: Episode) -> dict:
@@ -512,6 +576,79 @@ def upsert_watch_history(
     row.updated_at = datetime.utcnow()
     db.commit()
     return {"ok": True}
+
+
+@app.post("/api/watch-rooms")
+def create_watch_room(
+    payload: WatchRoomCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    episode = db.get(Episode, payload.episode_id) if payload.episode_id else None
+    if payload.episode_id and not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    room = WatchRoom(
+        code=make_room_code(db),
+        host_user_id=user.id,
+        episode_id=episode.id if episode else None,
+        progress_sec=safe_episode_progress(episode, payload.progress_sec),
+        playback_state=normalize_playback_state(payload.playback_state),
+        updated_by_user_id=user.id,
+    )
+    db.add(room)
+    db.commit()
+    db.refresh(room)
+    return room_payload(room, user)
+
+
+@app.post("/api/watch-rooms/join")
+def join_watch_room(
+    payload: WatchRoomJoin,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    room = get_watch_room(payload.code, db)
+    if user.id != room.host_user_id and room.guest_user_id not in {None, user.id}:
+        raise HTTPException(status_code=409, detail="房间已满")
+    if user.id != room.host_user_id and room.guest_user_id is None:
+        room.guest_user_id = user.id
+        room.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(room)
+    return room_payload(room, user)
+
+
+@app.get("/api/watch-rooms/{code}")
+def get_room_state(
+    code: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    room = get_watch_room(code, db)
+    ensure_room_member(room, user)
+    return room_payload(room, user)
+
+
+@app.post("/api/watch-rooms/{code}/sync")
+def sync_watch_room(
+    code: str,
+    payload: WatchRoomSync,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    room = get_watch_room(code, db)
+    ensure_room_member(room, user)
+    episode = db.get(Episode, payload.episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    room.episode_id = episode.id
+    room.progress_sec = safe_episode_progress(episode, payload.progress_sec)
+    room.playback_state = normalize_playback_state(payload.playback_state)
+    room.updated_by_user_id = user.id
+    room.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(room)
+    return room_payload(room, user)
 
 
 @app.get("/api/stats/summary")
