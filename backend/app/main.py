@@ -27,6 +27,7 @@ from .models import (
     UserReward,
     WatchHistory,
     WatchRoom,
+    WatchRoomEvent,
 )
 from .schemas import (
     DanmakuCreate,
@@ -37,6 +38,7 @@ from .schemas import (
     UserAdminUpdate,
     WatchHistoryUpdate,
     WatchRoomCreate,
+    WatchRoomEventCreate,
     WatchRoomJoin,
     WatchRoomSync,
 )
@@ -339,6 +341,23 @@ def room_payload(room: WatchRoom, current_user: User) -> dict:
         "updated_by": user_brief(room.updated_by),
         "updated_at": room.updated_at.isoformat() if room.updated_at else None,
         "created_at": room.created_at.isoformat() if room.created_at else None,
+    }
+
+
+ROOM_EVENT_TYPES = {"danmaku", "danmaku_like", "danmaku_reply", "interaction"}
+
+
+def public_room_event(event: WatchRoomEvent) -> dict:
+    try:
+        payload = json.loads(event.payload_json)
+    except json.JSONDecodeError:
+        payload = {}
+    return {
+        "id": event.id,
+        "event_type": event.event_type,
+        "payload": payload,
+        "user": user_brief(event.user),
+        "created_at": event.created_at.isoformat() if event.created_at else None,
     }
 
 
@@ -780,6 +799,49 @@ def sync_watch_room(
     db.commit()
     db.refresh(room)
     return room_payload(room, user)
+
+
+@app.get("/api/watch-rooms/{code}/events")
+def list_watch_room_events(
+    code: str,
+    after_id: int = 0,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    room = get_watch_room(code, db)
+    ensure_room_member(room, user)
+    events = (
+        db.query(WatchRoomEvent)
+        .filter(WatchRoomEvent.room_id == room.id, WatchRoomEvent.id > max(0, after_id))
+        .order_by(WatchRoomEvent.id.asc())
+        .limit(40)
+        .all()
+    )
+    return [public_room_event(event) for event in events]
+
+
+@app.post("/api/watch-rooms/{code}/events")
+def create_watch_room_event(
+    code: str,
+    payload: WatchRoomEventCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    room = get_watch_room(code, db)
+    ensure_room_member(room, user)
+    event_type = payload.event_type.strip()
+    if event_type not in ROOM_EVENT_TYPES:
+        raise HTTPException(status_code=400, detail="不支持的房间事件")
+    event = WatchRoomEvent(
+        room_id=room.id,
+        user_id=user.id,
+        event_type=event_type,
+        payload_json=json.dumps(payload.payload, ensure_ascii=False),
+    )
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return public_room_event(event)
 
 
 @app.get("/api/stats/summary")

@@ -57,6 +57,11 @@ class WatchRoomSync(BaseModel):
     playback_state: str = Field(default="paused", max_length=16)
 
 
+class WatchRoomEventCreate(BaseModel):
+    event_type: str = Field(min_length=1, max_length=32)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
 class UserAdminUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=64)
     role: str | None = Field(default=None, max_length=32)

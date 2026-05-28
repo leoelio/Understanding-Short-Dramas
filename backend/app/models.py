@@ -152,6 +152,20 @@ class WatchRoom(Base):
     episode = relationship("Episode")
 
 
+class WatchRoomEvent(Base):
+    __tablename__ = "watch_room_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("watch_rooms.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    event_type = Column(String(32), nullable=False, index=True)
+    payload_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    room = relationship("WatchRoom")
+    user = relationship("User")
+
+
 class UserReward(Base):
     __tablename__ = "user_rewards"
 

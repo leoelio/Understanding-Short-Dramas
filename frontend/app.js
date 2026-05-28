@@ -202,6 +202,8 @@ const state = {
   watchRoom: null,
   roomPollTimer: null,
   roomLastSyncAt: 0,
+  roomLastEventId: 0,
+  roomFeed: [],
   roomApplyingRemote: false,
   rewardProfile: null,
   danmakuFeedbackTimer: null,
@@ -242,6 +244,7 @@ const episodePanel = $("#episodePanel");
 const playerStatus = $("#playerStatus");
 const roomStatus = $("#roomStatus");
 const roomCodeInput = $("#roomCodeInput");
+const roomFeed = $("#roomFeed");
 const rewardPanel = $("#rewardPanel");
 
 const HIGHLIGHT_ALIAS_TO_KEY = Object.fromEntries(
@@ -609,6 +612,7 @@ function clearDanmakuLayer() {
 }
 
 function shouldShowDanmaku(comment) {
+  if (String(comment.className || "").includes("room-danmaku")) return true;
   const mode = getDanmakuMode();
   const commentMode = comment.mode || "light";
   return (
@@ -682,6 +686,11 @@ function showDanmakuActions(comment, anchor) {
     saveDanmakuStats(comment, stats);
     anchor.querySelector("em").textContent = `♡${stats.likes}`;
     popover.querySelector('[data-action="like"]').textContent = `赞 ${stats.likes}`;
+    postRoomEvent("danmaku_like", {
+      comment_id: comment.id,
+      text: comment.text,
+      likes: stats.likes,
+    });
   });
   popover.querySelector('[data-action="reply"]').addEventListener("click", () => {
     popover.querySelector(".danmaku-reply-form").classList.remove("hidden");
@@ -698,6 +707,11 @@ function showDanmakuActions(comment, anchor) {
     stats.replies = [...(stats.replies || []), { text: value, session_id: state.sessionId, created_at: Date.now() }];
     saveDanmakuStats(comment, stats);
     setDanmakuFeedback(`已回复：${value}`);
+    postRoomEvent("danmaku_reply", {
+      comment_id: comment.id,
+      text: comment.text,
+      reply: value,
+    });
     popover.remove();
   });
   state.danmakuActionTimer = window.setTimeout(() => popover.remove(), 5200);
@@ -1718,6 +1732,119 @@ function renderWatchRoom() {
   roomStatus.classList.add("live");
 }
 
+function roomEventSummary(event) {
+  const user = event.user?.display_name || "同看好友";
+  const payload = event.payload || {};
+  if (event.event_type === "danmaku") return `${user} 发弹幕：${payload.text || payload.comment?.text || ""}`;
+  if (event.event_type === "danmaku_like") return `${user} 赞了弹幕：${payload.text || ""}`;
+  if (event.event_type === "danmaku_reply") return `${user} 回复：${payload.reply || ""}`;
+  if (event.event_type === "interaction") {
+    const suffix = payload.reward_correct ? "，预判成功" : "";
+    return `${user} 选择了「${payload.option_label || payload.option_key || "未知"}」${suffix}`;
+  }
+  return `${user} 有新动态`;
+}
+
+function renderRoomFeed() {
+  if (!roomFeed) return;
+  if (!state.watchRoom || !state.roomFeed.length) {
+    roomFeed.innerHTML = "";
+    return;
+  }
+  roomFeed.innerHTML = state.roomFeed
+    .slice(0, 5)
+    .map(
+      (event) => `
+        <div class="room-feed-item ${event.event_type}">
+          <b>${escapeHTML(event.user?.display_name || "同看好友")}</b>
+          <span>${escapeHTML(roomEventSummary(event).replace(`${event.user?.display_name || "同看好友"} `, ""))}</span>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function pushRoomFeed(event) {
+  state.roomFeed = [event, ...state.roomFeed.filter((item) => item.id !== event.id)].slice(0, 12);
+  renderRoomFeed();
+}
+
+function showRoomEventToast(event) {
+  const wrap = document.querySelector(".video-wrap");
+  if (!wrap) return;
+  const toast = document.createElement("div");
+  toast.className = `room-event-toast ${event.event_type}`;
+  toast.innerHTML = `
+    <b>${escapeHTML(event.user?.display_name || "同看好友")}</b>
+    <span>${escapeHTML(roomEventSummary(event))}</span>
+  `;
+  wrap.appendChild(toast);
+  window.setTimeout(() => toast.remove(), 5200);
+}
+
+async function postRoomEvent(eventType, payload) {
+  if (!state.watchRoom) return null;
+  try {
+    const event = await fetchJSON(`/api/watch-rooms/${state.watchRoom.code}/events`, {
+      method: "POST",
+      body: JSON.stringify({ event_type: eventType, payload }),
+    });
+    state.roomLastEventId = Math.max(state.roomLastEventId, event.id || 0);
+    pushRoomFeed(event);
+    return event;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchRoomEvents() {
+  if (!state.watchRoom) return;
+  const events = await fetchJSON(`/api/watch-rooms/${state.watchRoom.code}/events?after_id=${state.roomLastEventId}`);
+  for (const event of events) {
+    state.roomLastEventId = Math.max(state.roomLastEventId, event.id || 0);
+    if (event.user?.id === state.currentUser?.id) continue;
+    handleRoomEvent(event);
+  }
+}
+
+function handleRoomEvent(event) {
+  const payload = event.payload || {};
+  pushRoomFeed(event);
+  showRoomEventToast(event);
+  if (event.event_type === "danmaku") {
+    const comment = payload.comment || {
+      id: `room-${event.id}`,
+      episode_id: payload.episode_id,
+      time_sec: payload.time_sec || player.currentTime || 0,
+      text: payload.text,
+      mode: "carnival",
+    };
+    if (!state.currentEpisode || Number(comment.episode_id) === state.currentEpisode.id) {
+      const remoteComment = {
+        ...comment,
+        id: comment.id || `room-${event.id}`,
+        mode: "light",
+        user_name: event.user?.display_name,
+        className: "room-danmaku",
+      };
+      state.danmaku.push(remoteComment);
+      state.firedDanmaku.add(remoteComment.id);
+      emitDanmaku(remoteComment);
+    }
+  }
+  if (event.event_type === "interaction") {
+    emitDanmaku({
+      id: `room-choice-${event.id}`,
+      text: `${event.user?.display_name || "好友"}选了${payload.option_label || ""}`,
+      time_sec: player.currentTime || 0,
+      className: "danmaku-impact room-danmaku",
+    });
+  }
+  if (event.event_type === "danmaku_like" || event.event_type === "danmaku_reply") {
+    setDanmakuFeedback(roomEventSummary(event));
+  }
+}
+
 function renderRewardProfile() {
   if (!rewardPanel) return;
   const profile = state.rewardProfile;
@@ -1759,7 +1886,10 @@ function leaveWatchRoom() {
   state.roomPollTimer = null;
   state.watchRoom = null;
   state.roomLastSyncAt = 0;
+  state.roomLastEventId = 0;
+  state.roomFeed = [];
   renderWatchRoom();
+  renderRoomFeed();
 }
 
 function startRoomPolling() {
@@ -1773,6 +1903,7 @@ async function fetchRoomState() {
   try {
     const room = await fetchJSON(`/api/watch-rooms/${state.watchRoom.code}`);
     await applyRoomState(room);
+    await fetchRoomEvents();
   } catch (error) {
     setDanmakuFeedback(errorMessage(error), true);
     leaveWatchRoom();
@@ -1837,7 +1968,10 @@ async function createWatchRoom() {
         playback_state: player.paused ? "paused" : "playing",
       }),
     });
+    state.roomLastEventId = 0;
+    state.roomFeed = [];
     renderWatchRoom();
+    renderRoomFeed();
     startRoomPolling();
     setDanmakuFeedback(`同看房间已创建：${state.watchRoom.code}`);
   } catch (error) {
@@ -1856,8 +1990,11 @@ async function joinWatchRoom() {
       method: "POST",
       body: JSON.stringify({ code }),
     });
+    state.roomLastEventId = 0;
+    state.roomFeed = [];
     await applyRoomState(room);
     startRoomPolling();
+    await fetchRoomEvents();
     setDanmakuFeedback(`已加入同看房间：${room.code}`);
   } catch (error) {
     setDanmakuFeedback(errorMessage(error), true);
@@ -2210,17 +2347,28 @@ function burstReaction(anchor) {
 
 async function submitInteraction(optionKey, anchor) {
   if (!state.activeHighlight) return;
+  const highlight = state.activeHighlight;
+  const option = highlight.options?.find((item) => item.key === optionKey);
   if (anchor) burstReaction(anchor);
   spawnVehicleSticker(optionKey, anchor);
   const result = await fetchJSON("/api/interactions", {
     method: "POST",
     body: JSON.stringify({
-      highlight_id: state.activeHighlight.id,
+      highlight_id: highlight.id,
       option_key: optionKey,
       session_id: state.sessionId,
     }),
   });
   renderInteractionResult(result.stats, result.reward);
+  postRoomEvent("interaction", {
+    episode_id: state.currentEpisode?.id,
+    highlight_id: highlight.id,
+    highlight_title: highlight.title,
+    option_key: optionKey,
+    option_label: option?.label || optionKey,
+    reward_correct: Boolean(result.reward?.correct),
+    reward_message: result.reward?.message || "",
+  });
   if (result.reward?.correct) {
     await loadRewardProfile();
   }
@@ -3444,6 +3592,12 @@ async function sendDanmaku(event) {
     state.danmaku.push(comment);
     state.firedDanmaku.add(comment.id);
     emitDanmaku(comment);
+    postRoomEvent("danmaku", {
+      episode_id: comment.episode_id,
+      time_sec: comment.time_sec,
+      text: comment.text,
+      comment,
+    });
     input.value = "";
     setDanmakuFeedback("已发送");
   } catch (error) {
