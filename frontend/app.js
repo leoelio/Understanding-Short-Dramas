@@ -197,6 +197,8 @@ const state = {
   authMode: "login",
   watchHistory: [],
   watchHistoryTimer: null,
+  pendingResume: null,
+  lastHistoryRecordAt: 0,
   danmakuFeedbackTimer: null,
   interactionMode: "choice",
   tapHideDelayMs: 2200,
@@ -1521,7 +1523,9 @@ function renderDramas() {
   $("#dramaCount").textContent = `${state.dramas.length} 部短剧`;
   $("#dramaGrid").innerHTML = state.dramas
     .map(
-      (drama) => `
+      (drama) => {
+        const history = state.watchHistory.find((item) => item.drama.id === drama.id);
+        return `
         <article class="drama-card" data-id="${drama.id}">
           <div class="thumb">
             ${
@@ -1533,15 +1537,39 @@ function renderDramas() {
           </div>
           <div class="drama-info">
             <h3>${escapeHTML(drama.title)}</h3>
-            <p>${drama.episode_count} 集已导入</p>
+            <p>${drama.episode_count} 集已导入${history ? ` · 上次看到 ${formatTime(history.progress_sec)}` : ""}</p>
+            ${
+              history
+                ? `<div class="drama-progress"><i style="width:${Math.min(100, Math.max(0, Number(history.progress_percent || 0)))}%"></i></div>`
+                : ""
+            }
+            <div class="drama-actions">
+              <button class="ghost-button drama-action-button" type="button" data-action="start" data-drama-id="${drama.id}">开始看</button>
+              ${
+                history
+                  ? `<button class="primary-button drama-action-button" type="button" data-action="resume" data-episode-id="${history.episode_id}" data-progress="${history.progress_sec}">继续看</button>`
+                  : ""
+              }
+            </div>
           </div>
         </article>
-      `
+      `;
+      }
     )
     .join("");
 
   document.querySelectorAll(".drama-card").forEach((card) => {
     card.addEventListener("click", () => openDrama(Number(card.dataset.id)));
+  });
+  document.querySelectorAll(".drama-action-button").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (button.dataset.action === "resume") {
+        openEpisodeFromUrl(Number(button.dataset.episodeId), Number(button.dataset.progress || 0));
+      } else {
+        openDrama(Number(button.dataset.dramaId));
+      }
+    });
   });
 }
 
@@ -1562,6 +1590,7 @@ function renderWatchHistory() {
             <div>
               <strong>${escapeHTML(item.drama.title)} · ${escapeHTML(item.episode_title)}</strong>
               <span>${escapeHTML(item.drama.genre)} · 进度 ${formatTime(item.progress_sec)}</span>
+              <span class="history-progress"><i style="width:${Math.min(100, Math.max(0, Number(item.progress_percent || 0)))}%"></i></span>
             </div>
             <span>继续</span>
           </button>
@@ -1570,7 +1599,8 @@ function renderWatchHistory() {
       .join("")}
   `;
   host.querySelectorAll(".history-row").forEach((button) => {
-    button.addEventListener("click", () => openEpisodeFromUrl(Number(button.dataset.episodeId)));
+    const item = state.watchHistory.find((row) => row.episode_id === Number(button.dataset.episodeId));
+    button.addEventListener("click", () => openEpisodeFromUrl(Number(button.dataset.episodeId), Number(item?.progress_sec || 0)));
   });
 }
 
@@ -1582,17 +1612,23 @@ async function loadWatchHistory() {
     state.watchHistory = [];
   }
   renderWatchHistory();
+  if (state.dramas.length) renderDramas();
 }
 
-function recordWatchHistory(progressSec = 0) {
+function recordWatchHistory(progressSec = 0, immediate = false) {
   if (!state.currentUser || !state.currentEpisode) return;
   window.clearTimeout(state.watchHistoryTimer);
-  state.watchHistoryTimer = window.setTimeout(() => {
+  const write = () => {
     fetchJSON("/api/users/me/watch-history", {
       method: "POST",
       body: JSON.stringify({ episode_id: state.currentEpisode.id, progress_sec: progressSec }),
     }).catch(() => {});
-  }, 400);
+  };
+  if (immediate) {
+    write();
+    return;
+  }
+  state.watchHistoryTimer = window.setTimeout(write, 400);
 }
 
 async function loadDramas() {
@@ -1600,7 +1636,7 @@ async function loadDramas() {
   renderDramas();
 }
 
-async function openDrama(dramaId, preferredEpisodeId = null) {
+async function openDrama(dramaId, preferredEpisodeId = null, resumeTime = 0) {
   state.episodes = await fetchJSON(`/api/dramas/${dramaId}/episodes`);
   if (!state.episodes.length) return;
   const select = $("#episodeSelect");
@@ -1609,11 +1645,11 @@ async function openDrama(dramaId, preferredEpisodeId = null) {
     .join("");
   select.onchange = () => openEpisode(Number(select.value));
   const targetEpisode = state.episodes.find((episode) => episode.id === preferredEpisodeId) || state.episodes[0];
-  await openEpisode(targetEpisode.id);
+  await openEpisode(targetEpisode.id, { resumeTime });
   setView("watch");
 }
 
-async function openEpisode(episodeId) {
+async function openEpisode(episodeId, options = {}) {
   state.firedHighlights.clear();
   state.lastInteractionTime = -Infinity;
   clearDanmakuLayer();
@@ -1627,6 +1663,8 @@ async function openEpisode(episodeId) {
   state.currentEpisode = episode;
   state.currentExperience = experience;
   state.danmaku = danmaku;
+  state.pendingResume = Number(options.resumeTime || 0) > 1 ? { episodeId, time: Number(options.resumeTime) } : null;
+  state.lastHistoryRecordAt = 0;
   $("#watchTitle").textContent = `${state.currentEpisode.drama.title} · ${state.currentEpisode.title}`;
   $("#episodeSelect").value = String(episodeId);
   player.src = state.currentEpisode.video_url;
@@ -1634,12 +1672,11 @@ async function openEpisode(episodeId) {
   renderTimeline();
   renderDanmakuHint();
   syncEpisodeUrl(episodeId);
-  recordWatchHistory(0);
 }
 
-async function openEpisodeFromUrl(episodeId) {
+async function openEpisodeFromUrl(episodeId, resumeTime = 0) {
   const episode = await fetchJSON(`/api/episodes/${episodeId}`);
-  await openDrama(episode.drama.id, episodeId);
+  await openDrama(episode.drama.id, episodeId, resumeTime);
 }
 
 function renderTimeline() {
@@ -3146,14 +3183,33 @@ async function sendDanmaku(event) {
   }
 }
 
+function applyPendingResume() {
+  const pending = state.pendingResume;
+  if (!pending || !state.currentEpisode || pending.episodeId !== state.currentEpisode.id) return;
+  const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode.duration_sec || 0;
+  const target = Math.min(Math.max(0, pending.time), Math.max(0, duration - 2));
+  if (target > 1) {
+    player.currentTime = target;
+    setDanmakuFeedback(`已续播到 ${formatTime(target)}`);
+  }
+  state.pendingResume = null;
+}
+
 player.addEventListener("timeupdate", () => {
   const highlight = findDueHighlight(player.currentTime);
   if (highlight) showInteraction(highlight);
   checkDanmaku(player.currentTime);
+  if (player.currentTime > 2 && Math.abs(player.currentTime - state.lastHistoryRecordAt) >= 8) {
+    state.lastHistoryRecordAt = player.currentTime;
+    recordWatchHistory(player.currentTime || 0);
+  }
   updatePlayerControls();
 });
 
-player.addEventListener("loadedmetadata", updatePlayerControls);
+player.addEventListener("loadedmetadata", () => {
+  applyPendingResume();
+  updatePlayerControls();
+});
 
 player.addEventListener("play", () => {
   updatePlayerControls();
@@ -3163,7 +3219,7 @@ player.addEventListener("play", () => {
 player.addEventListener("pause", () => {
   updatePlayerControls();
   window.clearTimeout(state.ambientStickerTimer);
-  recordWatchHistory(player.currentTime || 0);
+  recordWatchHistory(player.currentTime || 0, true);
 });
 
 player.addEventListener("seeked", () => {

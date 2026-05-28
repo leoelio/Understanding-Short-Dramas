@@ -474,6 +474,10 @@ def get_watch_history(user: User = Depends(get_current_user), db: Session = Depe
         {
             "episode_id": row.episode_id,
             "progress_sec": row.progress_sec,
+            "duration_sec": row.episode.duration_sec,
+            "progress_percent": round(row.progress_sec * 100 / row.episode.duration_sec, 1)
+            if row.episode.duration_sec
+            else 0,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
             "episode_title": row.episode.title,
             "episode_no": row.episode.episode_no,

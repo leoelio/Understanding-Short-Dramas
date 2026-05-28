@@ -299,6 +299,36 @@ main {
   margin-bottom: 6px;
 }
 
+.drama-progress,
+.history-progress {
+  display: block;
+  overflow: hidden;
+  height: 5px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.drama-progress i,
+.history-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.drama-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.drama-action-button {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
 .ghost-button,
 .primary-button {
   border: 1px solid var(--line);
