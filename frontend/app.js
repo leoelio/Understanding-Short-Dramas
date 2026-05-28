@@ -203,6 +203,7 @@ const state = {
   roomPollTimer: null,
   roomLastSyncAt: 0,
   roomApplyingRemote: false,
+  rewardProfile: null,
   danmakuFeedbackTimer: null,
   interactionMode: "choice",
   tapHideDelayMs: 2200,
@@ -241,6 +242,7 @@ const episodePanel = $("#episodePanel");
 const playerStatus = $("#playerStatus");
 const roomStatus = $("#roomStatus");
 const roomCodeInput = $("#roomCodeInput");
+const rewardPanel = $("#rewardPanel");
 
 const HIGHLIGHT_ALIAS_TO_KEY = Object.fromEntries(
   Object.entries(HIGHLIGHT_UI).flatMap(([key, config]) => config.aliases.map((alias) => [alias, key]))
@@ -346,9 +348,11 @@ function clearAuth() {
   state.authToken = "";
   state.currentUser = null;
   state.watchHistory = [];
+  state.rewardProfile = null;
   leaveWatchRoom();
   localStorage.removeItem("auth_token");
   updateAuthUI();
+  renderRewardProfile();
 }
 
 function setAuthStatus(message, isError = false) {
@@ -385,6 +389,7 @@ async function afterAuth() {
   updateAuthUI();
   await loadDramas();
   await loadWatchHistory();
+  await loadRewardProfile();
   await routeAfterAuth();
 }
 
@@ -1713,6 +1718,42 @@ function renderWatchRoom() {
   roomStatus.classList.add("live");
 }
 
+function renderRewardProfile() {
+  if (!rewardPanel) return;
+  const profile = state.rewardProfile;
+  if (!profile) {
+    rewardPanel.innerHTML = "";
+    return;
+  }
+  const badges = profile.badges || [];
+  rewardPanel.innerHTML = `
+    <div>
+      <strong>${escapeHTML(profile.title || "剧情新人")}</strong>
+      <span>${Number(profile.points || 0)} 分 · ${badges.length} 枚勋章</span>
+    </div>
+    <div class="reward-badges">
+      ${
+        badges.length
+          ? badges
+              .slice(0, 3)
+              .map((badge) => `<em title="${escapeHTML(badge.description || "")}">${escapeHTML(badge.title)}</em>`)
+              .join("")
+          : "<em>等待首枚勋章</em>"
+      }
+    </div>
+  `;
+}
+
+async function loadRewardProfile() {
+  if (!state.currentUser) return;
+  try {
+    state.rewardProfile = await fetchJSON("/api/users/me/rewards");
+  } catch {
+    state.rewardProfile = null;
+  }
+  renderRewardProfile();
+}
+
 function leaveWatchRoom() {
   window.clearInterval(state.roomPollTimer);
   state.roomPollTimer = null;
@@ -2076,7 +2117,7 @@ function showInteraction(highlight) {
   window.clearTimeout(state.hideTimer);
   interactionLayer.className = `interaction-layer ${ui.className} effect-${ui.effect} ${
     vehicleChoice ? "vehicle-choice-layer" : ""
-  } mode-${interactionMode}`;
+  } ${highlight.reward_hint ? "quiz-layer" : ""} mode-${interactionMode}`;
   const impactMarkup =
     interactionMode === "tap"
       ? `<button class="impact-pad" type="button">
@@ -2090,7 +2131,13 @@ function showInteraction(highlight) {
         ${highlight.options.map((option) => renderReactionButton(option, vehicleChoice)).join("")}
       </div>`
       : "";
-  const helperText = interactionMode === "tap" ? "连续点击表达情绪" : vehicleChoice ? "先猜交通工具，再看揭晓" : "选一个最贴近你的反应";
+  const helperText = highlight.reward_hint
+    ? `同看竞猜：答对 +${highlight.reward_hint.points} 分，解锁「${highlight.reward_hint.title}」`
+    : interactionMode === "tap"
+      ? "连续点击表达情绪"
+      : vehicleChoice
+        ? "先猜交通工具，再看揭晓"
+        : "选一个最贴近你的反应";
   interactionLayer.innerHTML = `
     <div class="interaction-panel ${vehicleChoice ? "vehicle-choice-panel" : ""}" data-effect="${escapeHTML(
       ui.effect
@@ -2106,6 +2153,11 @@ function showInteraction(highlight) {
         <p>${escapeHTML(highlight.description || "")}</p>
         <small class="interaction-helper">${escapeHTML(helperText)}</small>
       </div>
+      ${
+        highlight.reward_hint
+          ? `<div class="quiz-banner"><b>竞猜</b><span>${escapeHTML(highlight.reward_hint.description)}</span></div>`
+          : ""
+      }
       ${renderSceneCaptions(ui, motifs, highlight)}
       ${impactMarkup}
       ${optionsMarkup}
@@ -2168,10 +2220,25 @@ async function submitInteraction(optionKey, anchor) {
       session_id: state.sessionId,
     }),
   });
-  renderInteractionResult(result.stats);
+  renderInteractionResult(result.stats, result.reward);
+  if (result.reward?.correct) {
+    await loadRewardProfile();
+  }
 }
 
-function renderInteractionResult(stats) {
+function renderRewardOutcome(reward) {
+  if (!reward) return "";
+  const className = reward.correct ? "correct" : "wrong";
+  const title = reward.correct ? "预判成功" : "预判偏差";
+  return `
+    <div class="reward-outcome ${className}">
+      <strong>${title}</strong>
+      <span>${escapeHTML(reward.message || "")}</span>
+    </div>
+  `;
+}
+
+function renderInteractionResult(stats, reward = null) {
   interactionLayer.querySelector(".interaction-panel").classList.add("answered");
   interactionLayer.querySelector(".interaction-options").innerHTML = stats.options
     .map(
@@ -2185,7 +2252,10 @@ function renderInteractionResult(stats) {
     )
     .join("");
   interactionLayer.querySelector(".interaction-copy span").textContent = `${stats.total} 次互动`;
-  scheduleInteractionHide(3200);
+  const panel = interactionLayer.querySelector(".interaction-panel");
+  panel.querySelector(".reward-outcome")?.remove();
+  panel.insertAdjacentHTML("beforeend", renderRewardOutcome(reward));
+  scheduleInteractionHide(reward ? 4300 : 3200);
 }
 
 function renderEvidence(item) {
@@ -3605,6 +3675,7 @@ async function bootstrap() {
   }
   await loadDramas();
   await loadWatchHistory();
+  await loadRewardProfile();
   await routeAfterAuth();
 }
 

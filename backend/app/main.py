@@ -24,6 +24,7 @@ from .models import (
     Highlight,
     Interaction,
     User,
+    UserReward,
     WatchHistory,
     WatchRoom,
 )
@@ -81,9 +82,39 @@ def parse_evidence_segment_ids(highlight: Highlight) -> list[int | str]:
     return [value for value in values if isinstance(value, (int, float, str)) and str(value)]
 
 
+PREDICTION_REWARD_RULES = [
+    {
+        "drama_title": "那年冬至",
+        "episode_no": 1,
+        "highlight_title": "男主会选择哪一个",
+        "correct_option_key": "reality",
+        "correct_label": "选二",
+        "points": 20,
+        "reward_key": "winter_choice_oracle",
+        "title": "冬至预言家",
+        "description": "在同看竞猜中猜中男主会选择第二个选项。",
+    }
+]
+
+
+def prediction_reward_rule(highlight: Highlight) -> dict | None:
+    episode = highlight.episode
+    if not episode or not episode.drama:
+        return None
+    for rule in PREDICTION_REWARD_RULES:
+        if (
+            rule["drama_title"] == episode.drama.title
+            and int(rule["episode_no"]) == int(episode.episode_no)
+            and rule["highlight_title"] == highlight.title
+        ):
+            return rule
+    return None
+
+
 def highlight_payload(highlight: Highlight) -> dict:
     normalized_type = normalize_highlight_type(highlight.highlight_type)
-    return {
+    reward_rule = prediction_reward_rule(highlight)
+    payload = {
         "id": highlight.id,
         "start_time_sec": highlight.start_time_sec,
         "end_time_sec": highlight.end_time_sec,
@@ -100,6 +131,14 @@ def highlight_payload(highlight: Highlight) -> dict:
         "evidence_segment_ids": parse_evidence_segment_ids(highlight),
         "evidence_text": highlight.evidence_text,
     }
+    if reward_rule:
+        payload["reward_hint"] = {
+            "kind": "prediction",
+            "points": reward_rule["points"],
+            "title": reward_rule["title"],
+            "description": "同看竞猜题，答对后解锁称号和积分。",
+        }
+    return payload
 
 
 def annotation_item_payload(highlight: Highlight) -> dict:
@@ -149,6 +188,92 @@ def option_stats(db: Session, highlight: Highlight) -> dict:
             }
         )
     return {"total": total, "options": options}
+
+
+def reward_payload(reward: UserReward) -> dict:
+    return {
+        "id": reward.id,
+        "reward_key": reward.reward_key,
+        "title": reward.title,
+        "description": reward.description,
+        "points": reward.points,
+        "highlight_id": reward.highlight_id,
+        "created_at": reward.created_at.isoformat() if reward.created_at else None,
+    }
+
+
+def reward_profile(user: User, db: Session) -> dict:
+    rewards = (
+        db.query(UserReward)
+        .filter(UserReward.user_id == user.id)
+        .order_by(UserReward.created_at.desc(), UserReward.id.desc())
+        .all()
+    )
+    points = sum(item.points or 0 for item in rewards)
+    title = "剧情新人"
+    if points >= 80:
+        title = "高光收藏家"
+    elif points >= 40:
+        title = "剧情读心者"
+    elif points >= 20:
+        title = "冬至预言家"
+    return {
+        "points": points,
+        "title": title,
+        "badges": [reward_payload(item) for item in rewards],
+    }
+
+
+def evaluate_interaction_reward(
+    db: Session, user: User | None, highlight: Highlight, option_key: str
+) -> dict | None:
+    rule = prediction_reward_rule(highlight)
+    if not rule:
+        return None
+    correct = option_key == rule["correct_option_key"]
+    base = {
+        "kind": "prediction",
+        "correct": correct,
+        "correct_option_key": rule["correct_option_key"],
+        "correct_option_label": rule["correct_label"],
+        "points": 0,
+    }
+    if not correct:
+        return {**base, "message": f"差一点，正确答案是{rule['correct_label']}。"}
+    if not user:
+        return {**base, "message": "答对了。登录后可以领取称号和积分。"}
+    reward_key = f"{rule['reward_key']}:{highlight.id}"
+    existing = (
+        db.query(UserReward)
+        .filter(UserReward.user_id == user.id, UserReward.reward_key == reward_key)
+        .first()
+    )
+    if existing:
+        return {
+            **base,
+            "points": 0,
+            "already_awarded": True,
+            "badge": reward_payload(existing),
+            "message": f"你已拥有「{existing.title}」。",
+        }
+    reward = UserReward(
+        user_id=user.id,
+        highlight_id=highlight.id,
+        reward_key=reward_key,
+        title=rule["title"],
+        description=rule["description"],
+        points=rule["points"],
+    )
+    db.add(reward)
+    db.commit()
+    db.refresh(reward)
+    return {
+        **base,
+        "points": reward.points,
+        "already_awarded": False,
+        "badge": reward_payload(reward),
+        "message": f"预判成功，解锁「{reward.title}」+{reward.points}分。",
+    }
 
 
 def danmaku_user_payload(comment: DanmakuComment) -> dict:
@@ -442,7 +567,8 @@ def create_interaction(
     )
     db.add(interaction)
     db.commit()
-    return {"ok": True, "highlight_id": highlight.id, "stats": option_stats(db, highlight)}
+    reward = evaluate_interaction_reward(db, user, highlight, payload.option_key)
+    return {"ok": True, "highlight_id": highlight.id, "stats": option_stats(db, highlight), "reward": reward}
 
 
 @app.get("/api/episodes/{episode_id}/danmaku")
@@ -576,6 +702,11 @@ def upsert_watch_history(
     row.updated_at = datetime.utcnow()
     db.commit()
     return {"ok": True}
+
+
+@app.get("/api/users/me/rewards")
+def get_my_rewards(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    return reward_profile(user, db)
 
 
 @app.post("/api/watch-rooms")

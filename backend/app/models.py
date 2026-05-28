@@ -50,6 +50,7 @@ class User(Base):
 
     sessions = relationship("AuthSession", back_populates="user", cascade="all, delete-orphan")
     watch_history = relationship("WatchHistory", back_populates="user", cascade="all, delete-orphan")
+    rewards = relationship("UserReward", back_populates="user", cascade="all, delete-orphan")
 
 
 class AuthSession(Base):
@@ -149,6 +150,22 @@ class WatchRoom(Base):
     guest = relationship("User", foreign_keys=[guest_user_id])
     updated_by = relationship("User", foreign_keys=[updated_by_user_id])
     episode = relationship("Episode")
+
+
+class UserReward(Base):
+    __tablename__ = "user_rewards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    highlight_id = Column(Integer, ForeignKey("highlights.id"), nullable=True, index=True)
+    reward_key = Column(String(96), nullable=False, index=True)
+    title = Column(String(64), nullable=False)
+    description = Column(Text, default="")
+    points = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="rewards")
+    highlight = relationship("Highlight")
 
 
 class EpisodeExperienceConfig(Base):
