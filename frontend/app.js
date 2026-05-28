@@ -233,6 +233,8 @@ const playToggle = $("#playToggle");
 const muteToggle = $("#muteToggle");
 const progressSlider = $("#progressSlider");
 const playerTime = $("#playerTime");
+const episodePanel = $("#episodePanel");
+const playerStatus = $("#playerStatus");
 
 const HIGHLIGHT_ALIAS_TO_KEY = Object.fromEntries(
   Object.entries(HIGHLIGHT_UI).flatMap(([key, config]) => config.aliases.map((alias) => [alias, key]))
@@ -450,6 +452,17 @@ function setDanmakuFeedback(message, isError = false) {
       feedback.classList.remove("error");
     }, 3600);
   }
+}
+
+function setPlayerStatus(message, isError = false) {
+  if (!playerStatus) return;
+  playerStatus.textContent = message || "";
+  playerStatus.hidden = !message;
+  playerStatus.classList.toggle("error", Boolean(isError));
+}
+
+function clearPlayerStatus() {
+  setPlayerStatus("");
 }
 
 function setView(name) {
@@ -1613,6 +1626,7 @@ async function loadWatchHistory() {
   }
   renderWatchHistory();
   if (state.dramas.length) renderDramas();
+  if (state.episodes.length) renderEpisodePanel();
 }
 
 function recordWatchHistory(progressSec = 0, immediate = false) {
@@ -1636,6 +1650,45 @@ async function loadDramas() {
   renderDramas();
 }
 
+function findEpisodeHistory(episodeId) {
+  return state.watchHistory.find((item) => Number(item.episode_id) === Number(episodeId));
+}
+
+function watchPercent(history, episode) {
+  if (!history) return 0;
+  const direct = Number(history.progress_percent || 0);
+  if (direct > 0) return Math.min(100, Math.max(0, direct));
+  const duration = Number(history.duration_sec || episode?.duration_sec || 0);
+  return duration > 0 ? Math.min(100, Math.max(0, (Number(history.progress_sec || 0) / duration) * 100)) : 0;
+}
+
+function renderEpisodePanel() {
+  if (!episodePanel) return;
+  if (!state.episodes.length) {
+    episodePanel.innerHTML = "";
+    return;
+  }
+  episodePanel.innerHTML = state.episodes
+    .map((episode, index) => {
+      const history = findEpisodeHistory(episode.id);
+      const active = state.currentEpisode?.id === episode.id;
+      const percent = watchPercent(history, episode);
+      return `
+        <button class="episode-pill ${active ? "active" : ""}" type="button" data-episode-id="${episode.id}" data-progress="${history?.progress_sec || 0}">
+          <span>${index + 1}</span>
+          <strong>${escapeHTML(episode.title)}</strong>
+          ${history ? `<em>续 ${formatTime(history.progress_sec)}</em>` : ""}
+          ${history ? `<i class="episode-progress" style="width:${percent}%"></i>` : ""}
+        </button>
+      `;
+    })
+    .join("");
+
+  episodePanel.querySelectorAll(".episode-pill").forEach((button) => {
+    button.addEventListener("click", () => openEpisode(Number(button.dataset.episodeId), { resumeTime: Number(button.dataset.progress || 0) }));
+  });
+}
+
 async function openDrama(dramaId, preferredEpisodeId = null, resumeTime = 0) {
   state.episodes = await fetchJSON(`/api/dramas/${dramaId}/episodes`);
   if (!state.episodes.length) return;
@@ -1644,6 +1697,7 @@ async function openDrama(dramaId, preferredEpisodeId = null, resumeTime = 0) {
     .map((episode) => `<option value="${episode.id}">${episode.title}</option>`)
     .join("");
   select.onchange = () => openEpisode(Number(select.value));
+  renderEpisodePanel();
   const targetEpisode = state.episodes.find((episode) => episode.id === preferredEpisodeId) || state.episodes[0];
   await openEpisode(targetEpisode.id, { resumeTime });
   setView("watch");
@@ -1655,23 +1709,33 @@ async function openEpisode(episodeId, options = {}) {
   clearDanmakuLayer();
   clearStickerLayer();
   hideInteraction();
-  const [episode, danmaku, experience] = await Promise.all([
-    fetchJSON(`/api/episodes/${episodeId}`),
-    fetchJSON(`/api/episodes/${episodeId}/danmaku`),
-    fetchJSON(`/api/episodes/${episodeId}/experience`),
-  ]);
-  state.currentEpisode = episode;
-  state.currentExperience = experience;
-  state.danmaku = danmaku;
-  state.pendingResume = Number(options.resumeTime || 0) > 1 ? { episodeId, time: Number(options.resumeTime) } : null;
-  state.lastHistoryRecordAt = 0;
-  $("#watchTitle").textContent = `${state.currentEpisode.drama.title} · ${state.currentEpisode.title}`;
-  $("#episodeSelect").value = String(episodeId);
-  player.src = state.currentEpisode.video_url;
-  applyPlayerTheme(state.currentEpisode);
-  renderTimeline();
-  renderDanmakuHint();
-  syncEpisodeUrl(episodeId);
+  setPlayerStatus("正在加载剧集...");
+  try {
+    const [episode, danmaku, experience] = await Promise.all([
+      fetchJSON(`/api/episodes/${episodeId}`),
+      fetchJSON(`/api/episodes/${episodeId}/danmaku`),
+      fetchJSON(`/api/episodes/${episodeId}/experience`),
+    ]);
+    state.currentEpisode = episode;
+    state.currentExperience = experience;
+    state.danmaku = danmaku;
+    state.pendingResume = Number(options.resumeTime || 0) > 1 ? { episodeId, time: Number(options.resumeTime) } : null;
+    state.lastHistoryRecordAt = 0;
+    $("#watchTitle").textContent = `${state.currentEpisode.drama.title} · ${state.currentEpisode.title}`;
+    $("#episodeSelect").value = String(episodeId);
+    setPlayerStatus("视频加载中...");
+    player.src = state.currentEpisode.video_url;
+    player.load();
+    applyPlayerTheme(state.currentEpisode);
+    renderTimeline();
+    renderDanmakuHint();
+    renderEpisodePanel();
+    syncEpisodeUrl(episodeId);
+  } catch (error) {
+    const message = `剧集加载失败：${errorMessage(error)}`;
+    setPlayerStatus(message, true);
+    setDanmakuFeedback(message, true);
+  }
 }
 
 async function openEpisodeFromUrl(episodeId, resumeTime = 0) {
@@ -3207,8 +3271,15 @@ player.addEventListener("timeupdate", () => {
 });
 
 player.addEventListener("loadedmetadata", () => {
+  clearPlayerStatus();
   applyPendingResume();
   updatePlayerControls();
+});
+
+player.addEventListener("canplay", clearPlayerStatus);
+
+player.addEventListener("error", () => {
+  setPlayerStatus("视频加载失败，请检查素材文件或刷新重试", true);
 });
 
 player.addEventListener("play", () => {

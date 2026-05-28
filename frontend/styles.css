@@ -392,6 +392,70 @@ main {
   background: var(--panel-2);
 }
 
+.episode-panel {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 14px 12px;
+  scrollbar-width: thin;
+}
+
+.episode-pill {
+  position: relative;
+  display: grid;
+  min-width: 126px;
+  grid-template-columns: auto 1fr;
+  gap: 4px 7px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 9px 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+}
+
+.episode-pill span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  color: #081013;
+  background: var(--player-accent, var(--accent));
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.episode-pill strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.episode-pill em {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.episode-pill.active {
+  border-color: color-mix(in srgb, var(--player-accent, var(--accent)) 72%, transparent);
+  background: color-mix(in srgb, var(--player-accent, var(--accent)) 14%, rgba(255, 255, 255, 0.04));
+}
+
+.episode-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(90deg, var(--player-accent, var(--accent)), var(--player-soft, var(--accent-2)));
+}
+
 .video-wrap {
   position: relative;
   overflow: hidden;
@@ -421,6 +485,30 @@ main {
   width: 100%;
   max-height: 72vh;
   background: #000;
+}
+
+.player-status {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 7;
+  max-width: min(82%, 320px);
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: rgba(8, 12, 18, 0.74);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.player-status.error {
+  border-color: rgba(255, 138, 152, 0.42);
+  color: #ffd1d8;
+  background: rgba(66, 13, 22, 0.76);
 }
 
 .theme-controls {

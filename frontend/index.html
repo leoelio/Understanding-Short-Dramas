@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260529-watch-quality" />
+    <link rel="stylesheet" href="/styles.css?v=20260529-watch-panel" />
   </head>
   <body>
     <div class="app-shell">
@@ -80,8 +80,10 @@
               </div>
               <select id="episodeSelect" class="episode-select" aria-label="选择剧集"></select>
             </div>
+            <div id="episodePanel" class="episode-panel" aria-label="剧集选集"></div>
             <div class="video-wrap">
               <video id="player" playsinline preload="metadata"></video>
+              <div id="playerStatus" class="player-status" hidden></div>
               <div id="danmakuLayer" class="danmaku-layer"></div>
               <div id="stickerLayer" class="sticker-layer" aria-hidden="true"></div>
               <div id="interactionLayer" class="interaction-layer hidden"></div>
@@ -212,6 +214,6 @@
       </main>
     </div>
 
-    <script type="module" src="/app.js?v=20260529-watch-quality"></script>
+    <script type="module" src="/app.js?v=20260529-watch-panel"></script>
   </body>
 </html>
