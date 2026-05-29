@@ -2528,6 +2528,13 @@ function renderEndingRemixOptions(payload) {
                 <strong>${escapeHTML(option.label)}</strong>
                 <span>${escapeHTML(option.description || "")}</span>
                 <em>${escapeHTML(option.tone || "剧情预测")}</em>
+                ${
+                  option.variant_count
+                    ? `<small>${Number(option.variant_count)} 个预生成版本 · 约 ${Number(
+                        option.target_duration_sec || 30
+                      )} 秒</small>`
+                    : ""
+                }
               </button>
             `
           )
@@ -2574,6 +2581,9 @@ function renderEndingRemixLoading(choice) {
 function renderEndingRemixResult(result) {
   if (!endingRemixLayer) return;
   const storyboard = result.storyboard || [];
+  const variant = result.variant || result.prompt_trace?.variant || null;
+  const videoPlan = result.video_plan || result.prompt_trace?.video_plan || null;
+  const videoShots = videoPlan?.shots || [];
   endingRemixLayer.className = "ending-remix-layer";
   endingRemixLayer.innerHTML = `
     <section class="ending-remix-panel remix-result-panel">
@@ -2589,6 +2599,15 @@ function renderEndingRemixResult(result) {
         </div>
       </div>
       <p class="remix-story-text">${escapeHTML(result.story_text || "")}</p>
+      ${
+        variant
+          ? `<div class="remix-variant-strip">
+              <span>本次版本</span>
+              <strong>${escapeHTML(variant.label || "")}</strong>
+              <em>${escapeHTML(variant.variable_label || "")}</em>
+            </div>`
+          : ""
+      }
       <div class="storyboard-grid">
         ${storyboard
           .map(
@@ -2604,6 +2623,37 @@ function renderEndingRemixResult(result) {
           )
           .join("")}
       </div>
+      ${
+        videoPlan
+          ? `<div class="remix-video-plan">
+              <div class="remix-video-plan-head">
+                <div>
+                  <span>预生成短片方案</span>
+                  <strong>${escapeHTML(videoPlan.replacement_axis || "可替换变量")}</strong>
+                </div>
+                <em>${Number(videoPlan.target_duration_sec || 30)} 秒以内</em>
+              </div>
+              <p>${escapeHTML(videoPlan.note || "该版本适合赛前批量生成并缓存。")}</p>
+              <div class="video-slot-pill">${escapeHTML(videoPlan.storage_hint || videoPlan.variant_slot || "")}</div>
+              <div class="video-shot-list">
+                ${videoShots
+                  .map(
+                    (shot, index) => `
+                      <article>
+                        <b>0${index + 1}</b>
+                        <div>
+                          <strong>${escapeHTML(shot.caption || `镜头${index + 1}`)}</strong>
+                          <span>${Number(shot.duration_sec || 0)}s · ${escapeHTML(shot.sound || "")}</span>
+                          <p>${escapeHTML(shot.video_prompt || "")}</p>
+                        </div>
+                      </article>
+                    `
+                  )
+                  .join("")}
+              </div>
+            </div>`
+          : ""
+      }
       <div class="remix-footer">
         <span>${escapeHTML(result.share_copy || "AI 已生成一个非正片番外走向。")}</span>
         <button class="ghost-button" type="button" data-remix-action="back">换一个走向</button>

@@ -539,28 +539,255 @@ REMIX_SYSTEM_PROMPT = """
 1. 只输出 JSON 对象，不要 Markdown。
 2. 不要声称这是官方剧情。
 3. 结合剧名、当前集高光和用户选择，生成适合移动端展示的短内容。
-4. storyboard 必须正好 3 个镜头，每个镜头包含 shot、visual、subtitle、sound。
-5. 不要输出 API Key、接入点、环境变量或任何密钥内容。
+4. 北往第一集必须保留“欠薪、返乡、摩托、年三十回家”的现实质感。
+5. storyboard 必须正好 3 个镜头，每个镜头包含 shot、visual、subtitle、sound。
+6. 目标内容按 30 秒以内短片设计，不要写成长剧本。
+7. 不要输出 API Key、接入点、环境变量或任何密钥内容。
 """.strip()
+
+
+BEIWANG_EP1_REMIX_VARIANTS = {
+    "road_breakdown": [
+        {
+            "variant_key": "chain_bridge",
+            "label": "链条断在小桥",
+            "variable_label": "困难：镇外小桥断链",
+            "summary": "摩托链条在镇外小桥断了，雪越下越大，他借手电和铁丝临时修好继续赶路。",
+            "runtime_sec": 26,
+            "story_text": "年三十的风把路吹得发硬，摩托刚上镇外小桥就猛地一顿，链条掉进雪泥里。手机只剩 8% 电，修车铺早已落锁。他蹲在桥边把手冻红，正想放弃时，一个路过的大爷递来手电和一截铁丝。他把链条临时接上，发动机重新响起，他冲着黑路低声说：妈，我往回赶呢。",
+            "storyboard": [
+                {"shot": "镜头一", "visual": "旧摩托冲上镇外小桥，车身猛地一歪，链条甩进雪泥。", "subtitle": "“不是吧，就差这段路了。”", "sound": "金属断响和风声"},
+                {"shot": "镜头二", "visual": "主角蹲在桥边修车，手被冻红，老人用手电替他照着链条。", "subtitle": "“孩子，回家这事儿，别半道停。”", "sound": "手电开关声"},
+                {"shot": "镜头三", "visual": "摩托重新点火，车灯划开雪夜，他把围巾往上拉继续上路。", "subtitle": "“妈，等我。”", "sound": "发动机重新轰鸣"},
+            ],
+            "video_shots": [
+                {"duration_sec": 8, "caption": "小桥断链", "video_prompt": "现实主义短剧画面，东北年三十雪夜，打工返乡青年穿朴素冬装，骑旧摩托经过镇外小桥，链条断裂甩进雪泥，冷色电影感，移动端竖屏，克制但有冲击力", "sound": "链条断裂、寒风"},
+                {"duration_sec": 10, "caption": "借光修车", "video_prompt": "桥边近景，青年蹲在雪地修摩托链条，手冻红，一位路过老人递手电照明，旧行李绑在车尾，人物表情坚韧，写实温暖光线", "sound": "手电咔哒、呼吸声"},
+                {"duration_sec": 8, "caption": "继续上路", "video_prompt": "旧摩托重新发动，车灯照亮乡道积雪，青年拉紧围巾继续往家赶，远处村口有微弱灯火，返乡悬念和希望感", "sound": "发动机轰鸣"},
+            ],
+        },
+        {
+            "variant_key": "flat_tire",
+            "label": "轮胎扎进铁钉",
+            "variable_label": "困难：荒路爆胎",
+            "summary": "半路轮胎扎钉，寒风里没人修车，他用工地胶布和借来的补胎工具撑到下一站。",
+            "runtime_sec": 27,
+            "story_text": "摩托刚过废弃收费站，后轮突然一软，铁钉扎进轮胎。导航显示离家还有几十公里，路边小卖部也准备关门。他摸出最后一点零钱买了热水，老板娘看他发抖，翻出一套旧补胎工具。胶条塞进去的那一刻，他听见母亲发来的语音：路上慢点。于是他把语音按了收藏，重新扶起摩托。",
+            "storyboard": [
+                {"shot": "镜头一", "visual": "荒路上旧摩托后轮泄气，铁钉在轮胎上反光。", "subtitle": "“还有几十公里，不能在这儿停。”", "sound": "轮胎漏气声"},
+                {"shot": "镜头二", "visual": "小卖部半拉卷帘门，老板娘递出热水和旧补胎工具。", "subtitle": "“先暖暖手，再补。”", "sound": "卷帘门摩擦声"},
+                {"shot": "镜头三", "visual": "主角听完母亲语音，把手机贴近胸口，推车重新上路。", "subtitle": "“嗯，马上回。”", "sound": "微信语音提示"},
+            ],
+            "video_shots": [
+                {"duration_sec": 8, "caption": "荒路爆胎", "video_prompt": "东北返乡公路，废弃收费站旁，旧摩托后轮被铁钉扎破，青年下车查看，车尾绑着行李，冷风吹过空路，写实竖屏短剧", "sound": "漏气、风声"},
+                {"duration_sec": 10, "caption": "小卖部补胎", "video_prompt": "乡镇小卖部半关门，暖黄色灯光，老板娘递给返乡青年热水和旧补胎工具，青年手冻红但眼神坚定，温暖现实主义", "sound": "卷帘门、热水杯"},
+                {"duration_sec": 9, "caption": "听语音上路", "video_prompt": "青年在路灯下听母亲语音，把手机贴近胸口，然后扶起补好的摩托继续赶路，远处公路延伸进夜色", "sound": "语音提示、摩托点火"},
+            ],
+        },
+        {
+            "variant_key": "frozen_engine",
+            "label": "发动机冻住",
+            "variable_label": "困难：夜里打不着火",
+            "summary": "夜里发动机被冻住，他手机低电、路边无车，只能用热水和耐心把摩托重新唤醒。",
+            "runtime_sec": 25,
+            "story_text": "夜越深，摩托越不争气。主角在路边连踩几脚，发动机只闷闷响了两声就彻底沉默。手机电量红了，地图也开始卡。他盯着后备箱里的年货，差点把头埋进围巾里。远处环卫站的灯还亮着，值班大叔给他倒了一壶热水。他一点点暖发动机，像哄一个也想回家的老伙计。",
+            "storyboard": [
+                {"shot": "镜头一", "visual": "路边空旷，主角反复踩启动杆，摩托只抖不响。", "subtitle": "“你也想歇了？”", "sound": "空踩声"},
+                {"shot": "镜头二", "visual": "环卫站暖灯下，大叔把热水壶递给他。", "subtitle": "“车冷，人也冷，慢慢来。”", "sound": "热水倒入杯中"},
+                {"shot": "镜头三", "visual": "白雾从发动机旁升起，摩托终于点火，主角笑了一下。", "subtitle": "“走，回家。”", "sound": "发动机低鸣"},
+            ],
+            "video_shots": [
+                {"duration_sec": 7, "caption": "打不着火", "video_prompt": "寒冷夜路，青年反复踩旧摩托启动杆，发动机冻住只抖动不点火，手机红色低电，行李和年货绑在后座，现实主义", "sound": "启动失败声"},
+                {"duration_sec": 9, "caption": "环卫站热水", "video_prompt": "路边环卫站暖灯，值班大叔递热水壶给返乡青年，雪夜白雾，人物质朴，有人情味，竖屏电影质感", "sound": "热水声"},
+                {"duration_sec": 9, "caption": "唤醒摩托", "video_prompt": "青年用热水和布慢慢暖发动机，白雾升起，旧摩托终于启动，青年露出疲惫但开心的笑，继续返乡", "sound": "发动机启动"},
+            ],
+        },
+    ],
+    "ticket_home": [
+        {
+            "variant_key": "green_train",
+            "label": "借钱买绿皮火车票",
+            "variable_label": "票种：绿皮火车",
+            "summary": "骑车太苦让他动摇，遇到返乡父女后决定借钱买一张绿皮火车票，先把人带回家。",
+            "runtime_sec": 28,
+            "story_text": "连续几小时寒风钻进棉衣，主角第一次冒出念头：要不别骑了。他在候车亭看见一对父女，孩子抱着冻硬的饺子盒问爸爸能不能赶上年夜饭。那句话像针一样扎到他。他给工友发去语音，别的不用，先借我一张票钱。夜里，他攥着绿皮火车票挤上车，摩托寄存在小站，回家这件事换了一种方式继续。",
+            "storyboard": [
+                {"shot": "镜头一", "visual": "寒风里主角停在候车亭，脸被吹得发僵。", "subtitle": "“我是不是扛不住了？”", "sound": "风吹铁皮棚"},
+                {"shot": "镜头二", "visual": "小女孩抱着饺子盒，问父亲能不能赶上年夜饭。", "subtitle": "“爸爸，奶奶会等我们吗？”", "sound": "孩子低声问话"},
+                {"shot": "镜头三", "visual": "绿皮火车慢慢启动，主角站在车厢连接处看向窗外。", "subtitle": "“车不骑了，家还得回。”", "sound": "火车鸣笛"},
+            ],
+            "video_shots": [
+                {"duration_sec": 8, "caption": "候车亭动摇", "video_prompt": "东北乡镇候车亭，寒风吹铁皮棚，打工返乡青年抱着头盔坐下，旧摩托停在旁边，表情疲惫动摇，写实竖屏", "sound": "风声"},
+                {"duration_sec": 9, "caption": "孩子一句话", "video_prompt": "候车亭内一对返乡父女，小女孩抱着饺子盒问能否赶上年夜饭，青年在旁边听见后抬头，温暖现实主义", "sound": "孩子声音"},
+                {"duration_sec": 11, "caption": "绿皮火车", "video_prompt": "夜色小站，绿皮火车启动，青年攥着车票站在车厢连接处，窗外雪地倒退，旧摩托寄存在站外，返乡继续", "sound": "火车鸣笛"},
+            ],
+        },
+        {
+            "variant_key": "coach_ticket",
+            "label": "借钱买大巴票",
+            "variable_label": "票种：长途大巴",
+            "summary": "骑车到体力崩溃，他听见母亲的语音后向工友借钱，买最后一张长途大巴票回家。",
+            "runtime_sec": 26,
+            "story_text": "路边服务区的热水机坏了，主角坐在台阶上，手指冻得握不住钥匙。他本来想硬撑，直到母亲又发来一条语音：别逞能，平安到就行。那一刻他低下头，给工友打电话，声音小得像认输：哥，借我点票钱。最后一班大巴只剩一张后排票，他把摩托托管在服务区，抱着行李上车，第一次允许自己不逞强。",
+            "storyboard": [
+                {"shot": "镜头一", "visual": "服务区台阶，主角握不住摩托钥匙，热水机贴着故障纸。", "subtitle": "“再骑下去，真回不去了。”", "sound": "空旷服务区提示音"},
+                {"shot": "镜头二", "visual": "手机屏幕亮起母亲语音，他听完后拨给工友。", "subtitle": "“哥，借我点票钱。”", "sound": "电话接通声"},
+                {"shot": "镜头三", "visual": "长途大巴车尾灯亮起，主角坐在最后一排抱紧行李。", "subtitle": "“不逞强，也算往家走。”", "sound": "大巴发动声"},
+            ],
+            "video_shots": [
+                {"duration_sec": 8, "caption": "服务区崩溃", "video_prompt": "冬夜服务区台阶，热水机故障，青年握不住摩托钥匙，旧摩托停在一旁，身体疲惫，现实主义短剧", "sound": "服务区空响"},
+                {"duration_sec": 8, "caption": "借票钱", "video_prompt": "手机母亲语音亮起，青年低头拨电话向工友借钱，表情羞愧又坚定，冷色环境中有一点手机暖光", "sound": "电话接通"},
+                {"duration_sec": 10, "caption": "上大巴", "video_prompt": "最后一班长途大巴夜里发车，青年抱行李坐在后排，窗外服务区和旧摩托渐远，返乡现实感", "sound": "大巴发动"},
+            ],
+        },
+        {
+            "variant_key": "standing_ticket",
+            "label": "借钱买站票",
+            "variable_label": "票种：临时站票",
+            "summary": "暴雪封路让骑车变危险，他借钱抢到临时站票，挤上车继续赶年三十。",
+            "runtime_sec": 27,
+            "story_text": "暴雪预警一响，路口的交警把摩托全拦了下来。主角看着手机上跳出的红色封路提示，嘴硬了半天，最后还是给工友发了一句：站票也行，帮我抢一张。车站里人挤人，他背着行李站在过道，鞋边还沾着雪泥。有人抱怨太挤，他却笑了一下：挤点好，挤说明大家都在往家赶。",
+            "storyboard": [
+                {"shot": "镜头一", "visual": "路口警示灯闪烁，交警拦下摩托，暴雪压低视线。", "subtitle": "“前面封了，不能骑。”", "sound": "警示喇叭"},
+                {"shot": "镜头二", "visual": "主角盯着手机抢票页面，最后点下确认。", "subtitle": "“站票也行，能回去就行。”", "sound": "抢票提示音"},
+                {"shot": "镜头三", "visual": "拥挤车厢过道，主角背着行李站稳，鞋边雪泥慢慢化开。", "subtitle": "“大家都在往家赶。”", "sound": "车厢人声"},
+            ],
+            "video_shots": [
+                {"duration_sec": 8, "caption": "暴雪封路", "video_prompt": "东北公路暴雪，路口警示灯和交警拦下旧摩托，青年披着雪站在车旁，返乡路被迫中断，竖屏写实", "sound": "警示喇叭"},
+                {"duration_sec": 8, "caption": "抢站票", "video_prompt": "青年在车站角落盯着手机抢票页面，屏幕显示临时站票，手指犹豫后点下确认，周围人群焦急", "sound": "手机提示"},
+                {"duration_sec": 11, "caption": "挤上车", "video_prompt": "拥挤火车过道，青年背着行李站稳，鞋边雪泥融化，车窗外夜色飞过，他露出释然笑意", "sound": "车厢人声"},
+            ],
+        },
+    ],
+    "kindness_ride": [
+        {
+            "variant_key": "wuling_van",
+            "label": "五菱面包车顺路",
+            "variable_label": "车主：五菱面包车",
+            "summary": "他帮面包车车主推车，回头发现摩托被偷，车主也是东北人，直接载他一起回家。",
+            "runtime_sec": 28,
+            "story_text": "路边一辆五菱面包车陷进雪沟，车主急得满头汗，后座还坐着抱保温桶的母亲。主角二话没说下车帮推，鞋全湿了。等车出来，他回头一看，自己的摩托不见了，只剩地上一道拖痕。他愣住时，车主听见他的东北口音，拍了拍副驾：兄弟，上车吧，我也往北走。摩托丢了，回家的路却多了个人情味。",
+            "storyboard": [
+                {"shot": "镜头一", "visual": "五菱面包车陷在雪沟，主角下车帮忙推车。", "subtitle": "“搭把手，先把人弄出来。”", "sound": "轮胎打滑声"},
+                {"shot": "镜头二", "visual": "他回头发现摩托不见，只剩雪地拖痕。", "subtitle": "“我车呢？”", "sound": "风声骤停"},
+                {"shot": "镜头三", "visual": "车主打开副驾门，车里暖光照到他的脸。", "subtitle": "“上车，都是往东北回。”", "sound": "车门打开声"},
+            ],
+            "video_shots": [
+                {"duration_sec": 9, "caption": "帮推五菱", "video_prompt": "雪夜路边，五菱面包车陷进雪沟，返乡青年下车帮车主推车，后座母亲抱保温桶，现实主义温暖，竖屏", "sound": "轮胎打滑"},
+                {"duration_sec": 8, "caption": "摩托被偷", "video_prompt": "青年推完车回头，旧摩托不见，只剩雪地拖痕和掉落的绑绳，表情从热心变成懵住，短剧反转", "sound": "风声骤停"},
+                {"duration_sec": 11, "caption": "顺路回家", "video_prompt": "五菱车主打开副驾门，车内暖光照出东北地图和年货，青年抱行李上车，一起往北方夜路开去", "sound": "车门和发动机"},
+            ],
+        },
+        {
+            "variant_key": "audi_sedan",
+            "label": "奥迪车主顺路",
+            "variable_label": "车主：奥迪轿车",
+            "summary": "他帮奥迪车主换胎送老人，摩托却被偷，车主被他的善意打动，顺路送他回东北。",
+            "runtime_sec": 27,
+            "story_text": "一辆奥迪停在路肩，车主急着送老人去前面镇医院，却不会换备胎。主角本来赶时间，还是把摩托停下，脱了手套帮他拧螺丝。老人上车前塞给他一把热糖。等他回到路边，摩托已经被人推走。车主沉默几秒，把后备箱重新打开：兄弟，你帮我一程，我送你一程。雪夜里，副驾的安全带替他接住了那口委屈。",
+            "storyboard": [
+                {"shot": "镜头一", "visual": "奥迪停在路肩，老人裹着围巾，主角弯腰换备胎。", "subtitle": "“先救急，别耽误老人。”", "sound": "扳手拧动"},
+                {"shot": "镜头二", "visual": "老人塞给他热糖，他再回头时摩托已经不见。", "subtitle": "“这也太背了吧。”", "sound": "糖纸声后突然安静"},
+                {"shot": "镜头三", "visual": "车主打开副驾门，主角把行李放进后备箱。", "subtitle": "“你帮我一程，我送你一程。”", "sound": "安全带扣上"},
+            ],
+            "video_shots": [
+                {"duration_sec": 9, "caption": "路肩换胎", "video_prompt": "雪夜高速辅路，一辆奥迪轿车停在路肩，返乡青年蹲下帮车主换备胎，老人裹围巾坐在车内，现实质感", "sound": "扳手声"},
+                {"duration_sec": 8, "caption": "摩托消失", "video_prompt": "老人递给青年热糖，青年回头发现旧摩托消失，只剩绑绳和车轮印，奥迪车主表情愧疚，短剧反转", "sound": "糖纸、静默"},
+                {"duration_sec": 10, "caption": "副驾回家", "video_prompt": "奥迪后备箱装入返乡行李，青年坐上副驾系安全带，车内暖光，车窗外雪夜公路向东北延伸", "sound": "安全带扣上"},
+            ],
+        },
+        {
+            "variant_key": "convertible",
+            "label": "敞篷跑车热血顺路",
+            "variable_label": "车主：敞篷跑车",
+            "summary": "他帮跑车车主盖住坏掉的车篷，摩托被偷后，对方用夸张但热血的方式载他回家。",
+            "runtime_sec": 25,
+            "story_text": "最荒唐的是，雪夜里竟然停着一辆敞篷跑车，车篷卡住，车主冻得直打哆嗦。主角把自己的防水布拆下来帮他盖车，嘴上还吐槽：你这也挺摇滚。结果一回头，摩托被偷了。车主愣了两秒，忽然把暖风开到最大：哥们，上车，我这车虽然离谱，但往北开没问题。于是返乡路突然从苦情变成了热血喜剧。",
+            "storyboard": [
+                {"shot": "镜头一", "visual": "雪夜敞篷跑车卡在路边，车主抱着头发抖。", "subtitle": "“你这也太摇滚了。”", "sound": "夸张冷风声"},
+                {"shot": "镜头二", "visual": "主角用防水布帮盖车，再回头发现摩托没了。", "subtitle": "“不是，摇滚到我车没了？”", "sound": "喜剧停顿"},
+                {"shot": "镜头三", "visual": "跑车暖风开满，主角抱着行李坐上副驾，车灯冲进雪夜。", "subtitle": "“走，东北方向！”", "sound": "发动机高转"},
+            ],
+            "video_shots": [
+                {"duration_sec": 7, "caption": "离谱跑车", "video_prompt": "雪夜乡路，一辆敞篷跑车车篷卡住，车主冻得发抖，返乡青年骑旧摩托停下吐槽，轻喜剧但写实", "sound": "冷风呼啸"},
+                {"duration_sec": 8, "caption": "帮盖车篷", "video_prompt": "青年拆下摩托防水布帮敞篷跑车盖车，动作利落，下一秒回头发现旧摩托被偷，表情夸张懵住", "sound": "喜剧停顿"},
+                {"duration_sec": 10, "caption": "热血向北", "video_prompt": "跑车暖风开满，青年抱行李坐上副驾，车灯穿过雪夜，路线牌指向东北，现实喜剧和返乡热血结合", "sound": "跑车发动机"},
+            ],
+        },
+    ],
+}
+
+
+def is_beiwang_first_episode(episode: Episode) -> bool:
+    return bool(episode.drama and "北往" in episode.drama.title and int(episode.episode_no or 0) == 1)
+
+
+def public_remix_variant(variant: dict | None) -> dict | None:
+    if not variant:
+        return None
+    return {
+        "variant_key": variant["variant_key"],
+        "label": variant["label"],
+        "variable_label": variant["variable_label"],
+        "summary": variant["summary"],
+        "runtime_sec": variant["runtime_sec"],
+    }
+
+
+def remix_variant_for_choice(choice: dict, session_id: str) -> dict | None:
+    variants = BEIWANG_EP1_REMIX_VARIANTS.get(choice["key"], [])
+    if not variants:
+        return None
+    digest = hashlib.sha1(f"{session_id}:{choice['key']}".encode("utf-8")).hexdigest()
+    return variants[int(digest[:8], 16) % len(variants)]
+
+
+def remix_video_plan(choice: dict, variant: dict | None) -> dict | None:
+    if not variant:
+        return None
+    slot = f"beiwang_ep1_{choice['key']}_{variant['variant_key']}"
+    return {
+        "asset_status": "script_ready",
+        "render_mode": "pre_generated_video",
+        "target_duration_sec": variant["runtime_sec"],
+        "variant_slot": slot,
+        "replacement_axis": variant["variable_label"],
+        "storage_hint": f"/assets/remix_videos/beiwang_ep1/{slot}.mp4",
+        "note": "赛前可按该视频提示词批量生成并缓存，客户端按用户 session 分配不同版本。",
+        "shots": variant["video_shots"],
+    }
 
 
 def remix_options_for_episode(episode: Episode) -> list[dict]:
     title = episode.drama.title
-    if "北往" in title:
+    if is_beiwang_first_episode(episode):
         return [
             {
-                "key": "home_gate",
-                "label": "门口的陌生车",
-                "description": "他终于骑到家，却发现家门口停着一辆不该出现的车。",
-                "tone": "返乡悬念",
-                "icon": "家",
+                "key": "road_breakdown",
+                "label": "车坏在半路",
+                "description": "摩托骑到半路出故障，他遇到风雪、断链或打不着火的困难，修好后继续赶回家。",
+                "tone": "返乡闯关",
+                "icon": "修",
+                "variant_count": 3,
+                "target_duration_sec": 28,
             },
             {
-                "key": "debt_call",
-                "label": "新债主来电",
-                "description": "摩托刚熄火，电话里又传来新的讨债声。",
-                "tone": "现实反转",
-                "icon": "电",
+                "key": "ticket_home",
+                "label": "借钱买票回家",
+                "description": "骑车太苦让他动摇，路上遇到一个具体事件后，他放下逞强，借钱买票继续回家。",
+                "tone": "现实共情",
+                "icon": "票",
+                "variant_count": 3,
+                "target_duration_sec": 28,
+            },
+            {
+                "key": "kindness_ride",
+                "label": "帮人后一起回家",
+                "description": "他路上帮了别人，摩托却被偷；被帮助的人正好也往东北走，最后载他一起回家。",
+                "tone": "善意反转",
+                "icon": "善",
+                "variant_count": 3,
+                "target_duration_sec": 28,
             },
         ]
     if "冬至" in title:
@@ -659,7 +886,7 @@ def remix_context_payload(episode: Episode, db: Session) -> dict:
     }
 
 
-def fallback_remix_payload(episode: Episode, choice: dict, context: dict) -> dict:
+def fallback_remix_payload(episode: Episode, choice: dict, context: dict, variant: dict | None = None) -> dict:
     drama_title = episode.drama.title
     highlights = context.get("highlights") or []
     last_highlight = highlights[-1] if highlights else {}
@@ -676,6 +903,11 @@ def fallback_remix_payload(episode: Episode, choice: dict, context: dict) -> dic
             {"shot": "镜头二", "visual": "窗外飘雪，女主回头，表情从强撑变成动摇。", "subtitle": choice["description"], "sound": "雪声和轻微呼吸"},
             {"shot": "镜头三", "visual": "近景定格在两人靠近的距离，画面淡出。", "subtitle": "下一集：别再躲了。", "sound": "钢琴尾音"},
         ]
+    elif "北往" in drama_title and variant:
+        title = f"{choice['label']} · {variant['label']}"
+        logline = variant["summary"]
+        story_text = variant["story_text"]
+        storyboard = variant["storyboard"]
     elif "北往" in drama_title:
         story_text = (
             f"摩托的轰鸣停下来，返乡路却没有真正结束。片尾可以顺着“{scene_seed}”继续推进："
@@ -696,6 +928,8 @@ def fallback_remix_payload(episode: Episode, choice: dict, context: dict) -> dic
             {"shot": "镜头二", "visual": "关键物件或眼神特写，暗示新冲突。", "subtitle": choice["description"], "sound": "短促提示音"},
             {"shot": "镜头三", "visual": "画面切黑，只留下下一集标题式文案。", "subtitle": "下一集：答案马上揭晓。", "sound": "悬念鼓点"},
         ]
+    variant_payload = public_remix_variant(variant)
+    video_plan = remix_video_plan(choice, variant)
     return {
         "source": "local_fallback",
         "model_version": "remix-text-v1",
@@ -705,11 +939,15 @@ def fallback_remix_payload(episode: Episode, choice: dict, context: dict) -> dic
         "emotion": choice["tone"],
         "story_text": story_text,
         "storyboard": storyboard,
+        "variant": variant_payload,
+        "video_plan": video_plan,
         "share_copy": f"我选择了「{choice['label']}」，AI 生成了一个非正片番外走向。",
         "prompt_trace": {
             "episode_id": episode.id,
             "drama_title": drama_title,
             "choice_key": choice["key"],
+            "variant": variant_payload,
+            "video_plan": video_plan,
             "context_highlight_count": len(highlights),
         },
     }
@@ -755,18 +993,41 @@ def normalize_remix_payload(raw: dict, fallback: dict) -> dict:
         "story_text": str(raw.get("story_text") or fallback["story_text"]),
         "storyboard": clean_storyboard,
         "share_copy": str(raw.get("share_copy") or fallback["share_copy"]),
+        "variant": fallback.get("variant"),
+        "video_plan": fallback.get("video_plan"),
+        "prompt_trace": fallback.get("prompt_trace", {}),
     }
 
 
-def call_remix_llm(context: dict, choice: dict) -> dict:
+def call_remix_llm(context: dict, choice: dict, variant: dict | None = None) -> dict:
     api_key = os.getenv("ARK_API_KEY")
     model = os.getenv("ARK_ENDPOINT_ID") or os.getenv("ARK_MODEL")
     base_url = os.getenv("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3").rstrip("/")
     if not api_key or not model:
         raise RuntimeError("missing_llm_env")
+    compact_context = {
+        "drama_title": context.get("drama_title"),
+        "episode_title": context.get("episode_title"),
+        "genre": context.get("genre"),
+        "duration_sec": context.get("duration_sec"),
+        "recent_highlights": [
+            {
+                "time": item.get("time"),
+                "title": item.get("title"),
+                "description": str(item.get("description") or "")[:120],
+                "evidence_text": str(item.get("evidence_text") or "")[:120],
+            }
+            for item in (context.get("highlights") or [])[-3:]
+        ],
+    }
     prompt = json.dumps(
         {
             "task": "生成片尾 AI 二创文字卡和三格分镜",
+            "constraints": [
+                "必须贴合 selected_variant，不要改掉这个版本的核心变量。",
+                "按 30 秒以内预生成短片设计，节奏是 3 个镜头。",
+                "如果是北往，人物保持打工返乡青年、旧摩托、年三十回家的现实气质。",
+            ],
             "output_schema": {
                 "title": "短标题",
                 "logline": "一句话剧情钩子",
@@ -781,7 +1042,11 @@ def call_remix_llm(context: dict, choice: dict) -> dict:
                 "model_version": "模型版本",
             },
             "choice": choice,
-            "episode": context,
+            "selected_variant": {
+                "public": public_remix_variant(variant),
+                "story_seed": str(variant.get("story_text") or "")[:260] if variant else None,
+            },
+            "episode": compact_context,
         },
         ensure_ascii=False,
     )
@@ -792,6 +1057,7 @@ def call_remix_llm(context: dict, choice: dict) -> dict:
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.55,
+        "max_tokens": 900,
     }
     request = urllib.request.Request(
         f"{base_url}/chat/completions",
@@ -799,7 +1065,7 @@ def call_remix_llm(context: dict, choice: dict) -> dict:
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=24) as response:
+    with urllib.request.urlopen(request, timeout=36) as response:
         data = json.loads(response.read().decode("utf-8"))
     return extract_llm_json(data["choices"][0]["message"]["content"])
 
@@ -814,6 +1080,7 @@ def load_json_field(value: str | None, fallback):
 
 
 def remix_record_payload(record: EpisodeAIRemix) -> dict:
+    prompt_trace = load_json_field(record.prompt_trace_json, {})
     return {
         "id": record.id,
         "episode_id": record.episode_id,
@@ -829,7 +1096,9 @@ def remix_record_payload(record: EpisodeAIRemix) -> dict:
         "story_text": record.story_text,
         "storyboard": load_json_field(record.storyboard_json, []),
         "share_copy": record.share_copy,
-        "prompt_trace": load_json_field(record.prompt_trace_json, {}),
+        "variant": prompt_trace.get("variant"),
+        "video_plan": prompt_trace.get("video_plan"),
+        "prompt_trace": prompt_trace,
         "review_status": record.review_status,
         "review_note": record.review_note,
         "is_featured": record.is_featured,
@@ -848,6 +1117,11 @@ def create_remix_record(
     result: dict,
     user: User | None,
 ) -> EpisodeAIRemix:
+    prompt_trace = dict(result.get("prompt_trace") or {})
+    if result.get("variant"):
+        prompt_trace["variant"] = result["variant"]
+    if result.get("video_plan"):
+        prompt_trace["video_plan"] = result["video_plan"]
     record = EpisodeAIRemix(
         episode_id=episode.id,
         user_id=user.id if user else None,
@@ -864,7 +1138,7 @@ def create_remix_record(
         story_text=result.get("story_text", ""),
         storyboard_json=json.dumps(result.get("storyboard", []), ensure_ascii=False),
         share_copy=result.get("share_copy", ""),
-        prompt_trace_json=json.dumps(result.get("prompt_trace", {}), ensure_ascii=False),
+        prompt_trace_json=json.dumps(prompt_trace, ensure_ascii=False),
         review_status="draft",
         is_featured=False,
         featured_order=0,
@@ -1130,9 +1404,10 @@ def create_episode_ai_remix(
     if not choice:
         raise HTTPException(status_code=400, detail="二创选项不存在")
     context = remix_context_payload(episode, db)
-    fallback = fallback_remix_payload(episode, choice, context)
+    variant = remix_variant_for_choice(choice, payload.session_id) if is_beiwang_first_episode(episode) else None
+    fallback = fallback_remix_payload(episode, choice, context, variant)
     try:
-        raw = call_remix_llm(context, choice)
+        raw = call_remix_llm(context, choice, variant)
         result = normalize_remix_payload(raw, fallback)
     except Exception:
         result = fallback
