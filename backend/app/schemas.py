@@ -22,6 +22,12 @@ class EpisodeRemixCreate(BaseModel):
     session_id: str = Field(min_length=1, max_length=128)
 
 
+class EpisodeRemixReviewUpdate(BaseModel):
+    review_status: str | None = Field(default=None, max_length=32)
+    is_featured: bool | None = None
+    review_note: str | None = Field(default=None, max_length=300)
+
+
 class ExperienceConfigUpdate(BaseModel):
     version: int = Field(default=1, ge=1)
     source: str = Field(default="human_review", max_length=64)

@@ -2642,6 +2642,59 @@ main {
   transform: translateY(-1px);
 }
 
+.featured-remix-strip {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  border: 1px solid color-mix(in srgb, var(--player-soft, var(--accent-2)) 34%, transparent);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.featured-remix-strip > strong {
+  color: var(--player-soft, var(--accent-2));
+  font-size: 12px;
+}
+
+.featured-remix-strip article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+}
+
+.featured-remix-strip b {
+  display: grid;
+  grid-row: span 2;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: #081013;
+  background: var(--player-soft, var(--accent-2));
+  font-size: 11px;
+}
+
+.featured-remix-strip span,
+.featured-remix-strip em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.featured-remix-strip span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.featured-remix-strip em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
 .remix-loading {
   display: grid;
   justify-items: center;
@@ -3831,6 +3884,118 @@ textarea.experience-field-input {
   color: var(--gold);
 }
 
+.remix-review-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.remix-review-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.remix-review-summary span,
+.remix-review-card-head span,
+.remix-review-meta,
+.remix-review-shots em {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.remix-review-summary strong {
+  color: var(--accent-2);
+  font-size: 13px;
+}
+
+.remix-review-list {
+  display: grid;
+  gap: 10px;
+}
+
+.remix-review-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.remix-review-card.featured {
+  border-color: color-mix(in srgb, var(--accent-2) 54%, transparent);
+  background: rgba(18, 214, 176, 0.08);
+}
+
+.remix-review-card.hidden-remix {
+  opacity: 0.62;
+}
+
+.remix-review-card-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.remix-review-card-head h4 {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.remix-review-card-head p,
+.remix-review-story {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.remix-review-card-head b {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  color: #071012;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.remix-review-meta,
+.remix-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.remix-review-meta span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 7px;
+}
+
+.remix-review-shots {
+  display: grid;
+  gap: 5px;
+}
+
+.remix-review-shots em {
+  font-style: normal;
+}
+
+.remix-review-actions button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .sticker-suggestion-json {
   width: 100%;
   min-height: 136px;
@@ -4041,7 +4206,8 @@ textarea.experience-field-input {
   .review-preview-head,
   .review-card-title,
   .experience-card-head,
-  .experience-slot-head {
+  .experience-slot-head,
+  .remix-review-card-head {
     align-items: stretch;
     flex-direction: column;
   }
@@ -4057,5 +4223,9 @@ textarea.experience-field-input {
 
   .experience-head > div:last-child {
     justify-content: flex-start;
+  }
+
+  .remix-review-card-head {
+    grid-template-columns: 1fr;
   }
 }

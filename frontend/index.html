@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260529-ai-remix" />
+    <link rel="stylesheet" href="/styles.css?v=20260529-remix-review" />
   </head>
   <body>
     <div class="app-shell">
@@ -238,6 +238,13 @@
             <textarea id="experienceJson" spellcheck="false" aria-label="体验配置 JSON"></textarea>
             <div id="experiencePreview" class="experience-preview"></div>
           </div>
+          <div class="experience-head">
+            <div>
+              <h3>片尾 AI 二创记录</h3>
+              <p>查看用户生成的剧情预测卡，并人工设为精选或隐藏。</p>
+            </div>
+          </div>
+          <div id="remixReviewPanel" class="remix-review-panel"></div>
         </section>
       </main>
     </div>
@@ -249,6 +256,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=20260529-q-badges"></script>
+    <script type="module" src="/app.js?v=20260529-remix-review"></script>
   </body>
 </html>

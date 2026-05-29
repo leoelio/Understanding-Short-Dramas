@@ -22,6 +22,7 @@ from .models import (
     AuthSession,
     DanmakuComment,
     Drama,
+    EpisodeAIRemix,
     Episode,
     EpisodeExperienceConfig,
     Highlight,
@@ -35,6 +36,7 @@ from .models import (
 from .schemas import (
     DanmakuCreate,
     EpisodeRemixCreate,
+    EpisodeRemixReviewUpdate,
     ExperienceConfigUpdate,
     InteractionCreate,
     LoginRequest,
@@ -802,6 +804,86 @@ def call_remix_llm(context: dict, choice: dict) -> dict:
     return extract_llm_json(data["choices"][0]["message"]["content"])
 
 
+def load_json_field(value: str | None, fallback):
+    if not value:
+        return fallback
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return fallback
+
+
+def remix_record_payload(record: EpisodeAIRemix) -> dict:
+    return {
+        "id": record.id,
+        "episode_id": record.episode_id,
+        "choice_key": record.choice_key,
+        "choice_label": record.choice_label,
+        "choice": load_json_field(record.choice_json, {}),
+        "source": record.source,
+        "model_version": record.model_version,
+        "disclaimer": record.disclaimer,
+        "title": record.title,
+        "logline": record.logline,
+        "emotion": record.emotion,
+        "story_text": record.story_text,
+        "storyboard": load_json_field(record.storyboard_json, []),
+        "share_copy": record.share_copy,
+        "prompt_trace": load_json_field(record.prompt_trace_json, {}),
+        "review_status": record.review_status,
+        "review_note": record.review_note,
+        "is_featured": record.is_featured,
+        "user": public_user(record.user) if record.user else None,
+        "created_at": record.created_at.isoformat() if record.created_at else None,
+        "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+    }
+
+
+def create_remix_record(
+    db: Session,
+    episode: Episode,
+    payload: EpisodeRemixCreate,
+    choice: dict,
+    result: dict,
+    user: User | None,
+) -> EpisodeAIRemix:
+    record = EpisodeAIRemix(
+        episode_id=episode.id,
+        user_id=user.id if user else None,
+        session_id=payload.session_id,
+        choice_key=choice["key"],
+        choice_label=choice["label"],
+        choice_json=json.dumps(choice, ensure_ascii=False),
+        source=result.get("source", "local_fallback"),
+        model_version=result.get("model_version", "remix-text-v1"),
+        disclaimer=result.get("disclaimer", "AI 猜测剧情，非正片内容"),
+        title=result.get("title", "AI 猜测卡"),
+        logline=result.get("logline", ""),
+        emotion=result.get("emotion", ""),
+        story_text=result.get("story_text", ""),
+        storyboard_json=json.dumps(result.get("storyboard", []), ensure_ascii=False),
+        share_copy=result.get("share_copy", ""),
+        prompt_trace_json=json.dumps(result.get("prompt_trace", {}), ensure_ascii=False),
+        review_status="draft",
+        is_featured=False,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def featured_remix_payloads(db: Session, episode_id: int, limit: int = 3) -> list[dict]:
+    rows = (
+        db.query(EpisodeAIRemix)
+        .filter(EpisodeAIRemix.episode_id == episode_id, EpisodeAIRemix.is_featured.is_(True))
+        .order_by(EpisodeAIRemix.updated_at.desc(), EpisodeAIRemix.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [remix_record_payload(row) for row in rows]
+
+
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True, "request_id": str(uuid4())}
@@ -1009,6 +1091,7 @@ def get_episode_remix_options(episode_id: int, db: Session = Depends(get_db)) ->
         "trigger_time_sec": round(max(0, duration - 8), 2),
         "disclaimer": "AI 猜测剧情，非正片内容",
         "options": remix_options_for_episode(episode),
+        "featured_remixes": featured_remix_payloads(db, episode.id),
     }
 
 
@@ -1017,6 +1100,7 @@ def create_episode_ai_remix(
     episode_id: int,
     payload: EpisodeRemixCreate,
     db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
 ) -> dict:
     episode = db.get(Episode, episode_id)
     if not episode:
@@ -1032,12 +1116,24 @@ def create_episode_ai_remix(
         result = normalize_remix_payload(raw, fallback)
     except Exception:
         result = fallback
+    record = create_remix_record(db, episode, payload, choice, result, user)
     return {
         "ok": True,
         "episode_id": episode.id,
+        "record_id": record.id,
+        "review_status": record.review_status,
+        "is_featured": record.is_featured,
         "choice": choice,
         **result,
     }
+
+
+@app.get("/api/episodes/{episode_id}/featured-remixes")
+def get_featured_episode_remixes(episode_id: int, db: Session = Depends(get_db)) -> list[dict]:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    return featured_remix_payloads(db, episode.id)
 
 
 @app.get("/api/danmaku/moderation-rules")
@@ -1283,6 +1379,7 @@ def stats_summary(
         "interaction_count": db.query(Interaction).count(),
         "danmaku_count": db.query(DanmakuComment).count(),
         "experience_config_count": db.query(EpisodeExperienceConfig).count(),
+        "ai_remix_count": db.query(EpisodeAIRemix).count(),
     }
 
 
@@ -1472,6 +1569,55 @@ def admin_save_episode_experience(
     db.commit()
     db.refresh(row)
     return parse_experience_config(row, episode)
+
+
+@app.get("/api/admin/episodes/{episode_id}/remixes")
+def admin_list_episode_remixes(
+    episode_id: int,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles("admin", "reviewer")),
+) -> list[dict]:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    rows = (
+        db.query(EpisodeAIRemix)
+        .filter(EpisodeAIRemix.episode_id == episode.id)
+        .order_by(EpisodeAIRemix.is_featured.desc(), EpisodeAIRemix.id.desc())
+        .all()
+    )
+    return [remix_record_payload(row) for row in rows]
+
+
+@app.patch("/api/admin/remixes/{remix_id}")
+def admin_update_remix_review(
+    remix_id: int,
+    payload: EpisodeRemixReviewUpdate,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles("admin", "reviewer")),
+) -> dict:
+    record = db.get(EpisodeAIRemix, remix_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="二创记录不存在")
+    allowed_statuses = {"draft", "featured", "hidden"}
+    if payload.review_status is not None:
+        status = payload.review_status.strip()
+        if status not in allowed_statuses:
+            raise HTTPException(status_code=400, detail="状态只能是 draft、featured 或 hidden")
+        record.review_status = status
+        if status == "featured":
+            record.is_featured = True
+        if status == "hidden":
+            record.is_featured = False
+    if payload.is_featured is not None:
+        record.is_featured = payload.is_featured
+        record.review_status = "featured" if payload.is_featured else "draft"
+    if payload.review_note is not None:
+        record.review_note = payload.review_note.strip()
+    record.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(record)
+    return remix_record_payload(record)
 
 
 @app.put("/api/admin/episodes/{episode_id}/highlights")

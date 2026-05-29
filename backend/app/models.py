@@ -35,6 +35,7 @@ class Episode(Base):
         "EpisodeExperienceConfig", back_populates="episode", cascade="all, delete-orphan", uselist=False
     )
     watch_history = relationship("WatchHistory", back_populates="episode", cascade="all, delete-orphan")
+    ai_remixes = relationship("EpisodeAIRemix", back_populates="episode", cascade="all, delete-orphan")
 
 
 class User(Base):
@@ -196,3 +197,33 @@ class EpisodeExperienceConfig(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     episode = relationship("Episode", back_populates="experience_config")
+
+
+class EpisodeAIRemix(Base):
+    __tablename__ = "episode_ai_remixes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    episode_id = Column(Integer, ForeignKey("episodes.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    session_id = Column(String(128), nullable=False, index=True)
+    choice_key = Column(String(64), nullable=False)
+    choice_label = Column(String(128), nullable=False)
+    choice_json = Column(Text, nullable=False)
+    source = Column(String(64), default="local_fallback")
+    model_version = Column(String(64), default="remix-text-v1")
+    disclaimer = Column(String(128), default="AI 猜测剧情，非正片内容")
+    title = Column(String(255), nullable=False)
+    logline = Column(Text, default="")
+    emotion = Column(String(64), default="")
+    story_text = Column(Text, default="")
+    storyboard_json = Column(Text, nullable=False)
+    share_copy = Column(Text, default="")
+    prompt_trace_json = Column(Text, default="{}")
+    review_status = Column(String(32), default="draft", index=True)
+    review_note = Column(Text, default="")
+    is_featured = Column(Boolean, default=False, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    episode = relationship("Episode", back_populates="ai_remixes")
+    user = relationship("User")

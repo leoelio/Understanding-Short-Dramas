@@ -194,6 +194,7 @@ const state = {
   danmakuSettings: loadDanmakuSettings(),
   reviewEpisodes: [],
   reviewExperience: null,
+  reviewRemixes: [],
   reviewFilter: "all",
   currentUser: null,
   adminUsers: [],
@@ -2475,6 +2476,7 @@ function clearEndingRemix() {
 function renderEndingRemixOptions(payload) {
   if (!endingRemixLayer) return;
   const options = payload.options || [];
+  const featured = payload.featured_remixes || [];
   endingRemixLayer.className = "ending-remix-layer";
   endingRemixLayer.innerHTML = `
     <section class="ending-remix-panel">
@@ -2498,6 +2500,24 @@ function renderEndingRemixOptions(payload) {
           )
           .join("")}
       </div>
+      ${
+        featured.length
+          ? `<div class="featured-remix-strip">
+              <strong>精选二创</strong>
+              ${featured
+                .map(
+                  (item) => `
+                    <article>
+                      <b>${escapeHTML(item.choice?.icon || "AI")}</b>
+                      <span>${escapeHTML(item.title)}</span>
+                      <em>${escapeHTML(item.logline || item.choice_label || "")}</em>
+                    </article>
+                  `
+                )
+                .join("")}
+            </div>`
+          : ""
+      }
       <small>保底版先生成文字卡和三格分镜，后续可接入图片/视频生成。</small>
     </section>
   `;
@@ -2558,7 +2578,7 @@ function renderEndingRemixResult(result) {
       </div>
       <small>生成来源：${result.source === "llm" ? "大模型" : "本地兜底"} · ${escapeHTML(
         result.model_version || "remix-text-v1"
-      )}</small>
+      )}${result.record_id ? ` · 记录 #${Number(result.record_id)}` : ""}</small>
     </section>
   `;
 }
@@ -2983,6 +3003,7 @@ async function loadStats() {
     ["互动次数", summary.interaction_count],
     ["弹幕", summary.danmaku_count || 0],
     ["体验配置", summary.experience_config_count || 0],
+    ["AI二创", summary.ai_remix_count || 0],
   ]
     .map(([label, value]) => `<div class="summary-card"><span>${label}</span><strong>${value}</strong></div>`)
     .join("");
@@ -3148,6 +3169,7 @@ async function renderReviewEpisodeOptions(preferredEpisodeId) {
     $("#experienceJson").value = "";
     $("#reviewPreview").innerHTML = "";
     $("#experiencePreview").innerHTML = "";
+    $("#remixReviewPanel").innerHTML = "";
     setReviewStatus("当前筛选没有剧集");
     return;
   }
@@ -3177,6 +3199,7 @@ async function loadReviewEpisodes() {
     $("#reviewSummaryCards").innerHTML = "";
     $("#reviewPreview").innerHTML = `<div class="empty-state">无法加载复核列表：${escapeHTML(errorMessage(error))}</div>`;
     $("#experiencePreview").innerHTML = "";
+    $("#remixReviewPanel").innerHTML = "";
     setReviewStatus(errorMessage(error), true);
     return;
   }
@@ -3188,16 +3211,19 @@ async function loadReviewEpisodes() {
 
 async function loadReviewPayload(episodeId) {
   if (!episodeId) return;
-  const [payload, experience] = await Promise.all([
+  const [payload, experience, remixes] = await Promise.all([
     fetchJSON(`/api/admin/episodes/${episodeId}/highlights`),
     fetchJSON(`/api/admin/episodes/${episodeId}/experience`),
+    fetchJSON(`/api/admin/episodes/${episodeId}/remixes`),
   ]);
   const meta = state.reviewEpisodes.find((episode) => episode.id === episodeId);
   $("#reviewJson").value = JSON.stringify(payload, null, 2);
   $("#experienceJson").value = JSON.stringify(experience, null, 2);
   state.reviewExperience = experience;
+  state.reviewRemixes = remixes;
   renderReviewPreview(payload);
   renderExperiencePreview(experience);
+  renderRemixReviewPanel(remixes);
   const status = meta
     ? `${meta.review_status_label} · 人工 ${meta.reviewed_highlight_count || 0}/${meta.highlight_count || 0}`
     : "已加载";
@@ -3224,6 +3250,99 @@ function syncReviewJson(payload) {
 
 function syncExperienceJson(payload) {
   $("#experienceJson").value = JSON.stringify(payload, null, 2);
+}
+
+function remixStatusLabel(status, featured) {
+  if (featured || status === "featured") return "精选";
+  if (status === "hidden") return "隐藏";
+  return "待复核";
+}
+
+function renderRemixReviewPanel(remixes = state.reviewRemixes) {
+  const panel = $("#remixReviewPanel");
+  if (!panel) return;
+  const featuredCount = remixes.filter((item) => item.is_featured).length;
+  panel.innerHTML = `
+    <div class="remix-review-summary">
+      <span>共 ${remixes.length} 条生成记录</span>
+      <strong>${featuredCount} 条精选</strong>
+    </div>
+    ${
+      remixes.length
+        ? `<div class="remix-review-list">
+            ${remixes
+              .map(
+                (item) => `
+                  <article class="remix-review-card ${item.is_featured ? "featured" : ""} ${
+                    item.review_status === "hidden" ? "hidden-remix" : ""
+                  }" data-remix-id="${item.id}">
+                    <div class="remix-review-card-head">
+                      <div>
+                        <span>${escapeHTML(remixStatusLabel(item.review_status, item.is_featured))} · #${Number(
+                          item.id
+                        )}</span>
+                        <h4>${escapeHTML(item.title)}</h4>
+                        <p>${escapeHTML(item.logline || "")}</p>
+                      </div>
+                      <b>${escapeHTML(item.choice?.icon || "AI")}</b>
+                    </div>
+                    <p class="remix-review-story">${escapeHTML(item.story_text || "")}</p>
+                    <div class="remix-review-meta">
+                      <span>${escapeHTML(item.choice_label || "")}</span>
+                      <span>${escapeHTML(item.source === "llm" ? "大模型" : "本地兜底")}</span>
+                      <span>${escapeHTML(item.model_version || "")}</span>
+                      <span>${formatDateTime(item.created_at)}</span>
+                    </div>
+                    <div class="remix-review-shots">
+                      ${(item.storyboard || [])
+                        .slice(0, 3)
+                        .map((shot) => `<em>${escapeHTML(shot.shot || "")}：${escapeHTML(shot.subtitle || "")}</em>`)
+                        .join("")}
+                    </div>
+                    <div class="remix-review-actions">
+                      <button class="primary-button remix-review-action" type="button" data-action="feature" data-remix-id="${item.id}" ${
+                        item.is_featured ? "disabled" : ""
+                      }>设为精选</button>
+                      <button class="ghost-button remix-review-action" type="button" data-action="draft" data-remix-id="${item.id}" ${
+                        !item.is_featured && item.review_status !== "hidden" ? "disabled" : ""
+                      }>取消精选</button>
+                      <button class="danger-button remix-review-action" type="button" data-action="hide" data-remix-id="${item.id}" ${
+                        item.review_status === "hidden" ? "disabled" : ""
+                      }>隐藏</button>
+                    </div>
+                  </article>
+                `
+              )
+              .join("")}
+          </div>`
+        : `<div class="empty-state">当前剧集还没有片尾二创记录。先在播放页片尾生成一次，再回到这里精选。</div>`
+    }
+  `;
+}
+
+async function updateRemixReview(button) {
+  const remixId = Number(button.dataset.remixId);
+  const action = button.dataset.action;
+  if (!remixId || !action) return;
+  const payload =
+    action === "feature"
+      ? { review_status: "featured", is_featured: true }
+      : action === "hide"
+        ? { review_status: "hidden", is_featured: false }
+        : { review_status: "draft", is_featured: false };
+  button.disabled = true;
+  try {
+    const updated = await fetchJSON(`/api/admin/remixes/${remixId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    state.reviewRemixes = state.reviewRemixes.map((item) => (item.id === updated.id ? updated : item));
+    renderRemixReviewPanel();
+    setReviewStatus(`已更新片尾二创：${updated.title}`);
+  } catch (error) {
+    button.disabled = false;
+    setReviewStatus(errorMessage(error), true);
+  }
 }
 
 function renderSelectOptions(values, selected) {
@@ -4528,6 +4647,10 @@ $("#experiencePreview").addEventListener("click", (event) => {
   if (event.target.classList.contains("load-sticker-suggestion-file-button")) {
     loadStickerSuggestionFile();
   }
+});
+$("#remixReviewPanel").addEventListener("click", (event) => {
+  const button = event.target.closest(".remix-review-action");
+  if (button) updateRemixReview(button);
 });
 $("#danmakuForm").addEventListener("submit", sendDanmaku);
 $("#danmakuSettingsToggle").addEventListener("click", () => {
