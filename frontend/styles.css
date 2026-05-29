@@ -3068,6 +3068,21 @@ textarea.experience-field-input {
   margin-top: 8px;
 }
 
+.quiz-reward-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.quiz-reward-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .experience-slot-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;

@@ -84,32 +84,56 @@ def parse_evidence_segment_ids(highlight: Highlight) -> list[int | str]:
     return [value for value in values if isinstance(value, (int, float, str)) and str(value)]
 
 
-PREDICTION_REWARD_RULES = [
-    {
-        "drama_title": "那年冬至",
-        "episode_no": 1,
-        "highlight_title": "男主会选择哪一个",
-        "correct_option_key": "reality",
-        "correct_label": "选二",
-        "points": 20,
-        "reward_key": "winter_choice_oracle",
-        "title": "冬至预言家",
-        "description": "在同看竞猜中猜中男主会选择第二个选项。",
+def quiz_reward_rules(episode: Episode | None) -> list[dict]:
+    if not episode or not episode.experience_config:
+        return []
+    try:
+        config = json.loads(episode.experience_config.config_json or "{}")
+    except json.JSONDecodeError:
+        return []
+    rules = config.get("quiz_rewards") or config.get("prediction_rewards") or []
+    return [rule for rule in rules if isinstance(rule, dict)]
+
+
+def normalize_quiz_reward_rule(highlight: Highlight, rule: dict) -> dict | None:
+    correct_option_key = str(rule.get("correct_option_key") or "").strip()
+    if not correct_option_key:
+        return None
+    options = parse_options(highlight)
+    correct_option = next((option for option in options if option.get("key") == correct_option_key), None)
+    correct_label = str(rule.get("correct_label") or (correct_option.get("label") if correct_option else correct_option_key))
+    reward_key = str(rule.get("reward_key") or f"quiz_{highlight.episode_id}_{highlight.id}_{correct_option_key}").strip()
+    title = str(rule.get("title") or "剧情预言家").strip()
+    description = str(rule.get("description") or f"猜中「{highlight.title}」的剧情选择。").strip()
+    try:
+        points = int(rule.get("points", 20))
+    except (TypeError, ValueError):
+        points = 20
+    return {
+        "kind": str(rule.get("kind") or "prediction"),
+        "correct_option_key": correct_option_key,
+        "correct_label": correct_label,
+        "points": max(1, points),
+        "reward_key": reward_key,
+        "title": title,
+        "description": description,
+        "prompt": str(rule.get("prompt") or "同看竞猜题，答对后解锁称号和积分。"),
     }
-]
 
 
 def prediction_reward_rule(highlight: Highlight) -> dict | None:
     episode = highlight.episode
-    if not episode or not episode.drama:
-        return None
-    for rule in PREDICTION_REWARD_RULES:
-        if (
-            rule["drama_title"] == episode.drama.title
-            and int(rule["episode_no"]) == int(episode.episode_no)
-            and rule["highlight_title"] == highlight.title
-        ):
-            return rule
+    for rule in quiz_reward_rules(episode):
+        highlight_id = rule.get("highlight_id")
+        if highlight_id is not None:
+            try:
+                matched_by_id = int(highlight_id) == int(highlight.id)
+            except (TypeError, ValueError):
+                matched_by_id = False
+            if matched_by_id:
+                return normalize_quiz_reward_rule(highlight, rule)
+        if str(rule.get("highlight_title") or "").strip() == highlight.title:
+            return normalize_quiz_reward_rule(highlight, rule)
     return None
 
 
@@ -138,7 +162,7 @@ def highlight_payload(highlight: Highlight) -> dict:
             "kind": "prediction",
             "points": reward_rule["points"],
             "title": reward_rule["title"],
-            "description": "同看竞猜题，答对后解锁称号和积分。",
+            "description": reward_rule["prompt"],
         }
     return payload
 
@@ -212,13 +236,11 @@ def reward_profile(user: User, db: Session) -> dict:
         .all()
     )
     points = sum(item.points or 0 for item in rewards)
-    title = "剧情新人"
+    title = rewards[0].title if rewards else "剧情新人"
     if points >= 80:
         title = "高光收藏家"
     elif points >= 40:
         title = "剧情读心者"
-    elif points >= 20:
-        title = "冬至预言家"
     return {
         "points": points,
         "title": title,
@@ -395,6 +417,7 @@ def default_experience_config(episode: Episode) -> dict:
             },
             "immerse": {"label": "沉浸", "enabled": False, "density": 0, "include_modes": []},
         },
+        "quiz_rewards": [],
     }
     return base
 

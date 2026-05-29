@@ -2756,6 +2756,7 @@ function validateExperiencePayload(payload) {
   const config = payload.config || {};
   const theme = config.player_theme || {};
   const timeline = Array.isArray(config.sticker_timeline) ? config.sticker_timeline : [];
+  const quizRewards = Array.isArray(config.quiz_rewards) ? config.quiz_rewards : [];
   const availableAssets = new Set(Object.keys(STICKER_ASSETS));
   if (!theme.name?.trim()) warnings.push("播放器主题名为空，建议补充");
   if (!timeline.length) warnings.push("暂无贴图时间窗，播放时不会出现剧情贴图");
@@ -2787,6 +2788,15 @@ function validateExperiencePayload(payload) {
       warnings.push(`${formatTime(ordered[index - 1].start)}-${formatTime(ordered[index - 1].end)} 与 ${formatTime(ordered[index].start)}-${formatTime(ordered[index].end)} 有重叠`);
     }
   }
+
+  quizRewards.forEach((rule, index) => {
+    const label = `竞猜奖励 ${index + 1}`;
+    if (!String(rule.highlight_title || "").trim()) errors.push(`${label} 缺少高光名称`);
+    if (!String(rule.correct_option_key || "").trim()) errors.push(`${label} 缺少正确选项 key`);
+    if (!String(rule.reward_key || "").trim()) errors.push(`${label} 缺少奖励 key`);
+    if (!String(rule.title || "").trim()) errors.push(`${label} 缺少称号/徽章名`);
+    if (Number(rule.points || 0) <= 0) errors.push(`${label} 积分必须大于 0`);
+  });
 
   return { errors, warnings };
 }
@@ -2987,6 +2997,49 @@ function deleteExperienceSlot(button) {
   syncExperienceJson(payload);
   renderExperiencePreview(payload);
   setReviewStatus(`已删除贴图时间窗 ${index + 1}，点击保存体验配置后生效`);
+}
+
+function defaultQuizReward(payload) {
+  const reviewPayload = parseReviewJson();
+  const highlights = Array.isArray(reviewPayload.highlights) ? reviewPayload.highlights : [];
+  const highlight =
+    highlights.find((item) => /选择|选|猜|谁|方式|身份|到底/.test(`${item.title || ""}${item.description || ""}`)) ||
+    highlights[0] ||
+    {};
+  const option = highlight.options?.[0] || {};
+  const dramaPrefix = String(reviewPayload.drama_title || payload.drama_title || "剧情").slice(0, 6);
+  return {
+    kind: "prediction",
+    highlight_title: highlight.title || "",
+    correct_option_key: option.key || "",
+    correct_label: option.label || "",
+    points: 20,
+    reward_key: `quiz_${Date.now()}`,
+    title: `${dramaPrefix}预言家`,
+    description: `猜中「${highlight.title || "关键剧情"}」后解锁。`,
+    prompt: "同看竞猜题，答对后解锁称号和积分。",
+  };
+}
+
+function addQuizReward() {
+  const payload = parseExperienceJson();
+  payload.config ||= {};
+  payload.config.quiz_rewards ||= [];
+  payload.config.quiz_rewards.push(defaultQuizReward(payload));
+  syncExperienceJson(payload);
+  renderExperiencePreview(payload);
+  setReviewStatus("已新增竞猜奖励规则，选择高光和正确选项后保存生效");
+}
+
+function deleteQuizReward(button) {
+  const index = Number(button.dataset.index);
+  const payload = parseExperienceJson();
+  const rule = payload.config?.quiz_rewards?.[index];
+  if (!rule) return;
+  payload.config.quiz_rewards.splice(index, 1);
+  syncExperienceJson(payload);
+  renderExperiencePreview(payload);
+  setReviewStatus(`已删除竞猜奖励 ${index + 1}，保存后生效`);
 }
 
 function generateStickerSlotsFromHighlights() {
@@ -3272,6 +3325,20 @@ function updateExperienceFieldInput(input) {
       slot[field] = input.value;
     }
   }
+  if (section === "quiz") {
+    const index = Number(input.dataset.index);
+    payload.config ||= {};
+    payload.config.quiz_rewards ||= [];
+    const rule = payload.config.quiz_rewards[index];
+    if (!rule) return;
+    if (field === "points") {
+      const value = Number(input.value);
+      if (!Number.isFinite(value) || value < 0) return;
+      rule[field] = Math.round(value);
+    } else {
+      rule[field] = input.value;
+    }
+  }
   syncExperienceJson(payload);
   refreshValidationSummary("experience", "体验配置保存前检查", validateExperiencePayload(payload));
   setReviewStatus("已调整体验配置，点击保存后生效");
@@ -3371,6 +3438,7 @@ function renderExperiencePreview(payload) {
   const theme = config.player_theme || {};
   const timeline = Array.isArray(config.sticker_timeline) ? config.sticker_timeline : [];
   const modes = config.danmaku_modes || {};
+  const quizRewards = Array.isArray(config.quiz_rewards) ? config.quiz_rewards : [];
   $("#experiencePreview").innerHTML = `
     <article class="experience-card">
       <strong>${escapeHTML(payload.drama_title || "")} · ${escapeHTML(payload.episode_title || "")}</strong>
@@ -3396,6 +3464,81 @@ function renderExperiencePreview(payload) {
         风格信号
         <input class="experience-field-input" data-section="theme" data-field="signal" value="${escapeHTML(theme.signal || "")}" />
       </label>
+    </article>
+    <article class="experience-card">
+      <div class="experience-card-head">
+        <strong>同看竞猜奖励</strong>
+        <button class="ghost-button add-quiz-reward-button" type="button">新增竞猜</button>
+      </div>
+      <small>按高光名称匹配。用户选择正确 option key 后发放积分和称号，适合配置每集专属徽章。</small>
+      ${
+        quizRewards.length
+          ? `<div class="quiz-reward-list">${quizRewards
+              .map(
+                (rule, index) => `
+                  <div class="quiz-reward-card">
+                    <div class="experience-slot-head">
+                      <strong>${escapeHTML(rule.title || `竞猜奖励 ${index + 1}`)}</strong>
+                      <button class="danger-button delete-quiz-reward-button" type="button" data-index="${index}">删除</button>
+                    </div>
+                    <div class="experience-field-grid">
+                      <label>
+                        高光名称
+                        <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="highlight_title" value="${escapeHTML(
+                          rule.highlight_title || ""
+                        )}" />
+                      </label>
+                      <label>
+                        正确选项 key
+                        <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="correct_option_key" value="${escapeHTML(
+                          rule.correct_option_key || ""
+                        )}" />
+                      </label>
+                      <label>
+                        正确选项文案
+                        <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="correct_label" value="${escapeHTML(
+                          rule.correct_label || ""
+                        )}" />
+                      </label>
+                    </div>
+                    <div class="experience-field-grid">
+                      <label>
+                        积分
+                        <input class="experience-field-input" type="number" min="1" step="1" data-section="quiz" data-index="${index}" data-field="points" value="${Number(
+                          rule.points || 20
+                        )}" />
+                      </label>
+                      <label>
+                        奖励 key
+                        <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="reward_key" value="${escapeHTML(
+                          rule.reward_key || ""
+                        )}" />
+                      </label>
+                      <label>
+                        称号/徽章
+                        <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="title" value="${escapeHTML(
+                          rule.title || ""
+                        )}" />
+                      </label>
+                    </div>
+                    <label class="experience-wide-field">
+                      说明
+                      <textarea class="experience-field-input" data-section="quiz" data-index="${index}" data-field="description" rows="2">${escapeHTML(
+                        rule.description || ""
+                      )}</textarea>
+                    </label>
+                    <label class="experience-wide-field">
+                      前端提示
+                      <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="prompt" value="${escapeHTML(
+                        rule.prompt || "同看竞猜题，答对后解锁称号和积分。"
+                      )}" />
+                    </label>
+                  </div>
+                `
+              )
+              .join("")}</div>`
+          : "<p>暂无竞猜奖励规则</p>"
+      }
     </article>
     <article class="experience-card">
       <div class="experience-card-head">
@@ -3769,6 +3912,12 @@ $("#experiencePreview").addEventListener("click", (event) => {
   }
   if (event.target.classList.contains("delete-slot-button")) {
     deleteExperienceSlot(event.target);
+  }
+  if (event.target.classList.contains("add-quiz-reward-button")) {
+    addQuizReward();
+  }
+  if (event.target.classList.contains("delete-quiz-reward-button")) {
+    deleteQuizReward(event.target);
   }
   if (event.target.classList.contains("generate-highlight-slots-button")) {
     generateStickerSlotsFromHighlights();
