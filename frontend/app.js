@@ -2631,8 +2631,17 @@ function renderEndingRemixResult(result) {
                   <span>预生成短片方案</span>
                   <strong>${escapeHTML(videoPlan.replacement_axis || "可替换变量")}</strong>
                 </div>
-                <em>${Number(videoPlan.target_duration_sec || 30)} 秒以内</em>
+                <em>${videoPlan.asset_status === "cached_video" ? "已缓存" : "脚本就绪"} · ${Number(
+                  videoPlan.target_duration_sec || 30
+                )} 秒以内</em>
               </div>
+              ${
+                videoPlan.storage_hint
+                  ? `<video class="remix-preview-video" src="${escapeHTML(
+                      videoPlan.storage_hint
+                    )}" controls playsinline preload="metadata"></video>`
+                  : ""
+              }
               <p>${escapeHTML(videoPlan.note || "该版本适合赛前批量生成并缓存。")}</p>
               <div class="video-slot-pill">${escapeHTML(videoPlan.storage_hint || videoPlan.variant_slot || "")}</div>
               <div class="video-shot-list">
@@ -2659,11 +2668,17 @@ function renderEndingRemixResult(result) {
         <button class="ghost-button" type="button" data-remix-action="back">换一个走向</button>
         <button class="primary-button" type="button" data-remix-action="close">收起</button>
       </div>
-      <small>生成来源：${result.source === "llm" ? "大模型" : "本地兜底"} · ${escapeHTML(
-        result.model_version || "remix-text-v1"
-      )}${result.record_id ? ` · 记录 #${Number(result.record_id)}` : ""}</small>
+      <small>生成来源：${escapeHTML(remixSourceLabel(result.source))} · ${escapeHTML(result.model_version || "remix-text-v1")}${
+        result.record_id ? ` · 记录 #${Number(result.record_id)}` : ""
+      }</small>
     </section>
   `;
+}
+
+function remixSourceLabel(source) {
+  if (source === "llm") return "大模型";
+  if (source === "cached_video") return "预生成视频";
+  return "本地兜底";
 }
 
 function renderEndingRemixError(message) {

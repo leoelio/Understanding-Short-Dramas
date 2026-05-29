@@ -746,14 +746,16 @@ def remix_video_plan(choice: dict, variant: dict | None) -> dict | None:
     if not variant:
         return None
     slot = f"beiwang_ep1_{choice['key']}_{variant['variant_key']}"
+    storage_hint = f"/assets/remix_videos/beiwang_ep1/{slot}.mp4"
+    asset_path = FRONTEND_DIR / storage_hint.lstrip("/")
     return {
-        "asset_status": "script_ready",
+        "asset_status": "cached_video" if asset_path.exists() else "script_ready",
         "render_mode": "pre_generated_video",
         "target_duration_sec": variant["runtime_sec"],
         "variant_slot": slot,
         "replacement_axis": variant["variable_label"],
-        "storage_hint": f"/assets/remix_videos/beiwang_ep1/{slot}.mp4",
-        "note": "赛前可按该视频提示词批量生成并缓存，客户端按用户 session 分配不同版本。",
+        "storage_hint": storage_hint,
+        "note": "已按该视频提示词预生成并缓存，客户端按用户 session 分配不同版本。",
         "shots": variant["video_shots"],
     }
 
@@ -1406,11 +1408,18 @@ def create_episode_ai_remix(
     context = remix_context_payload(episode, db)
     variant = remix_variant_for_choice(choice, payload.session_id) if is_beiwang_first_episode(episode) else None
     fallback = fallback_remix_payload(episode, choice, context, variant)
-    try:
-        raw = call_remix_llm(context, choice, variant)
-        result = normalize_remix_payload(raw, fallback)
-    except Exception:
-        result = fallback
+    if fallback.get("video_plan", {}).get("asset_status") == "cached_video":
+        result = {
+            **fallback,
+            "source": "cached_video",
+            "model_version": "beiwang-remix-video-cache-v1",
+        }
+    else:
+        try:
+            raw = call_remix_llm(context, choice, variant)
+            result = normalize_remix_payload(raw, fallback)
+        except Exception:
+            result = fallback
     record = create_remix_record(db, episode, payload, choice, result, user)
     return {
         "ok": True,
