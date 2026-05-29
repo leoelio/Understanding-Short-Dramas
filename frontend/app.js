@@ -2601,7 +2601,9 @@ function renderRemixImageSequence(imagePlan) {
         ${shots
           .map(
             (shot, index) => `
-              <figure class="remix-image-frame ${index === 0 ? "active" : ""}" data-shot-index="${index}">
+              <figure class="remix-image-frame ${index === 0 ? "active" : ""}" data-shot-index="${index}" data-audio-ready="${
+                shot.audio_status === "ready" ? "true" : "false"
+              }" data-audio-src="${escapeHTML(shot.audio_storage_hint || "")}" data-audio-text="${escapeHTML(shot.audio_text || "")}">
                 ${
                   shot.storage_hint
                     ? `<img src="${escapeHTML(shot.storage_hint)}" alt="${escapeHTML(
@@ -2617,7 +2619,7 @@ function renderRemixImageSequence(imagePlan) {
                   <b>0${index + 1}</b>
                   <div>
                     <strong>${escapeHTML(shot.caption || `镜头${index + 1}`)}</strong>
-                    <p>${escapeHTML(shot.subtitle || shot.image_prompt || "")}</p>
+                    <p>${escapeHTML(shot.audio_text || shot.subtitle || shot.image_prompt || "")}</p>
                   </div>
                 </figcaption>
               </figure>
@@ -2636,6 +2638,13 @@ function renderRemixImageSequence(imagePlan) {
   `;
 }
 
+function playRemixShotAudio(frame) {
+  const src = frame?.dataset.audioSrc;
+  if (!src || frame?.dataset.audioReady !== "true") return;
+  const audio = new Audio(src);
+  audio.play().catch(() => {});
+}
+
 function stepRemixImage(delta) {
   const plan = endingRemixLayer?.querySelector("[data-remix-image-plan]");
   if (!plan) return;
@@ -2645,6 +2654,7 @@ function stepRemixImage(delta) {
   const next = Math.max(0, Math.min(frames.length - 1, current + delta));
   plan.dataset.activeIndex = String(next);
   frames.forEach((frame, index) => frame.classList.toggle("active", index === next));
+  playRemixShotAudio(frames[next]);
   const counter = plan.querySelector("[data-remix-image-current]");
   if (counter) counter.textContent = String(next + 1);
 }
@@ -3559,7 +3569,9 @@ function renderRemixImagePlanReview(item) {
                 }
                 <figcaption>
                   <b>0${index + 1} ${escapeHTML(shot.caption || `分镜${index + 1}`)}</b>
+                  <em>${escapeHTML(shot.audio_text || shot.subtitle || "待补充语音台词")}</em>
                   <span>${escapeHTML(shot.storage_hint || "暂无素材路径")}</span>
+                  <span>${escapeHTML(shot.audio_status === "ready" ? "音频已接入" : `待上传音频：${shot.audio_storage_hint || ""}`)}</span>
                 </figcaption>
               </figure>
             `

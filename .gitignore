@@ -10,6 +10,8 @@ data/annotation_inputs/*.json
 data/annotations/*.json
 data/context/
 data/screenshots/
+data/remix_image_refs/
+data/beiwang_ref_contact.jpg
 *.pdf
 *.docx
 视频库/

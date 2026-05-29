@@ -4551,10 +4551,17 @@ textarea.remix-edit-field {
 }
 
 .remix-asset-grid figcaption b,
+.remix-asset-grid figcaption em,
 .remix-asset-grid figcaption span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.remix-asset-grid figcaption em {
+  color: var(--gold);
+  font-size: 12px;
+  font-style: normal;
 }
 
 .sticker-suggestion-json {

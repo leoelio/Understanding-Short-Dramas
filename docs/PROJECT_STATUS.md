@@ -1,17 +1,20 @@
 # Project Status
 
-更新时间：2026-05-30 05:47:43
+更新时间：2026-05-30 06:17:22
 
 ## 当前目标
 
-北往第一集片尾 AI 二创图片分镜已完成 GPT 图片生成：27 张缓存图已覆盖原片占位图，播放页和复核页继续通过同一 storage_hint 读取。
+北往第一集片尾二创图片分镜已按剧集参考帧重跑：每张图以两位男主作为主体，并预留语音台词与音频文件路径。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`612ec51`
+- 最新提交：`4c60605`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
+- `M .gitignore`
+- `M backend/app/main.py`
+- `M frontend/app.js`
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_1.png`
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_2.png`
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_3.png`
@@ -39,6 +42,11 @@
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_1.png`
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_2.png`
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_3.png`
+- `M frontend/index.html`
+- `M frontend/styles.css`
+- `M scripts/generate_beiwang_remix_images.py`
+- `?? docs/BEIWANG_EP1_REMIX_AUDIO_LINES.md`
+- `?? frontend/assets/remix_audio/`
 
 ## 数据状态
 
@@ -48,10 +56,10 @@
 - 高光点：65
 - 已复核剧集：4
 - 待复核剧集：16
-- 互动记录：47
+- 互动记录：50
 - 弹幕记录：220
 - 体验配置：4
-- 片尾 AI 二创：21
+- 片尾 AI 二创：25
 
 ## 高光来源
 
@@ -72,14 +80,16 @@
 
 ## 本次变更摘要
 
-- 使用 OpenAI 图片生成链路批量生成北往第一集 3 个二创方向 x 3 个变体 x 3 个镜头，共 27 张图片。
-- 保留原有图片分镜文件名和接口路径，不改前端播放逻辑，生成图直接替换原缓存图。
-- 本地 .env 已被 .gitignore 忽略，API Key 不进入 Git；提交前继续执行密钥扫描。
+- 图片生成脚本新增 openai-edit 模式，会从原剧抽取两位男主参考帧和场景参考帧，再调用图片编辑接口生成 27 张分镜图。
+- 已重新生成北往第一集 3 个二创方向 x 3 个变体 x 3 个镜头，共 27 张双男主图片分镜。
+- 后端 image_plan 新增 audio_text、audio_storage_hint、audio_status，音频缺失时标记 pending_upload。
+- 前端二创分镜点击时已预留音频播放逻辑；复核页可看到每张图的语音台词和待上传音频路径。
+- 新增 docs/BEIWANG_EP1_REMIX_AUDIO_LINES.md，列出 27 条台词和对应 mp3 路径。
 
 ## 下一步建议
 
-- 下一步建议在复核页增加单张图片重生成/替换入口，减少重复跑完整 27 张的成本。
-- 再下一步可挑选 2-3 张关键图用更高质量参数重生成，作为比赛演示的精选素材。
+- 等音频文件准备好后，按清单文件名放入 frontend/assets/remix_audio/beiwang_ep1/，刷新页面即可自动播放。
+- 下一步可在复核页增加单张图片重生成按钮，使用同一 openai-edit 脚本按 choice/variant/shot 单独覆盖。
 
 ## 安全提醒
 

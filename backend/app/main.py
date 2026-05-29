@@ -767,9 +767,12 @@ def remix_image_plan(choice: dict, variant: dict | None) -> dict | None:
     shots = []
     for index, shot in enumerate(variant.get("video_shots") or [], start=1):
         storage_hint = f"/assets/remix_images/beiwang_ep1/{slot}_shot_{index}.png"
+        audio_storage_hint = f"/assets/remix_audio/beiwang_ep1/{slot}_shot_{index}.mp3"
         asset_path = FRONTEND_DIR / storage_hint.lstrip("/")
+        audio_path = FRONTEND_DIR / audio_storage_hint.lstrip("/")
         storyboard = (variant.get("storyboard") or [{}])[index - 1] if index <= len(variant.get("storyboard") or []) else {}
         prompt = shot.get("video_prompt") or storyboard.get("visual") or variant.get("summary") or ""
+        audio_text = storyboard.get("subtitle") or shot.get("caption") or ""
         shots.append(
             {
                 "index": index,
@@ -779,6 +782,9 @@ def remix_image_plan(choice: dict, variant: dict | None) -> dict | None:
                 "image_prompt": prompt,
                 "storage_hint": storage_hint,
                 "asset_status": "cached_image" if asset_path.exists() else "script_ready",
+                "audio_text": audio_text,
+                "audio_storage_hint": audio_storage_hint,
+                "audio_status": "ready" if audio_path.exists() else "pending_upload",
             }
         )
     all_cached = bool(shots) and all(item["asset_status"] == "cached_image" for item in shots)
