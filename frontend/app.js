@@ -180,6 +180,7 @@ const state = {
   episodes: [],
   currentEpisode: null,
   currentExperience: null,
+  endingRemixEntryShown: false,
   endingRemixShown: false,
   remixOptions: null,
   remixResult: null,
@@ -2463,6 +2464,7 @@ function renderTimeline() {
 }
 
 function clearEndingRemix() {
+  state.endingRemixEntryShown = false;
   state.endingRemixShown = false;
   state.remixOptions = null;
   state.remixResult = null;
@@ -2471,6 +2473,37 @@ function clearEndingRemix() {
     endingRemixLayer.className = "ending-remix-layer hidden";
     endingRemixLayer.innerHTML = "";
   }
+}
+
+function getNextEpisode() {
+  const currentId = Number(state.currentEpisode?.id || 0);
+  const index = state.episodes.findIndex((episode) => Number(episode.id) === currentId);
+  return index >= 0 ? state.episodes[index + 1] || null : null;
+}
+
+function renderEndingRemixEntry(payload = state.remixOptions) {
+  if (!endingRemixLayer) return;
+  const nextEpisode = getNextEpisode();
+  const featuredCount = payload?.featured_remixes?.length || 0;
+  endingRemixLayer.className = "ending-remix-layer ending-remix-entry-layer";
+  endingRemixLayer.innerHTML = `
+    <section class="ending-remix-entry">
+      <div>
+        <span>片尾拓展</span>
+        <strong>想试试 AI 猜下一集吗？</strong>
+        <p>${featuredCount ? `已有 ${featuredCount} 条人工精选二创。` : "不影响正片观看，只是一个可选番外体验。"}</p>
+      </div>
+      <div class="ending-remix-entry-actions">
+        <button class="primary-button" type="button" data-remix-action="start">试试 AI 二创</button>
+        ${
+          nextEpisode
+            ? `<button class="ghost-button" type="button" data-remix-action="next" data-episode-id="${nextEpisode.id}">看下一集</button>`
+            : ""
+        }
+        <button class="ghost-button" type="button" data-remix-action="close">收起</button>
+      </div>
+    </section>
+  `;
 }
 
 function renderEndingRemixOptions(payload) {
@@ -2604,13 +2637,14 @@ function renderEndingRemixError(message) {
 async function showEndingRemix() {
   if (!state.currentEpisode || state.endingRemixShown || state.remixLoading) return;
   state.endingRemixShown = true;
+  state.endingRemixEntryShown = true;
   hideInteraction();
   window.clearTimeout(state.ambientStickerTimer);
   if (!player.paused) {
     player.pause();
   }
   try {
-    const payload = await fetchJSON(`/api/episodes/${state.currentEpisode.id}/remix-options`);
+    const payload = state.remixOptions || (await fetchJSON(`/api/episodes/${state.currentEpisode.id}/remix-options`));
     state.remixOptions = payload;
     renderEndingRemixOptions(payload);
   } catch (error) {
@@ -2618,13 +2652,31 @@ async function showEndingRemix() {
   }
 }
 
-function maybeShowEndingRemix(force = false) {
-  if (!state.currentEpisode || state.endingRemixShown || state.activeHighlight) return;
+async function showEndingRemixEntry() {
+  if (!state.currentEpisode || state.endingRemixEntryShown || state.remixLoading) return;
+  state.endingRemixEntryShown = true;
+  hideInteraction();
+  clearStickerLayer();
+  window.clearTimeout(state.ambientStickerTimer);
+  if (!player.paused) {
+    player.pause();
+  }
+  try {
+    const payload = await fetchJSON(`/api/episodes/${state.currentEpisode.id}/remix-options`);
+    state.remixOptions = payload;
+    renderEndingRemixEntry(payload);
+  } catch {
+    renderEndingRemixEntry(null);
+  }
+}
+
+function maybeShowEndingRemixEntry(force = false) {
+  if (!state.currentEpisode || state.endingRemixEntryShown || state.endingRemixShown || state.remixLoading) return;
   const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode.duration_sec || 0;
   if (!duration && !force) return;
-  const triggerAt = Math.max(0, duration - 8);
-  if (force || (duration > 20 && player.currentTime >= triggerAt)) {
-    showEndingRemix();
+  const isAtRealEnding = duration > 20 && player.currentTime >= Math.max(0, duration - 0.35);
+  if (force || isAtRealEnding || player.ended) {
+    showEndingRemixEntry();
   }
 }
 
@@ -4532,7 +4584,7 @@ player.addEventListener("timeupdate", () => {
   }
   syncRoomState();
   updatePlayerControls();
-  maybeShowEndingRemix();
+  maybeShowEndingRemixEntry();
 });
 
 player.addEventListener("loadedmetadata", () => {
@@ -4572,7 +4624,7 @@ player.addEventListener("seeked", () => {
 });
 
 player.addEventListener("ended", () => {
-  maybeShowEndingRemix(true);
+  maybeShowEndingRemixEntry(true);
 });
 
 playToggle.addEventListener("click", () => {
@@ -4630,6 +4682,15 @@ endingRemixLayer?.addEventListener("click", (event) => {
   const actionButton = event.target.closest("[data-remix-action]");
   if (!actionButton) return;
   const action = actionButton.dataset.remixAction;
+  if (action === "start") {
+    showEndingRemix();
+    return;
+  }
+  if (action === "next") {
+    const episodeId = Number(actionButton.dataset.episodeId);
+    if (episodeId) openEpisode(episodeId);
+    return;
+  }
   if (action === "back" && state.remixOptions) {
     renderEndingRemixOptions(state.remixOptions);
     return;
