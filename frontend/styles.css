@@ -43,6 +43,7 @@ select {
   top: 0;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -86,6 +87,8 @@ h3 {
 
 .tabs {
   display: flex;
+  overflow-x: auto;
+  max-width: 100%;
   padding: 3px;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -1960,6 +1963,194 @@ main {
   font-weight: 800;
 }
 
+.reward-gallery-link {
+  border: 1px solid color-mix(in srgb, var(--player-accent, var(--accent-2)) 42%, transparent);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.profile-gallery {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background:
+    linear-gradient(135deg, rgba(246, 188, 79, 0.14), transparent 44%),
+    var(--panel);
+}
+
+.profile-hero h3 {
+  margin-bottom: 8px;
+  font-size: 24px;
+}
+
+.profile-hero strong {
+  display: block;
+  color: var(--gold);
+  font-size: 16px;
+}
+
+.profile-hero span,
+.next-badge-card span,
+.collection-badge span,
+.collection-badge small,
+.badge-history span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.profile-ring {
+  display: grid;
+  width: 96px;
+  height: 96px;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #121923 57%, transparent 58%),
+    conic-gradient(var(--gold) var(--progress), rgba(255, 255, 255, 0.1) 0);
+}
+
+.profile-ring b {
+  margin-bottom: -18px;
+  font-size: 22px;
+}
+
+.profile-ring small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.growth-pipeline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.growth-pipeline div,
+.next-badge-card,
+.collection-badge,
+.badge-history article {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.growth-pipeline div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.growth-pipeline span {
+  color: var(--accent-2);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.growth-pipeline strong {
+  font-size: 13px;
+}
+
+.next-badge-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+.next-badge-card strong {
+  color: var(--gold);
+  font-size: 18px;
+}
+
+.next-badge-card p,
+.collection-badge p {
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.next-badge-card .primary-button {
+  width: fit-content;
+}
+
+.next-badge-card.complete {
+  border-color: rgba(18, 214, 176, 0.35);
+  background: rgba(18, 214, 176, 0.08);
+}
+
+.badge-gallery,
+.badge-history {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-section-title span {
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.collection-badge {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.collection-badge.locked {
+  opacity: 0.72;
+}
+
+.badge-medal {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(246, 188, 79, 0.42);
+  border-radius: 50%;
+  color: #16100a;
+  background: linear-gradient(145deg, #ffe2a0, var(--gold));
+  font-weight: 900;
+}
+
+.collection-badge.locked .badge-medal {
+  border-color: var(--line);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.collection-badge h4 {
+  margin: 2px 0 4px;
+}
+
+.badge-history article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+}
+
 .danmaku-settings {
   display: none;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3256,19 +3447,31 @@ textarea.experience-field-input {
   .watch-tools,
   .co-watch-card,
   .reward-panel,
+  .profile-hero,
+  .collection-badge,
   .danmaku-form,
   .danmaku-settings {
     grid-template-columns: 1fr;
   }
 
   .co-watch-actions,
-  .reward-badges {
+  .reward-badges,
+  .collection-badge {
     justify-content: flex-start;
   }
 
   .reward-panel {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .growth-pipeline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-ring {
+    width: 88px;
+    height: 88px;
   }
 
   .review-toolbar,

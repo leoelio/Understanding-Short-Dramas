@@ -224,12 +224,14 @@ const $ = (selector) => document.querySelector(selector);
 const views = {
   auth: $("#authView"),
   home: $("#homeView"),
+  profile: $("#profileView"),
   watch: $("#watchView"),
   admin: $("#adminView"),
   review: $("#reviewView"),
 };
 
 const homeTab = $("#homeTab");
+const profileTab = $("#profileTab");
 const adminTab = $("#adminTab");
 const reviewTab = $("#reviewTab");
 const player = $("#player");
@@ -343,6 +345,7 @@ function updateAuthUI() {
     $("#currentUserLabel").textContent = `${state.currentUser.display_name} · ${roleLabel(state.currentUser.role)}`;
   }
   homeTab.hidden = !signedIn;
+  profileTab.hidden = !signedIn;
   adminTab.hidden = !signedIn || !canManage();
   reviewTab.hidden = !signedIn || !canManage();
 }
@@ -356,6 +359,7 @@ function clearAuth() {
   localStorage.removeItem("auth_token");
   updateAuthUI();
   renderRewardProfile();
+  renderProfileGallery();
 }
 
 function setAuthStatus(message, isError = false) {
@@ -402,6 +406,8 @@ async function routeAfterAuth() {
     setView("admin");
   } else if (location.hash === "#review") {
     setView("review");
+  } else if (location.hash === "#profile") {
+    setView("profile");
   } else if (Number.isFinite(episodeId) && episodeId > 0) {
     await openEpisodeFromUrl(episodeId);
   } else {
@@ -489,6 +495,7 @@ function setView(name) {
   }
   Object.entries(views).forEach(([key, element]) => element.classList.toggle("active", key === name));
   homeTab.classList.toggle("active", name === "home");
+  profileTab.classList.toggle("active", name === "profile");
   adminTab.classList.toggle("active", name === "admin");
   reviewTab.classList.toggle("active", name === "review");
   if (name !== "watch") {
@@ -498,6 +505,9 @@ function setView(name) {
   }
   if (name === "admin") {
     loadStats();
+  }
+  if (name === "profile") {
+    loadRewardProfile();
   }
   if (name === "review") {
     loadReviewEpisodes();
@@ -1853,10 +1863,12 @@ function renderRewardProfile() {
     return;
   }
   const badges = profile.badges || [];
+  const collectionTotal = Number(profile.collection_total || 0);
+  const collectionUnlocked = Number(profile.collection_unlocked || badges.length || 0);
   rewardPanel.innerHTML = `
     <div>
       <strong>${escapeHTML(profile.title || "剧情新人")}</strong>
-      <span>${Number(profile.points || 0)} 分 · ${badges.length} 枚勋章</span>
+      <span>${Number(profile.points || 0)} 分 · ${collectionUnlocked}/${collectionTotal || badges.length} 枚勋章</span>
     </div>
     <div class="reward-badges">
       ${
@@ -1867,7 +1879,126 @@ function renderRewardProfile() {
               .join("")
           : "<em>等待首枚勋章</em>"
       }
+      <button class="reward-gallery-link" type="button">展馆</button>
     </div>
+  `;
+}
+
+function formatDateTime(value) {
+  if (!value) return "未解锁";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "未解锁";
+  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, "0")}:${date
+    .getMinutes()
+    .toString()
+    .padStart(2, "0")}`;
+}
+
+function renderProfileGallery() {
+  const host = $("#profileGallery");
+  if (!host) return;
+  const profile = state.rewardProfile;
+  if (!state.currentUser) {
+    host.innerHTML = `<div class="empty-state">登录后可以查看个人勋章展馆。</div>`;
+    return;
+  }
+  if (!profile) {
+    host.innerHTML = `<div class="empty-state">正在加载成长数据...</div>`;
+    return;
+  }
+  const badges = profile.badges || [];
+  const collection = profile.collection || [];
+  const unlocked = collection.filter((item) => item.unlocked);
+  const locked = collection.filter((item) => !item.unlocked);
+  const nextTarget = locked[0];
+  const completion = Number(profile.completion_percent || 0);
+  host.innerHTML = `
+    <section class="profile-hero">
+      <div>
+        <p class="eyebrow">User Growth</p>
+        <h3>${escapeHTML(state.currentUser.display_name)}</h3>
+        <strong>${escapeHTML(profile.title || "剧情新人")}</strong>
+        <span>${Number(profile.points || 0)} 分 · ${unlocked.length}/${collection.length || badges.length} 枚专属徽章</span>
+      </div>
+      <div class="profile-ring" style="--progress:${Math.min(100, Math.max(0, completion))}%">
+        <b>${Math.round(completion)}%</b>
+        <small>收集率</small>
+      </div>
+    </section>
+
+    <section class="growth-pipeline">
+      ${["高光竞猜", "答对入账", "称号升级", "展馆沉淀"]
+        .map((label, index) => `<div><span>0${index + 1}</span><strong>${label}</strong></div>`)
+        .join("")}
+    </section>
+
+    ${
+      nextTarget
+        ? `<section class="next-badge-card">
+            <span>下一枚可解锁</span>
+            <strong>${escapeHTML(nextTarget.title)}</strong>
+            <p>${escapeHTML(nextTarget.drama_title)} · ${escapeHTML(nextTarget.highlight_title)} · 答对 +${Number(
+              nextTarget.points || 0
+            )} 分</p>
+            <button class="primary-button profile-open-episode" type="button" data-episode-id="${nextTarget.episode_id}">去解锁</button>
+          </section>`
+        : `<section class="next-badge-card complete">
+            <span>当前展示徽章已集齐</span>
+            <strong>完整收集者</strong>
+            <p>后续每配置一集竞猜奖励，这里会自动扩展新的收集目标。</p>
+          </section>`
+    }
+
+    <section class="badge-gallery">
+      <div class="profile-section-title">
+        <h3>剧集专属徽章</h3>
+        <span>${unlocked.length}/${collection.length || badges.length}</span>
+      </div>
+      ${
+        collection.length
+          ? collection.map(renderCollectionBadge).join("")
+          : `<div class="empty-state">暂无可收集徽章。先在复核页为剧集配置竞猜奖励。</div>`
+      }
+    </section>
+
+    <section class="badge-history">
+      <div class="profile-section-title">
+        <h3>最近解锁</h3>
+        <span>${badges.length} 条记录</span>
+      </div>
+      ${
+        badges.length
+          ? badges
+              .slice(0, 6)
+              .map(
+                (badge) => `
+                  <article>
+                    <strong>${escapeHTML(badge.title)}</strong>
+                    <span>+${Number(badge.points || 0)} 分 · ${formatDateTime(badge.created_at)}</span>
+                  </article>
+                `
+              )
+              .join("")
+          : `<div class="empty-state">还没有解锁记录。答对同看竞猜后会出现在这里。</div>`
+      }
+    </section>
+  `;
+}
+
+function renderCollectionBadge(item) {
+  return `
+    <article class="collection-badge ${item.unlocked ? "unlocked" : "locked"}">
+      <div class="badge-medal">${item.unlocked ? "奖" : "锁"}</div>
+      <div>
+        <span>${escapeHTML(item.drama_title)} · 第${Number(item.episode_no || 1)}集</span>
+        <h4>${escapeHTML(item.title)}</h4>
+        <p>${escapeHTML(item.description || "")}</p>
+        <small>${escapeHTML(item.highlight_title || "竞猜高光")} · ${item.unlocked ? formatDateTime(item.unlocked_at) : `待解锁 +${Number(item.points || 0)} 分`}</small>
+      </div>
+      <button class="ghost-button profile-open-episode" type="button" data-episode-id="${item.episode_id}">
+        ${item.unlocked ? "回看" : "去解锁"}
+      </button>
+    </article>
   `;
 }
 
@@ -1879,6 +2010,7 @@ async function loadRewardProfile() {
     state.rewardProfile = null;
   }
   renderRewardProfile();
+  renderProfileGallery();
 }
 
 function leaveWatchRoom() {
@@ -3824,6 +3956,7 @@ progressSlider.addEventListener("input", () => {
 });
 
 homeTab.addEventListener("click", () => setView("home"));
+profileTab.addEventListener("click", () => setView("profile"));
 adminTab.addEventListener("click", () => setView("admin"));
 reviewTab.addEventListener("click", () => setView("review"));
 $("#authForm").addEventListener("submit", submitAuth);
@@ -3842,6 +3975,18 @@ document.querySelectorAll(".demo-accounts button").forEach((button) => {
   });
 });
 $("#backButton").addEventListener("click", () => setView("home"));
+$("#refreshProfile").addEventListener("click", loadRewardProfile);
+$("#profileGallery").addEventListener("click", (event) => {
+  const button = event.target.closest(".profile-open-episode");
+  if (button) {
+    openEpisodeFromUrl(Number(button.dataset.episodeId));
+  }
+});
+rewardPanel?.addEventListener("click", (event) => {
+  if (event.target.closest(".reward-gallery-link")) {
+    setView("profile");
+  }
+});
 $("#refreshStats").addEventListener("click", loadStats);
 $("#adminView").addEventListener("click", (event) => {
   if (event.target.classList.contains("save-admin-user-button")) {

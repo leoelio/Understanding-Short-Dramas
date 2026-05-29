@@ -228,6 +228,62 @@ def reward_payload(reward: UserReward) -> dict:
     }
 
 
+def reward_collection_targets(db: Session, rewards: list[UserReward]) -> list[dict]:
+    unlocked_by_base_key = {reward.reward_key.split(":", 1)[0]: reward for reward in rewards}
+    targets = []
+    seen_keys = set()
+    rows = db.query(EpisodeExperienceConfig).join(Episode).order_by(Episode.id.asc()).all()
+    for row in rows:
+        episode = row.episode
+        if not episode:
+            continue
+        for rule in quiz_reward_rules(episode):
+            highlight = None
+            highlight_id = rule.get("highlight_id")
+            if highlight_id is not None:
+                try:
+                    highlight = db.get(Highlight, int(highlight_id))
+                except (TypeError, ValueError):
+                    highlight = None
+            if not highlight:
+                title = str(rule.get("highlight_title") or "").strip()
+                highlight = (
+                    db.query(Highlight)
+                    .filter(Highlight.episode_id == episode.id, Highlight.title == title)
+                    .first()
+                    if title
+                    else None
+                )
+            normalized = normalize_quiz_reward_rule(highlight, rule) if highlight else None
+            reward_key = str((normalized or rule).get("reward_key") or "").strip()
+            if not reward_key or reward_key in seen_keys:
+                continue
+            seen_keys.add(reward_key)
+            unlocked = unlocked_by_base_key.get(reward_key)
+            try:
+                points = int((normalized or rule).get("points") or 20)
+            except (TypeError, ValueError):
+                points = 20
+            targets.append(
+                {
+                    "reward_key": reward_key,
+                    "title": str((normalized or rule).get("title") or "剧情预言家"),
+                    "description": str((normalized or rule).get("description") or "完成本集竞猜后解锁。"),
+                    "points": points,
+                    "drama_title": episode.drama.title if episode.drama else "",
+                    "episode_id": episode.id,
+                    "episode_title": episode.title,
+                    "episode_no": episode.episode_no,
+                    "highlight_id": highlight.id if highlight else None,
+                    "highlight_title": highlight.title if highlight else str(rule.get("highlight_title") or ""),
+                    "unlocked": bool(unlocked),
+                    "unlocked_at": unlocked.created_at.isoformat() if unlocked and unlocked.created_at else None,
+                    "reward_id": unlocked.id if unlocked else None,
+                }
+            )
+    return targets
+
+
 def reward_profile(user: User, db: Session) -> dict:
     rewards = (
         db.query(UserReward)
@@ -236,6 +292,8 @@ def reward_profile(user: User, db: Session) -> dict:
         .all()
     )
     points = sum(item.points or 0 for item in rewards)
+    collection = reward_collection_targets(db, rewards)
+    unlocked_count = sum(1 for item in collection if item["unlocked"])
     title = rewards[0].title if rewards else "剧情新人"
     if points >= 80:
         title = "高光收藏家"
@@ -245,6 +303,10 @@ def reward_profile(user: User, db: Session) -> dict:
         "points": points,
         "title": title,
         "badges": [reward_payload(item) for item in rewards],
+        "collection": collection,
+        "collection_total": len(collection),
+        "collection_unlocked": unlocked_count,
+        "completion_percent": round(unlocked_count * 100 / len(collection), 1) if collection else 0,
     }
 
 
