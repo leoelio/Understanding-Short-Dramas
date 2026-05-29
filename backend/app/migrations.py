@@ -11,6 +11,7 @@ SQLITE_HIGHLIGHT_COLUMNS = {
 SQLITE_EXTRA_COLUMNS = {
     "interactions": {"user_id": "INTEGER"},
     "danmaku_comments": {"user_id": "INTEGER"},
+    "episode_ai_remixes": {"featured_order": "INTEGER DEFAULT 0 NOT NULL"},
 }
 
 

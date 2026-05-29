@@ -3991,6 +3991,63 @@ textarea.experience-field-input {
   font-style: normal;
 }
 
+.remix-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.remix-edit-grid label,
+.remix-storyboard-editor label,
+.remix-wide-field {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.remix-wide-field {
+  grid-column: 1 / -1;
+}
+
+.remix-edit-field {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--text);
+  background: #080c12;
+  font: inherit;
+}
+
+textarea.remix-edit-field {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.remix-storyboard-editor {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.remix-storyboard-editor fieldset {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.remix-storyboard-editor legend {
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .remix-review-actions button:disabled {
   cursor: default;
   opacity: 0.45;
@@ -4199,6 +4256,8 @@ textarea.experience-field-input {
   .review-options-editor,
   .experience-field-grid,
   .review-time-editor,
+  .remix-edit-grid,
+  .remix-storyboard-editor,
   .admin-user-row {
     grid-template-columns: 1fr;
   }

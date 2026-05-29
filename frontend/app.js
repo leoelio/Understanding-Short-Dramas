@@ -3258,6 +3258,47 @@ function remixStatusLabel(status, featured) {
   return "待复核";
 }
 
+function renderRemixStoryboardEditor(item) {
+  const storyboard = item.storyboard?.length === 3 ? item.storyboard : [{}, {}, {}];
+  return `
+    <div class="remix-storyboard-editor">
+      ${storyboard
+        .map(
+          (shot, index) => `
+            <fieldset>
+              <legend>分镜 ${index + 1}</legend>
+              <label>
+                名称
+                <input class="remix-edit-field" data-remix-field="storyboard" data-shot-index="${index}" data-shot-field="shot" value="${escapeHTML(
+                  shot.shot || `镜头${index + 1}`
+                )}" />
+              </label>
+              <label>
+                画面
+                <textarea class="remix-edit-field" data-remix-field="storyboard" data-shot-index="${index}" data-shot-field="visual" rows="2">${escapeHTML(
+                  shot.visual || ""
+                )}</textarea>
+              </label>
+              <label>
+                字幕
+                <input class="remix-edit-field" data-remix-field="storyboard" data-shot-index="${index}" data-shot-field="subtitle" value="${escapeHTML(
+                  shot.subtitle || ""
+                )}" />
+              </label>
+              <label>
+                声音
+                <input class="remix-edit-field" data-remix-field="storyboard" data-shot-index="${index}" data-shot-field="sound" value="${escapeHTML(
+                  shot.sound || ""
+                )}" />
+              </label>
+            </fieldset>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function renderRemixReviewPanel(remixes = state.reviewRemixes) {
   const panel = $("#remixReviewPanel");
   if (!panel) return;
@@ -3286,20 +3327,50 @@ function renderRemixReviewPanel(remixes = state.reviewRemixes) {
                       </div>
                       <b>${escapeHTML(item.choice?.icon || "AI")}</b>
                     </div>
-                    <p class="remix-review-story">${escapeHTML(item.story_text || "")}</p>
                     <div class="remix-review-meta">
                       <span>${escapeHTML(item.choice_label || "")}</span>
                       <span>${escapeHTML(item.source === "llm" ? "大模型" : "本地兜底")}</span>
                       <span>${escapeHTML(item.model_version || "")}</span>
                       <span>${formatDateTime(item.created_at)}</span>
+                      <span>排序 ${Number(item.featured_order || 0)}</span>
                     </div>
-                    <div class="remix-review-shots">
-                      ${(item.storyboard || [])
-                        .slice(0, 3)
-                        .map((shot) => `<em>${escapeHTML(shot.shot || "")}：${escapeHTML(shot.subtitle || "")}</em>`)
-                        .join("")}
+                    <div class="remix-edit-grid">
+                      <label>
+                        标题
+                        <input class="remix-edit-field" data-remix-field="title" value="${escapeHTML(item.title || "")}" />
+                      </label>
+                      <label>
+                        情绪
+                        <input class="remix-edit-field" data-remix-field="emotion" value="${escapeHTML(item.emotion || "")}" />
+                      </label>
+                      <label>
+                        精选排序
+                        <input class="remix-edit-field" type="number" min="0" max="999" step="1" data-remix-field="featured_order" value="${Number(
+                          item.featured_order || 0
+                        )}" />
+                      </label>
+                      <label class="remix-wide-field">
+                        钩子句
+                        <textarea class="remix-edit-field" data-remix-field="logline" rows="2">${escapeHTML(item.logline || "")}</textarea>
+                      </label>
+                      <label class="remix-wide-field">
+                        正文
+                        <textarea class="remix-edit-field" data-remix-field="story_text" rows="4">${escapeHTML(
+                          item.story_text || ""
+                        )}</textarea>
+                      </label>
+                      <label class="remix-wide-field">
+                        分享文案
+                        <input class="remix-edit-field" data-remix-field="share_copy" value="${escapeHTML(item.share_copy || "")}" />
+                      </label>
+                      <label class="remix-wide-field">
+                        审核备注
+                        <input class="remix-edit-field" data-remix-field="review_note" value="${escapeHTML(item.review_note || "")}" />
+                      </label>
                     </div>
+                    ${renderRemixStoryboardEditor(item)}
                     <div class="remix-review-actions">
+                      <button class="primary-button remix-review-action" type="button" data-action="save" data-remix-id="${item.id}">保存内容</button>
                       <button class="primary-button remix-review-action" type="button" data-action="feature" data-remix-id="${item.id}" ${
                         item.is_featured ? "disabled" : ""
                       }>设为精选</button>
@@ -3324,12 +3395,15 @@ async function updateRemixReview(button) {
   const remixId = Number(button.dataset.remixId);
   const action = button.dataset.action;
   if (!remixId || !action) return;
+  const card = button.closest(".remix-review-card");
   const payload =
-    action === "feature"
-      ? { review_status: "featured", is_featured: true }
-      : action === "hide"
-        ? { review_status: "hidden", is_featured: false }
-        : { review_status: "draft", is_featured: false };
+    action === "save"
+      ? collectRemixEditPayload(card)
+      : action === "feature"
+        ? { review_status: "featured", is_featured: true }
+        : action === "hide"
+          ? { review_status: "hidden", is_featured: false }
+          : { review_status: "draft", is_featured: false };
   button.disabled = true;
   try {
     const updated = await fetchJSON(`/api/admin/remixes/${remixId}`, {
@@ -3343,6 +3417,30 @@ async function updateRemixReview(button) {
     button.disabled = false;
     setReviewStatus(errorMessage(error), true);
   }
+}
+
+function collectRemixEditPayload(card) {
+  const payload = {};
+  const storyboard = [{}, {}, {}];
+  card.querySelectorAll(".remix-edit-field").forEach((field) => {
+    const key = field.dataset.remixField;
+    if (!key) return;
+    if (key === "storyboard") {
+      const index = Number(field.dataset.shotIndex);
+      const shotField = field.dataset.shotField;
+      if (Number.isFinite(index) && storyboard[index] && shotField) {
+        storyboard[index][shotField] = field.value.trim();
+      }
+      return;
+    }
+    if (key === "featured_order") {
+      payload[key] = Math.max(0, Number(field.value || 0));
+      return;
+    }
+    payload[key] = field.value.trim();
+  });
+  payload.storyboard = storyboard;
+  return payload;
 }
 
 function renderSelectOptions(values, selected) {

@@ -222,6 +222,7 @@ class EpisodeAIRemix(Base):
     review_status = Column(String(32), default="draft", index=True)
     review_note = Column(Text, default="")
     is_featured = Column(Boolean, default=False, nullable=False, index=True)
+    featured_order = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

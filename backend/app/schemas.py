@@ -26,6 +26,13 @@ class EpisodeRemixReviewUpdate(BaseModel):
     review_status: str | None = Field(default=None, max_length=32)
     is_featured: bool | None = None
     review_note: str | None = Field(default=None, max_length=300)
+    featured_order: int | None = Field(default=None, ge=0, le=999)
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    logline: str | None = Field(default=None, max_length=500)
+    emotion: str | None = Field(default=None, max_length=64)
+    story_text: str | None = Field(default=None, max_length=1200)
+    share_copy: str | None = Field(default=None, max_length=500)
+    storyboard: list[dict[str, Any]] | None = None
 
 
 class ExperienceConfigUpdate(BaseModel):

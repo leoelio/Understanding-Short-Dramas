@@ -833,6 +833,7 @@ def remix_record_payload(record: EpisodeAIRemix) -> dict:
         "review_status": record.review_status,
         "review_note": record.review_note,
         "is_featured": record.is_featured,
+        "featured_order": record.featured_order,
         "user": public_user(record.user) if record.user else None,
         "created_at": record.created_at.isoformat() if record.created_at else None,
         "updated_at": record.updated_at.isoformat() if record.updated_at else None,
@@ -866,6 +867,7 @@ def create_remix_record(
         prompt_trace_json=json.dumps(result.get("prompt_trace", {}), ensure_ascii=False),
         review_status="draft",
         is_featured=False,
+        featured_order=0,
     )
     db.add(record)
     db.commit()
@@ -877,11 +879,29 @@ def featured_remix_payloads(db: Session, episode_id: int, limit: int = 3) -> lis
     rows = (
         db.query(EpisodeAIRemix)
         .filter(EpisodeAIRemix.episode_id == episode_id, EpisodeAIRemix.is_featured.is_(True))
-        .order_by(EpisodeAIRemix.updated_at.desc(), EpisodeAIRemix.id.desc())
+        .order_by(EpisodeAIRemix.featured_order.asc(), EpisodeAIRemix.updated_at.desc(), EpisodeAIRemix.id.desc())
         .limit(limit)
         .all()
     )
     return [remix_record_payload(row) for row in rows]
+
+
+def normalize_editable_storyboard(storyboard: list[dict]) -> list[dict]:
+    if len(storyboard) != 3:
+        raise HTTPException(status_code=400, detail="分镜必须正好 3 个")
+    normalized = []
+    for index, item in enumerate(storyboard, start=1):
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=400, detail="分镜必须是 JSON 对象")
+        normalized.append(
+            {
+                "shot": str(item.get("shot") or f"镜头{index}").strip()[:32],
+                "visual": str(item.get("visual") or "").strip()[:300],
+                "subtitle": str(item.get("subtitle") or "").strip()[:160],
+                "sound": str(item.get("sound") or "").strip()[:120],
+            }
+        )
+    return normalized
 
 
 @app.get("/api/health")
@@ -1583,7 +1603,7 @@ def admin_list_episode_remixes(
     rows = (
         db.query(EpisodeAIRemix)
         .filter(EpisodeAIRemix.episode_id == episode.id)
-        .order_by(EpisodeAIRemix.is_featured.desc(), EpisodeAIRemix.id.desc())
+        .order_by(EpisodeAIRemix.is_featured.desc(), EpisodeAIRemix.featured_order.asc(), EpisodeAIRemix.id.desc())
         .all()
     )
     return [remix_record_payload(row) for row in rows]
@@ -1614,6 +1634,23 @@ def admin_update_remix_review(
         record.review_status = "featured" if payload.is_featured else "draft"
     if payload.review_note is not None:
         record.review_note = payload.review_note.strip()
+    if payload.featured_order is not None:
+        record.featured_order = payload.featured_order
+    if payload.title is not None:
+        title = payload.title.strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="标题不能为空")
+        record.title = title
+    if payload.logline is not None:
+        record.logline = payload.logline.strip()
+    if payload.emotion is not None:
+        record.emotion = payload.emotion.strip()
+    if payload.story_text is not None:
+        record.story_text = payload.story_text.strip()
+    if payload.share_copy is not None:
+        record.share_copy = payload.share_copy.strip()
+    if payload.storyboard is not None:
+        record.storyboard_json = json.dumps(normalize_editable_storyboard(payload.storyboard), ensure_ascii=False)
     record.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(record)
