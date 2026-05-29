@@ -2558,7 +2558,7 @@ function renderEndingRemixOptions(payload) {
             </div>`
           : ""
       }
-      <small>保底版先生成文字卡和三格分镜，后续可接入图片/视频生成。</small>
+      <small>当前已接入图片分镜，后续可替换为更高质量的生成图或视频资产。</small>
     </section>
   `;
 }
@@ -2578,10 +2578,80 @@ function renderEndingRemixLoading(choice) {
   `;
 }
 
+function remixImageStatusLabel(status) {
+  if (status === "cached_images" || status === "cached_image") return "已缓存图片";
+  return "待生成图片";
+}
+
+function renderRemixImageSequence(imagePlan) {
+  const shots = imagePlan?.shots || [];
+  if (!shots.length) return "";
+  return `
+    <div class="remix-image-plan" data-remix-image-plan data-active-index="0">
+      <div class="remix-video-plan-head">
+        <div>
+          <span>三镜头图片分镜</span>
+          <strong>${escapeHTML(imagePlan.replacement_axis || "可替换变量")}</strong>
+        </div>
+        <em>${escapeHTML(remixImageStatusLabel(imagePlan.asset_status))} · ${Number(imagePlan.shot_count || shots.length)} 张</em>
+      </div>
+      <div class="remix-image-stage" role="button" tabindex="0" data-remix-action="image-next" aria-label="下一张分镜">
+        ${shots
+          .map(
+            (shot, index) => `
+              <figure class="remix-image-frame ${index === 0 ? "active" : ""}" data-shot-index="${index}">
+                ${
+                  shot.storage_hint
+                    ? `<img src="${escapeHTML(shot.storage_hint)}" alt="${escapeHTML(
+                        shot.caption || `镜头${index + 1}`
+                      )}" loading="lazy" onerror="this.closest('figure').classList.add('missing-image')" />`
+                    : ""
+                }
+                <div class="remix-image-fallback">
+                  <b>IMAGE ${index + 1}</b>
+                  <span>${escapeHTML(shot.image_prompt || "等待 OpenAI 图片生成")}</span>
+                </div>
+                <figcaption>
+                  <b>0${index + 1}</b>
+                  <div>
+                    <strong>${escapeHTML(shot.caption || `镜头${index + 1}`)}</strong>
+                    <p>${escapeHTML(shot.subtitle || shot.image_prompt || "")}</p>
+                  </div>
+                </figcaption>
+              </figure>
+            `
+          )
+          .join("")}
+      </div>
+      <div class="remix-image-controls">
+        <button class="ghost-button" type="button" data-remix-action="image-prev">上一张</button>
+        <span><b data-remix-image-current>1</b> / ${shots.length}</span>
+        <button class="primary-button" type="button" data-remix-action="image-next">下一张</button>
+      </div>
+      <p>${escapeHTML(imagePlan.note || "点击图片进入下一张分镜。")}</p>
+      <div class="video-slot-pill">${escapeHTML(imagePlan.storage_dir || imagePlan.variant_slot || "")}</div>
+    </div>
+  `;
+}
+
+function stepRemixImage(delta) {
+  const plan = endingRemixLayer?.querySelector("[data-remix-image-plan]");
+  if (!plan) return;
+  const frames = Array.from(plan.querySelectorAll(".remix-image-frame"));
+  if (!frames.length) return;
+  const current = Number(plan.dataset.activeIndex || 0);
+  const next = Math.max(0, Math.min(frames.length - 1, current + delta));
+  plan.dataset.activeIndex = String(next);
+  frames.forEach((frame, index) => frame.classList.toggle("active", index === next));
+  const counter = plan.querySelector("[data-remix-image-current]");
+  if (counter) counter.textContent = String(next + 1);
+}
+
 function renderEndingRemixResult(result) {
   if (!endingRemixLayer) return;
   const storyboard = result.storyboard || [];
   const variant = result.variant || result.prompt_trace?.variant || null;
+  const imagePlan = result.image_plan || result.prompt_trace?.image_plan || null;
   const videoPlan = result.video_plan || result.prompt_trace?.video_plan || null;
   const videoShots = videoPlan?.shots || [];
   endingRemixLayer.className = "ending-remix-layer";
@@ -2623,8 +2693,9 @@ function renderEndingRemixResult(result) {
           )
           .join("")}
       </div>
+      ${renderRemixImageSequence(imagePlan)}
       ${
-        videoPlan
+        !imagePlan && videoPlan
           ? `<div class="remix-video-plan">
               <div class="remix-video-plan-head">
                 <div>
@@ -2677,6 +2748,7 @@ function renderEndingRemixResult(result) {
 
 function remixSourceLabel(source) {
   if (source === "llm") return "大模型";
+  if (source === "cached_images") return "图片分镜缓存";
   if (source === "cached_video") return "预生成视频";
   return "本地兜底";
 }
@@ -4754,6 +4826,14 @@ endingRemixLayer?.addEventListener("click", (event) => {
   if (action === "next") {
     const episodeId = Number(actionButton.dataset.episodeId);
     if (episodeId) openEpisode(episodeId);
+    return;
+  }
+  if (action === "image-next") {
+    stepRemixImage(1);
+    return;
+  }
+  if (action === "image-prev") {
+    stepRemixImage(-1);
     return;
   }
   if (action === "back" && state.remixOptions) {

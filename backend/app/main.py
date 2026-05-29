@@ -760,6 +760,41 @@ def remix_video_plan(choice: dict, variant: dict | None) -> dict | None:
     }
 
 
+def remix_image_plan(choice: dict, variant: dict | None) -> dict | None:
+    if not variant:
+        return None
+    slot = f"beiwang_ep1_{choice['key']}_{variant['variant_key']}"
+    shots = []
+    for index, shot in enumerate(variant.get("video_shots") or [], start=1):
+        storage_hint = f"/assets/remix_images/beiwang_ep1/{slot}_shot_{index}.png"
+        asset_path = FRONTEND_DIR / storage_hint.lstrip("/")
+        storyboard = (variant.get("storyboard") or [{}])[index - 1] if index <= len(variant.get("storyboard") or []) else {}
+        prompt = shot.get("video_prompt") or storyboard.get("visual") or variant.get("summary") or ""
+        shots.append(
+            {
+                "index": index,
+                "caption": shot.get("caption") or storyboard.get("shot") or f"镜头{index}",
+                "subtitle": storyboard.get("subtitle") or "",
+                "sound": storyboard.get("sound") or shot.get("sound") or "",
+                "image_prompt": prompt,
+                "storage_hint": storage_hint,
+                "asset_status": "cached_image" if asset_path.exists() else "script_ready",
+            }
+        )
+    all_cached = bool(shots) and all(item["asset_status"] == "cached_image" for item in shots)
+    return {
+        "asset_status": "cached_images" if all_cached else "script_ready",
+        "render_mode": "click_through_storyboard_images",
+        "generation_model": "gpt-image-1",
+        "variant_slot": slot,
+        "replacement_axis": variant["variable_label"],
+        "shot_count": len(shots),
+        "storage_dir": "/assets/remix_images/beiwang_ep1",
+        "note": "当前片尾二创改为三镜头图片分镜。可先用缓存图展示，后续用 OpenAI 图片生成脚本覆盖同名图片。",
+        "shots": shots,
+    }
+
+
 def remix_options_for_episode(episode: Episode) -> list[dict]:
     title = episode.drama.title
     if is_beiwang_first_episode(episode):
@@ -931,7 +966,8 @@ def fallback_remix_payload(episode: Episode, choice: dict, context: dict, varian
             {"shot": "镜头三", "visual": "画面切黑，只留下下一集标题式文案。", "subtitle": "下一集：答案马上揭晓。", "sound": "悬念鼓点"},
         ]
     variant_payload = public_remix_variant(variant)
-    video_plan = remix_video_plan(choice, variant)
+    image_plan = remix_image_plan(choice, variant)
+    video_plan = None
     return {
         "source": "local_fallback",
         "model_version": "remix-text-v1",
@@ -942,6 +978,7 @@ def fallback_remix_payload(episode: Episode, choice: dict, context: dict, varian
         "story_text": story_text,
         "storyboard": storyboard,
         "variant": variant_payload,
+        "image_plan": image_plan,
         "video_plan": video_plan,
         "share_copy": f"我选择了「{choice['label']}」，AI 生成了一个非正片番外走向。",
         "prompt_trace": {
@@ -949,6 +986,7 @@ def fallback_remix_payload(episode: Episode, choice: dict, context: dict, varian
             "drama_title": drama_title,
             "choice_key": choice["key"],
             "variant": variant_payload,
+            "image_plan": image_plan,
             "video_plan": video_plan,
             "context_highlight_count": len(highlights),
         },
@@ -996,6 +1034,7 @@ def normalize_remix_payload(raw: dict, fallback: dict) -> dict:
         "storyboard": clean_storyboard,
         "share_copy": str(raw.get("share_copy") or fallback["share_copy"]),
         "variant": fallback.get("variant"),
+        "image_plan": fallback.get("image_plan"),
         "video_plan": fallback.get("video_plan"),
         "prompt_trace": fallback.get("prompt_trace", {}),
     }
@@ -1099,6 +1138,7 @@ def remix_record_payload(record: EpisodeAIRemix) -> dict:
         "storyboard": load_json_field(record.storyboard_json, []),
         "share_copy": record.share_copy,
         "variant": prompt_trace.get("variant"),
+        "image_plan": prompt_trace.get("image_plan"),
         "video_plan": prompt_trace.get("video_plan"),
         "prompt_trace": prompt_trace,
         "review_status": record.review_status,
@@ -1122,6 +1162,8 @@ def create_remix_record(
     prompt_trace = dict(result.get("prompt_trace") or {})
     if result.get("variant"):
         prompt_trace["variant"] = result["variant"]
+    if result.get("image_plan"):
+        prompt_trace["image_plan"] = result["image_plan"]
     if result.get("video_plan"):
         prompt_trace["video_plan"] = result["video_plan"]
     record = EpisodeAIRemix(
@@ -1408,11 +1450,11 @@ def create_episode_ai_remix(
     context = remix_context_payload(episode, db)
     variant = remix_variant_for_choice(choice, payload.session_id) if is_beiwang_first_episode(episode) else None
     fallback = fallback_remix_payload(episode, choice, context, variant)
-    if fallback.get("video_plan", {}).get("asset_status") == "cached_video":
+    if fallback.get("image_plan", {}).get("asset_status") == "cached_images":
         result = {
             **fallback,
-            "source": "cached_video",
-            "model_version": "beiwang-remix-video-cache-v1",
+            "source": "cached_images",
+            "model_version": "image-storyboard-cache-v1",
         }
     else:
         try:
