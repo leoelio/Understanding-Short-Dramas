@@ -1,4 +1,3 @@
-import hashlib
 import shutil
 import subprocess
 import sys
@@ -11,35 +10,30 @@ sys.path.insert(0, str(ROOT))
 from backend.app.main import BEIWANG_EP1_REMIX_VARIANTS  # noqa: E402
 
 
+SOURCE_VIDEO = ROOT / "视频库" / "北往" / "第1集.mp4"
 OUT_DIR = ROOT / "frontend" / "assets" / "remix_videos" / "beiwang_ep1"
-TEXT_DIR = ROOT / "data" / "render_text"
+WORK_DIR = ROOT / "data" / "remix_render_work"
 FONT = "C\\:/Windows/Fonts/msyh.ttc"
-WIDTH = 480
-HEIGHT = 854
-FPS = 24
 
 
 CHOICE_META = {
     "road_breakdown": {
         "label": "车坏在半路",
-        "icon": "修",
-        "accent": "0xff7a30",
-        "soft": "0xffd36b",
         "tag": "返乡闯关",
+        "accent": "0xff7a30",
+        "clip_starts": [138, 214, 280],
     },
     "ticket_home": {
         "label": "借钱买票回家",
-        "icon": "票",
-        "accent": "0x4fc3ff",
-        "soft": "0xffdf7e",
         "tag": "现实共情",
+        "accent": "0x4fc3ff",
+        "clip_starts": [112, 145, 280],
     },
     "kindness_ride": {
         "label": "帮人后一起回家",
-        "icon": "善",
-        "accent": "0x7ee787",
-        "soft": "0xff9f43",
         "tag": "善意反转",
+        "accent": "0x7ee787",
+        "clip_starts": [240, 262, 280],
     },
 }
 
@@ -54,26 +48,21 @@ def wrap_cjk(text: str, width: int, max_lines: int) -> str:
 
 
 def write_text(slot: str, name: str, value: str) -> str:
-    path = TEXT_DIR / f"{slot}_{name}.txt"
+    path = WORK_DIR / f"{slot}_{name}.txt"
     path.write_text(value, encoding="utf-8")
-    return path.relative_to(ROOT).as_posix()
-
-
-def between(start: float, end: float) -> str:
-    return f"between(t\\,{start:.2f}\\,{end:.2f})"
+    return path.as_posix().replace(":", "\\:")
 
 
 def drawtext(
     textfile: str,
     fontsize: int,
+    x: str,
     y: str,
     *,
     color: str = "white",
-    x: str = "(w-text_w)/2",
-    enable: str | None = None,
     box: bool = False,
 ) -> str:
-    options = [
+    parts = [
         f"fontfile='{FONT}'",
         f"textfile='{textfile}'",
         f"fontsize={fontsize}",
@@ -83,138 +72,130 @@ def drawtext(
         "line_spacing=8",
     ]
     if box:
-        options.extend(["box=1", "boxcolor=0x05070a@0.54", "boxborderw=14"])
-    if enable:
-        options.append(f"enable='{enable}'")
-    return "drawtext=" + ":".join(options)
+        parts.extend(["box=1", "boxcolor=0x05070a@0.62", "boxborderw=18"])
+    return "drawtext=" + ":".join(parts)
 
 
-def snow_layers() -> list[str]:
-    layers = []
-    for index in range(34):
-        digest = hashlib.sha1(f"snow-{index}".encode("utf-8")).hexdigest()
-        x = int(digest[:4], 16) % WIDTH
-        offset = int(digest[4:8], 16) % HEIGHT
-        speed = 34 + (int(digest[8:10], 16) % 72)
-        size = 2 + (index % 3)
-        alpha = 0.16 + (index % 4) * 0.04
-        layers.append(
-            f"drawbox=x={x}:y=mod(t*{speed}+{offset}\\,ih):w={size}:h={size * 3}:color=white@{alpha:.2f}:t=fill"
-        )
-    return layers
-
-
-def render_one(choice_key: str, variant: dict) -> Path:
+def make_shot_video(choice_key: str, variant: dict, shot_index: int, start: float, shot: dict) -> Path:
     meta = CHOICE_META[choice_key]
     slot = f"beiwang_ep1_{choice_key}_{variant['variant_key']}"
-    output = OUT_DIR / f"{slot}.mp4"
-    shots = variant["video_shots"]
-    duration = sum(float(shot["duration_sec"]) for shot in shots)
-    title_file = write_text(slot, "title", "北往 · 第1集 AI 二创")
-    variant_file = write_text(slot, "variant", f"{meta['label']}｜{variant['label']}")
-    summary_file = write_text(slot, "summary", wrap_cjk(variant["summary"], 18, 3))
-    tag_file = write_text(slot, "tag", f"{meta['tag']} · {variant['runtime_sec']}秒以内")
-    slot_file = write_text(slot, "slot", slot)
+    duration = float(shot["duration_sec"])
+    output = WORK_DIR / f"{slot}_shot_{shot_index}.mp4"
+    headline = write_text(slot, f"headline_{shot_index}", f"AI 预测 · {meta['label']}")
+    variant_name = write_text(slot, f"variant_{shot_index}", f"{variant['label']} / {meta['tag']}")
+    caption = write_text(slot, f"caption_{shot_index}", f"0{shot_index}  {shot['caption']}")
+    subtitle = write_text(slot, f"subtitle_{shot_index}", wrap_cjk(variant["storyboard"][shot_index - 1]["subtitle"], 14, 2))
+    visual = write_text(slot, f"visual_{shot_index}", wrap_cjk(variant["storyboard"][shot_index - 1]["visual"], 18, 2))
+    footer = write_text(slot, f"footer_{shot_index}", "AI 猜测剧情，非正片内容")
 
-    filters = [
-        "format=rgba",
-        "noise=alls=8:allf=t+u",
-        "drawbox=x=0:y=0:w=iw:h=ih:color=0x05070a@0.26:t=fill",
-        "drawbox=x=0:y=ih*0.55:w=iw:h=ih*0.45:color=0x111820@0.78:t=fill",
-        "drawbox=x=iw*0.12:y=ih*0.68:w=iw*0.76:h=ih*0.22:color=0x1f242c@0.88:t=fill",
-        f"drawbox=x=0:y=0:w=8:h=ih:color={meta['accent']}@0.94:t=fill",
-        f"drawbox=x=0:y=0:w=iw:h=4:color={meta['accent']}@0.80:t=fill",
-        f"drawbox=x=0:y=ih-8:w=iw*t/{duration:.2f}:h=8:color={meta['soft']}@0.92:t=fill",
-        "drawbox=x=iw*0.48:y=mod(t*120\\,ih):w=4:h=48:color=0xfff5d6@0.42:t=fill",
-        "drawbox=x=iw*0.48:y=mod(t*120+120\\,ih):w=4:h=48:color=0xfff5d6@0.30:t=fill",
-        *snow_layers(),
-        drawtext(title_file, 22, "42", color="0xeef6ff"),
-        drawtext(variant_file, 30, "82", color="white", box=True),
-        drawtext(summary_file, 20, "142", color="0xd8e2ef"),
-        drawtext(tag_file, 17, "h-96", color="0xfff0c2", x="34"),
-        drawtext(slot_file, 11, "h-38", color="0x9ca8b8", x="34"),
-    ]
-
-    start = 0.0
-    for index, shot in enumerate(shots, start=1):
-        end = start + float(shot["duration_sec"])
-        enable = between(start, end)
-        shot_title = write_text(slot, f"shot_{index}_title", f"0{index}  {shot['caption']}")
-        shot_subtitle = write_text(
-            slot,
-            f"shot_{index}_subtitle",
-            wrap_cjk(variant["storyboard"][index - 1]["subtitle"], 17, 2),
-        )
-        shot_visual = write_text(
-            slot,
-            f"shot_{index}_visual",
-            wrap_cjk(variant["storyboard"][index - 1]["visual"], 16, 3),
-        )
-        filters.extend(
-            [
-                f"drawbox=x=32:y=228:w=416:h=232:color=0x000000@0.20:t=fill:enable='{enable}'",
-                f"drawbox=x=32:y=228:w=416:h=4:color={meta['accent']}@0.95:t=fill:enable='{enable}'",
-                drawtext(shot_title, 25, "252", color="white", x="50", enable=enable),
-                drawtext(shot_visual, 21, "306", color="0xdbe7f5", x="50", enable=enable),
-                drawtext(shot_subtitle, 28, "h-246", color="white", enable=enable, box=True),
-                drawtext(write_text(slot, f"sound_{index}", shot["sound"]), 15, "h-150", color="0xb7c4d8", enable=enable),
-                drawtext(write_text(slot, f"icon_{index}", meta["icon"]), 76, "h-318", color="0xfff0c2", x="w-text_w-42", enable=enable),
-            ]
-        )
-        start = end
-
-    filter_complex = "[0:v]" + ",".join(filters) + ",format=yuv420p[v]"
+    vf = ",".join(
+        [
+            "scale=720:1280:force_original_aspect_ratio=increase",
+            "crop=720:1280",
+            "eq=contrast=1.08:saturation=0.92:brightness=-0.035",
+            "unsharp=5:5:0.55:3:3:0.2",
+            "drawbox=x=0:y=0:w=iw:h=218:color=0x05070a@0.56:t=fill",
+            "drawbox=x=0:y=ih-318:w=iw:h=318:color=0x05070a@0.64:t=fill",
+            "drawbox=x=0:y=732:w=iw:h=238:color=0x05070a@0.98:t=fill",
+            f"drawbox=x=0:y=0:w=8:h=ih:color={meta['accent']}@0.95:t=fill",
+            f"drawbox=x=42:y=190:w=636:h=4:color={meta['accent']}@0.92:t=fill",
+            f"drawbox=x=42:y=934:w=636:h=4:color={meta['accent']}@0.92:t=fill",
+            drawtext(headline, 30, "42", "54", color="0xeef6ff"),
+            drawtext(variant_name, 44, "42", "104", color="white"),
+            drawtext(caption, 34, "42", "782", color="white"),
+            drawtext(visual, 25, "42", "842", color="0xd7e2ef"),
+            drawtext(subtitle, 40, "(w-text_w)/2", "1012", color="white", box=True),
+            drawtext(footer, 18, "42", "h-56", color="0xc4cfde"),
+        ]
+    )
     command = [
         "ffmpeg",
         "-y",
-        "-f",
-        "lavfi",
-        "-i",
-        f"color=c=0x071014:s={WIDTH}x{HEIGHT}:r={FPS}:d={duration:.2f}",
-        "-f",
-        "lavfi",
-        "-i",
-        "anullsrc=channel_layout=stereo:sample_rate=44100",
-        "-filter_complex",
-        filter_complex,
-        "-map",
-        "[v]",
-        "-map",
-        "1:a",
+        "-ss",
+        str(start),
         "-t",
         f"{duration:.2f}",
+        "-i",
+        str(SOURCE_VIDEO),
+        "-f",
+        "lavfi",
+        "-t",
+        f"{duration:.2f}",
+        "-i",
+        "anullsrc=channel_layout=stereo:sample_rate=44100",
+        "-map",
+        "0:v:0",
+        "-map",
+        "1:a:0",
+        "-vf",
+        vf,
+        "-r",
+        "30",
         "-c:v",
         "libx264",
         "-preset",
         "veryfast",
         "-crf",
-        "28",
+        "20",
         "-pix_fmt",
         "yuv420p",
         "-c:a",
         "aac",
         "-b:a",
         "96k",
+        "-shortest",
+        str(output),
+    ]
+    subprocess.run(command, cwd=ROOT, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return output
+
+
+def render_one(choice_key: str, variant: dict) -> Path:
+    slot = f"beiwang_ep1_{choice_key}_{variant['variant_key']}"
+    output = OUT_DIR / f"{slot}.mp4"
+    starts = CHOICE_META[choice_key]["clip_starts"]
+    shot_files = [
+        make_shot_video(choice_key, variant, index, starts[index - 1], shot)
+        for index, shot in enumerate(variant["video_shots"], start=1)
+    ]
+    concat_file = WORK_DIR / f"{slot}_concat.txt"
+    concat_file.write_text(
+        "".join(f"file '{path.as_posix()}'\n" for path in shot_files),
+        encoding="utf-8",
+    )
+    command = [
+        "ffmpeg",
+        "-y",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        str(concat_file),
+        "-c",
+        "copy",
         "-movflags",
         "+faststart",
         str(output),
     ]
-    subprocess.run(command, cwd=ROOT, check=True)
+    subprocess.run(command, cwd=ROOT, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return output
 
 
 def main() -> None:
+    if not SOURCE_VIDEO.exists():
+        raise FileNotFoundError(SOURCE_VIDEO)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    if TEXT_DIR.exists():
-        shutil.rmtree(TEXT_DIR)
-    TEXT_DIR.mkdir(parents=True)
-    outputs = []
+    shutil.rmtree(WORK_DIR, ignore_errors=True)
+    WORK_DIR.mkdir(parents=True)
     try:
-        for choice_key, variants in BEIWANG_EP1_REMIX_VARIANTS.items():
-            for variant in variants:
-                outputs.append(render_one(choice_key, variant))
+        outputs = [
+            render_one(choice_key, variant)
+            for choice_key, variants in BEIWANG_EP1_REMIX_VARIANTS.items()
+            for variant in variants
+        ]
     finally:
-        shutil.rmtree(TEXT_DIR, ignore_errors=True)
+        shutil.rmtree(WORK_DIR, ignore_errors=True)
     for output in outputs:
         print(output.relative_to(ROOT).as_posix())
 

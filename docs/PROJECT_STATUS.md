@@ -1,22 +1,40 @@
 # Project Status
 
-更新时间：2026-05-29 20:04:29
+更新时间：2026-05-30 02:55:26
 
 ## 当前目标
 
-将北往第一集片尾 AI 二创升级为可播放的预生成短视频资产，并按 storage_hint 接入客户端播放。
+重做北往第一集片尾 AI 二创视频资产：先交付稳定可播放的原片重剪预测版，同时明确高质量新剧情视频需要外部视频生成渠道。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`376a3ff`
+- 最新提交：`80c5a6e`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M backend/app/main.py`
-- `M frontend/app.js`
-- `M frontend/styles.css`
-- `?? frontend/assets/remix_videos/`
-- `?? scripts/generate_beiwang_remix_videos.py`
+- `M frontend/assets/remix_videos/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan.mp4`
+- `M frontend/assets/remix_videos/beiwang_ep1/beiwang_ep1_kindness_ride_convertible.mp4`
+- `M frontend/assets/remix_videos/beiwang_ep1/beiwang_ep1_kindness_ride_wuling_van.mp4`
+- `M frontend/assets/remix_videos/beiwang_ep1/beiwang_ep1_road_breakdown_chain_bridge.mp4`
+- `M frontend/assets/remix_videos/beiwang_ep1/beiwang_ep1_road_breakdown_flat_tire.mp4`
+- `M frontend/assets/remix_videos/beiwang_ep1/beiwang_ep1_road_breakdown_frozen_engine.mp4`
+- `M frontend/assets/remix_videos/beiwang_ep1/beiwang_ep1_ticket_home_coach_ticket.mp4`
+- `M frontend/assets/remix_videos/beiwang_ep1/beiwang_ep1_ticket_home_green_train.mp4`
+- `M frontend/assets/remix_videos/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket.mp4`
+- `M scripts/generate_beiwang_remix_videos.py`
+- `?? data/beiwang_remix_frame_14s.png`
+- `?? data/beiwang_remix_frame_23s.png`
+- `?? data/beiwang_remix_frame_3s.png`
+- `?? data/beiwang_remix_v2_frame_14s.png`
+- `?? data/beiwang_remix_v2_frame_23s.png`
+- `?? data/beiwang_remix_v2_frame_3s.png`
+- `?? data/beiwang_remix_v3_frame_14s.png`
+- `?? data/beiwang_remix_v3_frame_3s.png`
+- `?? data/beiwang_remix_v4_frame_14s.png`
+- `?? data/beiwang_remix_v4_frame_3s.png`
+- `?? data/beiwang_source_150.png`
+- `?? data/beiwang_source_242.png`
+- `?? data/beiwang_source_280.png`
 
 ## 数据状态
 
@@ -26,10 +44,10 @@
 - 高光点：65
 - 已复核剧集：4
 - 待复核剧集：16
-- 互动记录：44
+- 互动记录：46
 - 弹幕记录：220
 - 体验配置：4
-- 片尾 AI 二创：12
+- 片尾 AI 二创：16
 
 ## 高光来源
 
@@ -50,14 +68,14 @@
 
 ## 本次变更摘要
 
-- 新增北往第一集 9 条竖屏 MP4 缓存资产，覆盖 3 个二创方向和 9 个剧情变体。
-- 新增 ffmpeg 生成脚本，复用后端二创变体数据生成缓存视频，确保视频资产和接口文案一致。
-- 后端根据 storage_hint 检测缓存文件，已缓存时直接返回 cached_video，避免用户等待实时大模型生成。
-- 前端二创结果页新增视频播放器，展示已缓存状态、素材路径和分镜提示词。
+- 重新生成北往第一集 9 条二创缓存视频，使用原片动态片段、三段式 AI 预测标题、分镜字幕和竖屏包装。
+- 调整生成脚本的字幕遮罩，避免原片字幕与二创说明互相干扰。
+- 验证接口返回 cached_video，静态 MP4 服务为 video/mp4，客户端可通过 storage_hint 直接播放。
 
 ## 下一步建议
 
-- 下一步可以为那年冬至第一集建立同样的缓存短视频资产包，或把二创缓存资产纳入复核页管理。
+- 如果比赛需要更高质感的新剧情视频，使用外部文生/图生视频服务按 storage_hint 文件名替换当前缓存资产。
+- 继续先围绕北往第一集打磨二创演示流程，再复制到其他重点剧集。
 
 ## 安全提醒
 
