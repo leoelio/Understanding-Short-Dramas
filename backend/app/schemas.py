@@ -17,6 +17,11 @@ class DanmakuCreate(BaseModel):
     mode: str = Field(default="light", max_length=32)
 
 
+class EpisodeRemixCreate(BaseModel):
+    choice_key: str = Field(min_length=1, max_length=64)
+    session_id: str = Field(min_length=1, max_length=128)
+
+
 class ExperienceConfigUpdate(BaseModel):
     version: int = Field(default=1, ge=1)
     source: str = Field(default="human_review", max_length=64)

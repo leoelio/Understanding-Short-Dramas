@@ -180,6 +180,10 @@ const state = {
   episodes: [],
   currentEpisode: null,
   currentExperience: null,
+  endingRemixShown: false,
+  remixOptions: null,
+  remixResult: null,
+  remixLoading: false,
   sessionId: localStorage.getItem("session_id") || crypto.randomUUID(),
   firedHighlights: new Set(),
   firedDanmaku: new Set(),
@@ -236,6 +240,7 @@ const adminTab = $("#adminTab");
 const reviewTab = $("#reviewTab");
 const player = $("#player");
 const interactionLayer = $("#interactionLayer");
+const endingRemixLayer = $("#endingRemixLayer");
 const danmakuLayer = $("#danmakuLayer");
 const stickerLayer = $("#stickerLayer");
 const playToggle = $("#playToggle");
@@ -2389,6 +2394,7 @@ async function openEpisode(episodeId, options = {}) {
   state.lastInteractionTime = -Infinity;
   clearDanmakuLayer();
   clearStickerLayer();
+  clearEndingRemix();
   hideInteraction();
   setPlayerStatus("正在加载剧集...");
   try {
@@ -2453,6 +2459,172 @@ function renderTimeline() {
       player.play();
     });
   });
+}
+
+function clearEndingRemix() {
+  state.endingRemixShown = false;
+  state.remixOptions = null;
+  state.remixResult = null;
+  state.remixLoading = false;
+  if (endingRemixLayer) {
+    endingRemixLayer.className = "ending-remix-layer hidden";
+    endingRemixLayer.innerHTML = "";
+  }
+}
+
+function renderEndingRemixOptions(payload) {
+  if (!endingRemixLayer) return;
+  const options = payload.options || [];
+  endingRemixLayer.className = "ending-remix-layer";
+  endingRemixLayer.innerHTML = `
+    <section class="ending-remix-panel">
+      <div class="remix-head">
+        <span>片尾 AI 二创</span>
+        <button class="close-button remix-close-button" type="button" data-remix-action="close" aria-label="关闭">×</button>
+      </div>
+      <h3>你想看哪种下一集走向？</h3>
+      <p>${escapeHTML(payload.disclaimer || "AI 猜测剧情，非正片内容")}</p>
+      <div class="remix-choice-grid">
+        ${options
+          .map(
+            (option) => `
+              <button class="remix-choice-card" type="button" data-remix-choice="${escapeHTML(option.key)}">
+                <b>${escapeHTML(option.icon || "AI")}</b>
+                <strong>${escapeHTML(option.label)}</strong>
+                <span>${escapeHTML(option.description || "")}</span>
+                <em>${escapeHTML(option.tone || "剧情预测")}</em>
+              </button>
+            `
+          )
+          .join("")}
+      </div>
+      <small>保底版先生成文字卡和三格分镜，后续可接入图片/视频生成。</small>
+    </section>
+  `;
+}
+
+function renderEndingRemixLoading(choice) {
+  if (!endingRemixLayer) return;
+  endingRemixLayer.className = "ending-remix-layer";
+  endingRemixLayer.innerHTML = `
+    <section class="ending-remix-panel remix-loading">
+      <div class="remix-head">
+        <span>AI 正在续写</span>
+      </div>
+      <div class="remix-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+      <h3>${escapeHTML(choice?.label || "剧情预测")}</h3>
+      <p>正在根据本集高光和你的选择生成文字卡/分镜文案。</p>
+    </section>
+  `;
+}
+
+function renderEndingRemixResult(result) {
+  if (!endingRemixLayer) return;
+  const storyboard = result.storyboard || [];
+  endingRemixLayer.className = "ending-remix-layer";
+  endingRemixLayer.innerHTML = `
+    <section class="ending-remix-panel remix-result-panel">
+      <div class="remix-head">
+        <span>${escapeHTML(result.disclaimer || "AI 猜测剧情，非正片内容")}</span>
+        <button class="close-button remix-close-button" type="button" data-remix-action="close" aria-label="关闭">×</button>
+      </div>
+      <div class="remix-result-title">
+        <b>${escapeHTML(result.choice?.icon || "AI")}</b>
+        <div>
+          <h3>${escapeHTML(result.title || "AI 猜测卡")}</h3>
+          <p>${escapeHTML(result.logline || "")}</p>
+        </div>
+      </div>
+      <p class="remix-story-text">${escapeHTML(result.story_text || "")}</p>
+      <div class="storyboard-grid">
+        ${storyboard
+          .map(
+            (shot, index) => `
+              <article class="storyboard-card">
+                <span>0${index + 1}</span>
+                <strong>${escapeHTML(shot.shot || `镜头${index + 1}`)}</strong>
+                <p>${escapeHTML(shot.visual || "")}</p>
+                <em>${escapeHTML(shot.subtitle || "")}</em>
+                <small>${escapeHTML(shot.sound || "")}</small>
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+      <div class="remix-footer">
+        <span>${escapeHTML(result.share_copy || "AI 已生成一个非正片番外走向。")}</span>
+        <button class="ghost-button" type="button" data-remix-action="back">换一个走向</button>
+        <button class="primary-button" type="button" data-remix-action="close">收起</button>
+      </div>
+      <small>生成来源：${result.source === "llm" ? "大模型" : "本地兜底"} · ${escapeHTML(
+        result.model_version || "remix-text-v1"
+      )}</small>
+    </section>
+  `;
+}
+
+function renderEndingRemixError(message) {
+  if (!endingRemixLayer) return;
+  endingRemixLayer.className = "ending-remix-layer";
+  endingRemixLayer.innerHTML = `
+    <section class="ending-remix-panel">
+      <div class="remix-head">
+        <span>片尾 AI 二创</span>
+        <button class="close-button remix-close-button" type="button" data-remix-action="close" aria-label="关闭">×</button>
+      </div>
+      <h3>生成失败</h3>
+      <p>${escapeHTML(message)}</p>
+      <div class="remix-footer">
+        <button class="ghost-button" type="button" data-remix-action="back">返回选项</button>
+      </div>
+    </section>
+  `;
+}
+
+async function showEndingRemix() {
+  if (!state.currentEpisode || state.endingRemixShown || state.remixLoading) return;
+  state.endingRemixShown = true;
+  hideInteraction();
+  window.clearTimeout(state.ambientStickerTimer);
+  if (!player.paused) {
+    player.pause();
+  }
+  try {
+    const payload = await fetchJSON(`/api/episodes/${state.currentEpisode.id}/remix-options`);
+    state.remixOptions = payload;
+    renderEndingRemixOptions(payload);
+  } catch (error) {
+    renderEndingRemixError(errorMessage(error));
+  }
+}
+
+function maybeShowEndingRemix(force = false) {
+  if (!state.currentEpisode || state.endingRemixShown || state.activeHighlight) return;
+  const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode.duration_sec || 0;
+  if (!duration && !force) return;
+  const triggerAt = Math.max(0, duration - 8);
+  if (force || (duration > 20 && player.currentTime >= triggerAt)) {
+    showEndingRemix();
+  }
+}
+
+async function generateEndingRemix(choiceKey) {
+  if (!state.currentEpisode || state.remixLoading) return;
+  const choice = state.remixOptions?.options?.find((item) => item.key === choiceKey);
+  state.remixLoading = true;
+  renderEndingRemixLoading(choice);
+  try {
+    const result = await fetchJSON(`/api/episodes/${state.currentEpisode.id}/ai-remix`, {
+      method: "POST",
+      body: JSON.stringify({ choice_key: choiceKey, session_id: state.sessionId }),
+    });
+    state.remixResult = result;
+    renderEndingRemixResult(result);
+  } catch (error) {
+    renderEndingRemixError(errorMessage(error));
+  } finally {
+    state.remixLoading = false;
+  }
 }
 
 function findDueHighlight(currentTime) {
@@ -4143,6 +4315,7 @@ player.addEventListener("timeupdate", () => {
   }
   syncRoomState();
   updatePlayerControls();
+  maybeShowEndingRemix();
 });
 
 player.addEventListener("loadedmetadata", () => {
@@ -4171,10 +4344,18 @@ player.addEventListener("pause", () => {
 });
 
 player.addEventListener("seeked", () => {
+  const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode?.duration_sec || 0;
+  if (state.endingRemixShown && duration && player.currentTime < duration - 12 && !state.remixLoading) {
+    clearEndingRemix();
+  }
   clearDanmakuLayer();
   clearStickerLayer();
   scheduleAmbientStickers();
   syncRoomState(true);
+});
+
+player.addEventListener("ended", () => {
+  maybeShowEndingRemix(true);
 });
 
 playToggle.addEventListener("click", () => {
@@ -4221,6 +4402,28 @@ $("#profileGallery").addEventListener("click", (event) => {
   const button = event.target.closest(".profile-open-episode");
   if (button) {
     openEpisodeFromUrl(Number(button.dataset.episodeId));
+  }
+});
+endingRemixLayer?.addEventListener("click", (event) => {
+  const choice = event.target.closest("[data-remix-choice]");
+  if (choice) {
+    generateEndingRemix(choice.dataset.remixChoice);
+    return;
+  }
+  const actionButton = event.target.closest("[data-remix-action]");
+  if (!actionButton) return;
+  const action = actionButton.dataset.remixAction;
+  if (action === "back" && state.remixOptions) {
+    renderEndingRemixOptions(state.remixOptions);
+    return;
+  }
+  if (action === "close") {
+    endingRemixLayer.className = "ending-remix-layer hidden";
+    endingRemixLayer.innerHTML = "";
+    const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode?.duration_sec || 0;
+    if (duration && player.currentTime < duration - 1 && player.paused) {
+      player.play().catch(() => {});
+    }
   }
 });
 roomMemberList?.addEventListener("click", (event) => {

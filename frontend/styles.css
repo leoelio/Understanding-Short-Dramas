@@ -2502,6 +2502,270 @@ main {
   display: none;
 }
 
+.ending-remix-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(5, 7, 10, 0.08), rgba(5, 7, 10, 0.76)),
+    radial-gradient(circle at 16% 16%, color-mix(in srgb, var(--player-accent, var(--accent)) 28%, transparent), transparent 34%);
+  pointer-events: auto;
+}
+
+.ending-remix-layer.hidden {
+  display: none;
+}
+
+.ending-remix-panel {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-height: calc(100% - 12px);
+  border: 1px solid color-mix(in srgb, var(--player-accent, var(--accent)) 42%, rgba(255, 255, 255, 0.16));
+  border-radius: 8px;
+  padding: 14px;
+  color: var(--text);
+  background: rgba(10, 14, 20, 0.94);
+  box-shadow: 0 18px 64px rgba(0, 0, 0, 0.44);
+  backdrop-filter: blur(14px);
+  animation: rise 240ms ease-out;
+}
+
+.ending-remix-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+  background: linear-gradient(130deg, var(--player-accent, var(--accent)), transparent 42%, var(--player-soft, var(--accent-2)));
+  pointer-events: none;
+}
+
+.ending-remix-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.remix-head,
+.remix-footer,
+.remix-result-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.remix-head span {
+  color: var(--player-accent, var(--accent));
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.remix-close-button {
+  position: static;
+  flex: 0 0 auto;
+}
+
+.ending-remix-panel h3 {
+  margin-top: 8px;
+  font-size: 18px;
+}
+
+.ending-remix-panel p {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.ending-remix-panel small {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.remix-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.remix-choice-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 11px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  text-align: left;
+}
+
+.remix-choice-card b,
+.remix-result-title b {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  color: #081013;
+  background: linear-gradient(135deg, var(--player-accent, var(--accent)), var(--player-soft, var(--accent-2)));
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.remix-choice-card strong {
+  font-size: 13px;
+}
+
+.remix-choice-card span,
+.remix-choice-card em {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.remix-choice-card em {
+  color: var(--player-soft, var(--accent-2));
+  font-style: normal;
+  font-weight: 800;
+}
+
+.remix-choice-card:hover {
+  border-color: var(--player-accent, var(--accent));
+  transform: translateY(-1px);
+}
+
+.remix-loading {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.remix-orbit {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  margin-top: 8px;
+  border: 1px solid color-mix(in srgb, var(--player-accent, var(--accent)) 54%, transparent);
+  border-radius: 50%;
+  animation: remix-spin 1100ms linear infinite;
+}
+
+.remix-orbit i {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--player-accent, var(--accent));
+}
+
+.remix-orbit i:nth-child(1) {
+  left: 50%;
+  top: -6px;
+}
+
+.remix-orbit i:nth-child(2) {
+  right: 4px;
+  bottom: 8px;
+  background: var(--player-soft, var(--accent-2));
+}
+
+.remix-orbit i:nth-child(3) {
+  left: 4px;
+  bottom: 8px;
+  background: var(--gold);
+}
+
+.remix-result-panel {
+  overflow-y: auto;
+}
+
+.remix-result-title {
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin-top: 10px;
+}
+
+.remix-result-title h3 {
+  margin-top: 0;
+}
+
+.remix-story-text {
+  border-left: 3px solid var(--player-accent, var(--accent));
+  padding-left: 10px;
+}
+
+.storyboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.storyboard-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.storyboard-card span {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #081013;
+  background: var(--player-soft, var(--accent-2));
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.storyboard-card strong {
+  font-size: 12px;
+}
+
+.storyboard-card p,
+.storyboard-card em,
+.storyboard-card small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.42;
+}
+
+.storyboard-card em {
+  color: var(--text);
+  font-style: normal;
+}
+
+.remix-footer {
+  align-items: stretch;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.remix-footer span {
+  flex: 1 1 160px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@keyframes remix-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .interaction-panel {
   position: relative;
   overflow: hidden;
@@ -3733,7 +3997,9 @@ textarea.experience-field-input {
   .collection-badge,
   .room-member-list,
   .danmaku-form,
-  .danmaku-settings {
+  .danmaku-settings,
+  .remix-choice-grid,
+  .storyboard-grid {
     grid-template-columns: 1fr;
   }
 

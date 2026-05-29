@@ -1,5 +1,8 @@
 import json
 import hashlib
+import os
+import re
+import urllib.request
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
@@ -31,6 +34,7 @@ from .models import (
 )
 from .schemas import (
     DanmakuCreate,
+    EpisodeRemixCreate,
     ExperienceConfigUpdate,
     InteractionCreate,
     LoginRequest,
@@ -526,6 +530,278 @@ def parse_experience_config(row: EpisodeExperienceConfig | None, episode: Episod
     }
 
 
+REMIX_SYSTEM_PROMPT = """
+你是短剧片尾二创编剧。你只生成“AI 猜测/非正片”的文字剧情卡和三格分镜。
+
+要求：
+1. 只输出 JSON 对象，不要 Markdown。
+2. 不要声称这是官方剧情。
+3. 结合剧名、当前集高光和用户选择，生成适合移动端展示的短内容。
+4. storyboard 必须正好 3 个镜头，每个镜头包含 shot、visual、subtitle、sound。
+5. 不要输出 API Key、接入点、环境变量或任何密钥内容。
+""".strip()
+
+
+def remix_options_for_episode(episode: Episode) -> list[dict]:
+    title = episode.drama.title
+    if "北往" in title:
+        return [
+            {
+                "key": "home_gate",
+                "label": "门口的陌生车",
+                "description": "他终于骑到家，却发现家门口停着一辆不该出现的车。",
+                "tone": "返乡悬念",
+                "icon": "家",
+            },
+            {
+                "key": "debt_call",
+                "label": "新债主来电",
+                "description": "摩托刚熄火，电话里又传来新的讨债声。",
+                "tone": "现实反转",
+                "icon": "电",
+            },
+        ]
+    if "冬至" in title:
+        return [
+            {
+                "key": "truth_confess",
+                "label": "男主说出真相",
+                "description": "他没有继续逃避，把最不敢说的秘密说出口。",
+                "tone": "爱情坦白",
+                "icon": "真",
+            },
+            {
+                "key": "snow_escape",
+                "label": "雪夜短暂逃离",
+                "description": "两个人离开压抑的房间，在冬夜里完成一个小小约定。",
+                "tone": "甜虐治愈",
+                "icon": "雪",
+            },
+        ]
+    if "寻宝" in title or "北派" in title:
+        return [
+            {
+                "key": "map_secret",
+                "label": "地图背面显字",
+                "description": "藏宝图被火光一烤，背面露出真正路线。",
+                "tone": "机关揭秘",
+                "icon": "图",
+            },
+            {
+                "key": "guardian_choice",
+                "label": "守宝人现身",
+                "description": "门后的人没有动手，只问主角敢不敢继续往下走。",
+                "tone": "冒险悬念",
+                "icon": "门",
+            },
+        ]
+    if "云渺" in title or "仙" in title:
+        return [
+            {
+                "key": "visitor_identity",
+                "label": "访客身份反转",
+                "description": "来人并不是敌人，而是被抹去记忆的旧识。",
+                "tone": "仙侠反转",
+                "icon": "灵",
+            },
+            {
+                "key": "power_reveal",
+                "label": "隐藏力量觉醒",
+                "description": "危机逼近时，主角身上的封印突然裂开。",
+                "tone": "高能觉醒",
+                "icon": "阵",
+            },
+        ]
+    return [
+        {
+            "key": "reverse_next",
+            "label": "身份反转",
+            "description": "最后一幕里的细节被重新解释，人物关系突然变了。",
+            "tone": "剧情反转",
+            "icon": "反",
+        },
+        {
+            "key": "warm_next",
+            "label": "情绪和解",
+            "description": "冲突暂时停下，角色做出一个出乎意料的温柔选择。",
+            "tone": "情绪延展",
+            "icon": "暖",
+        },
+    ]
+
+
+def remix_context_payload(episode: Episode, db: Session) -> dict:
+    highlights = (
+        db.query(Highlight)
+        .filter(Highlight.episode_id == episode.id)
+        .order_by(Highlight.start_time_sec.asc())
+        .all()
+    )
+    return {
+        "episode_id": episode.id,
+        "drama_title": episode.drama.title,
+        "episode_title": episode.title,
+        "genre": episode.drama.genre,
+        "duration_sec": episode.duration_sec,
+        "highlights": [
+            {
+                "time": item.start_time_sec,
+                "title": item.title,
+                "type": item.highlight_type,
+                "emotion": item.emotion,
+                "description": item.description,
+                "evidence_text": item.evidence_text,
+            }
+            for item in highlights[-4:]
+        ],
+    }
+
+
+def fallback_remix_payload(episode: Episode, choice: dict, context: dict) -> dict:
+    drama_title = episode.drama.title
+    highlights = context.get("highlights") or []
+    last_highlight = highlights[-1] if highlights else {}
+    scene_seed = last_highlight.get("description") or last_highlight.get("title") or "片尾留下悬念"
+    title = f"{choice['label']} · AI 猜测卡"
+    logline = f"如果片尾继续往下演，{choice['description']}"
+    if "冬至" in drama_title:
+        story_text = (
+            f"雪夜的安静把两个人的心事放大。上一秒还没说出口的话，在片尾停顿里变成新的选择："
+            f"{choice['description']} 这个走向会把甜和疼放在同一个镜头里，让观众继续猜他到底敢不敢面对她。"
+        )
+        storyboard = [
+            {"shot": "镜头一", "visual": "冷色走廊，灯光只照到两人的手。", "subtitle": "“你真的想听实话吗？”", "sound": "低频心跳声"},
+            {"shot": "镜头二", "visual": "窗外飘雪，女主回头，表情从强撑变成动摇。", "subtitle": choice["description"], "sound": "雪声和轻微呼吸"},
+            {"shot": "镜头三", "visual": "近景定格在两人靠近的距离，画面淡出。", "subtitle": "下一集：别再躲了。", "sound": "钢琴尾音"},
+        ]
+    elif "北往" in drama_title:
+        story_text = (
+            f"摩托的轰鸣停下来，返乡路却没有真正结束。片尾可以顺着“{scene_seed}”继续推进："
+            f"{choice['description']} 这个猜测保留了北往的现实感，也给下一集留下更强的回家悬念。"
+        )
+        storyboard = [
+            {"shot": "镜头一", "visual": "摩托车灯扫过村口土路，远处有一盏家里的灯。", "subtitle": "“终于到了。”", "sound": "发动机熄火"},
+            {"shot": "镜头二", "visual": "主角停住脚步，手机或门口细节突然进入特写。", "subtitle": choice["description"], "sound": "电话震动/风声"},
+            {"shot": "镜头三", "visual": "他看向家门，脸上的轻松慢慢收住。", "subtitle": "下一集：回家，比上路更难。", "sound": "鼓点切断"},
+        ]
+    else:
+        story_text = (
+            f"片尾停在情绪最高的位置，AI 按用户选择延展为：{choice['description']} "
+            f"这个版本围绕“{scene_seed}”继续制造下一集钩子。"
+        )
+        storyboard = [
+            {"shot": "镜头一", "visual": "片尾定格画面被重新拉近，角色注意到一个细节。", "subtitle": "“等一下。”", "sound": "环境声降低"},
+            {"shot": "镜头二", "visual": "关键物件或眼神特写，暗示新冲突。", "subtitle": choice["description"], "sound": "短促提示音"},
+            {"shot": "镜头三", "visual": "画面切黑，只留下下一集标题式文案。", "subtitle": "下一集：答案马上揭晓。", "sound": "悬念鼓点"},
+        ]
+    return {
+        "source": "local_fallback",
+        "model_version": "remix-text-v1",
+        "disclaimer": "AI 猜测剧情，非正片内容",
+        "title": title,
+        "logline": logline,
+        "emotion": choice["tone"],
+        "story_text": story_text,
+        "storyboard": storyboard,
+        "share_copy": f"我选择了「{choice['label']}」，AI 生成了一个非正片番外走向。",
+        "prompt_trace": {
+            "episode_id": episode.id,
+            "drama_title": drama_title,
+            "choice_key": choice["key"],
+            "context_highlight_count": len(highlights),
+        },
+    }
+
+
+def extract_llm_json(text: str) -> dict:
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?", "", text).strip()
+        text = re.sub(r"```$", "", text).strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", text, re.S)
+        if not match:
+            raise
+        return json.loads(match.group(0))
+
+
+def normalize_remix_payload(raw: dict, fallback: dict) -> dict:
+    storyboard = raw.get("storyboard") if isinstance(raw.get("storyboard"), list) else []
+    clean_storyboard = []
+    for index, item in enumerate(storyboard[:3], start=1):
+        if not isinstance(item, dict):
+            continue
+        clean_storyboard.append(
+            {
+                "shot": str(item.get("shot") or f"镜头{index}"),
+                "visual": str(item.get("visual") or ""),
+                "subtitle": str(item.get("subtitle") or ""),
+                "sound": str(item.get("sound") or ""),
+            }
+        )
+    if len(clean_storyboard) != 3:
+        clean_storyboard = fallback["storyboard"]
+    return {
+        **fallback,
+        "source": "llm",
+        "model_version": str(raw.get("model_version") or "doubao-remix-text-v1"),
+        "title": str(raw.get("title") or fallback["title"]),
+        "logline": str(raw.get("logline") or fallback["logline"]),
+        "emotion": str(raw.get("emotion") or fallback["emotion"]),
+        "story_text": str(raw.get("story_text") or fallback["story_text"]),
+        "storyboard": clean_storyboard,
+        "share_copy": str(raw.get("share_copy") or fallback["share_copy"]),
+    }
+
+
+def call_remix_llm(context: dict, choice: dict) -> dict:
+    api_key = os.getenv("ARK_API_KEY")
+    model = os.getenv("ARK_ENDPOINT_ID") or os.getenv("ARK_MODEL")
+    base_url = os.getenv("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3").rstrip("/")
+    if not api_key or not model:
+        raise RuntimeError("missing_llm_env")
+    prompt = json.dumps(
+        {
+            "task": "生成片尾 AI 二创文字卡和三格分镜",
+            "output_schema": {
+                "title": "短标题",
+                "logline": "一句话剧情钩子",
+                "emotion": "情绪标签",
+                "story_text": "120-180字剧情预测正文",
+                "storyboard": [
+                    {"shot": "镜头一", "visual": "画面", "subtitle": "字幕", "sound": "声音"},
+                    {"shot": "镜头二", "visual": "画面", "subtitle": "字幕", "sound": "声音"},
+                    {"shot": "镜头三", "visual": "画面", "subtitle": "字幕", "sound": "声音"},
+                ],
+                "share_copy": "可分享短句",
+                "model_version": "模型版本",
+            },
+            "choice": choice,
+            "episode": context,
+        },
+        ensure_ascii=False,
+    )
+    body = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": REMIX_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.55,
+    }
+    request = urllib.request.Request(
+        f"{base_url}/chat/completions",
+        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=24) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    return extract_llm_json(data["choices"][0]["message"]["content"])
+
+
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True, "request_id": str(uuid4())}
@@ -718,6 +994,50 @@ def get_episode_experience(episode_id: int, db: Session = Depends(get_db)) -> di
         raise HTTPException(status_code=404, detail="剧集不存在")
     row = db.query(EpisodeExperienceConfig).filter(EpisodeExperienceConfig.episode_id == episode_id).first()
     return parse_experience_config(row, episode)
+
+
+@app.get("/api/episodes/{episode_id}/remix-options")
+def get_episode_remix_options(episode_id: int, db: Session = Depends(get_db)) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    duration = float(episode.duration_sec or 0)
+    return {
+        "episode_id": episode.id,
+        "drama_title": episode.drama.title,
+        "episode_title": episode.title,
+        "trigger_time_sec": round(max(0, duration - 8), 2),
+        "disclaimer": "AI 猜测剧情，非正片内容",
+        "options": remix_options_for_episode(episode),
+    }
+
+
+@app.post("/api/episodes/{episode_id}/ai-remix")
+def create_episode_ai_remix(
+    episode_id: int,
+    payload: EpisodeRemixCreate,
+    db: Session = Depends(get_db),
+) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    options = remix_options_for_episode(episode)
+    choice = next((item for item in options if item["key"] == payload.choice_key), None)
+    if not choice:
+        raise HTTPException(status_code=400, detail="二创选项不存在")
+    context = remix_context_payload(episode, db)
+    fallback = fallback_remix_payload(episode, choice, context)
+    try:
+        raw = call_remix_llm(context, choice)
+        result = normalize_remix_payload(raw, fallback)
+    except Exception:
+        result = fallback
+    return {
+        "ok": True,
+        "episode_id": episode.id,
+        "choice": choice,
+        **result,
+    }
 
 
 @app.get("/api/danmaku/moderation-rules")
