@@ -1,20 +1,44 @@
 # Project Status
 
-更新时间：2026-05-30 05:33:53
+更新时间：2026-05-30 05:47:43
 
 ## 当前目标
 
-复核页升级为可交互工作台：高光点、体验配置、片尾二创拆分为可切换复核区，底层 JSON 默认隐藏。
+北往第一集片尾 AI 二创图片分镜已完成 GPT 图片生成：27 张缓存图已覆盖原片占位图，播放页和复核页继续通过同一 storage_hint 读取。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`7a0123c`
+- 最新提交：`612ec51`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M frontend/app.js`
-- `M frontend/index.html`
-- `M frontend/styles.css`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_1.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_2.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_3.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_convertible_shot_1.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_convertible_shot_2.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_convertible_shot_3.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_wuling_van_shot_1.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_wuling_van_shot_2.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_wuling_van_shot_3.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_chain_bridge_shot_1.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_chain_bridge_shot_2.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_chain_bridge_shot_3.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_flat_tire_shot_1.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_flat_tire_shot_2.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_flat_tire_shot_3.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_frozen_engine_shot_1.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_frozen_engine_shot_2.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_frozen_engine_shot_3.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_coach_ticket_shot_1.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_coach_ticket_shot_2.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_coach_ticket_shot_3.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_green_train_shot_1.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_green_train_shot_2.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_green_train_shot_3.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_1.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_2.png`
+- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_3.png`
 
 ## 数据状态
 
@@ -48,15 +72,14 @@
 
 ## 本次变更摘要
 
-- 复核页新增内容类型切换：高光点、体验配置、片尾二创，可按剧集和复核状态先筛选再进入编辑。
-- 高光点、竞猜奖励、贴图时间窗、片尾二创记录改为折叠列表，默认只展开当前第一项，避免页面过长。
-- 片尾二创复核接入图片分镜素材预览，能看到每条记录的三张缓存图、素材状态和替换路径。
-- 二创记录新增精选/待复核/隐藏筛选，默认优先展开带图片分镜的记录。
+- 使用 OpenAI 图片生成链路批量生成北往第一集 3 个二创方向 x 3 个变体 x 3 个镜头，共 27 张图片。
+- 保留原有图片分镜文件名和接口路径，不改前端播放逻辑，生成图直接替换原缓存图。
+- 本地 .env 已被 .gitignore 忽略，API Key 不进入 Git；提交前继续执行密钥扫描。
 
 ## 下一步建议
 
-- 下一步建议增加图片分镜的单张替换/重新生成按钮，把素材路径覆盖动作从脚本进一步变成复核页操作。
-- 后续再把体验配置拆成更细的二级筛选：播放器主题、同看竞猜、贴图时间窗、弹幕模式。
+- 下一步建议在复核页增加单张图片重生成/替换入口，减少重复跑完整 27 张的成本。
+- 再下一步可挑选 2-3 张关键图用更高质量参数重生成，作为比赛演示的精选素材。
 
 ## 安全提醒
 
