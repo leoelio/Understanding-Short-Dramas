@@ -246,6 +246,7 @@ const episodePanel = $("#episodePanel");
 const playerStatus = $("#playerStatus");
 const roomStatus = $("#roomStatus");
 const roomCodeInput = $("#roomCodeInput");
+const roomMemberList = $("#roomMemberList");
 const roomFeed = $("#roomFeed");
 const rewardPanel = $("#rewardPanel");
 
@@ -1734,12 +1735,35 @@ function renderWatchRoom() {
   if (!room) {
     roomStatus.textContent = "未开房";
     roomStatus.classList.remove("live");
+    if (roomMemberList) roomMemberList.innerHTML = "";
     return;
   }
   const guest = room.guest?.display_name || "等待好友";
   const stateLabel = room.playback_state === "playing" ? "播放中" : "已暂停";
   roomStatus.textContent = `房间 ${room.code} · ${room.member_count}/2 · ${guest} · ${stateLabel}`;
   roomStatus.classList.add("live");
+  renderRoomMembers(room);
+}
+
+function renderRoomMembers(room) {
+  if (!roomMemberList) return;
+  const members = [room.host, room.guest].filter(Boolean);
+  roomMemberList.innerHTML = members
+    .map((member) => {
+      const isSelf = member.id === state.currentUser?.id;
+      return `
+        <article class="room-member-card ${isSelf ? "self" : ""}">
+          ${badgeArtHTML(member.growth_title || "剧情新人", false, "mini")}
+          <div>
+            <strong>${escapeHTML(member.display_name || "同看用户")}${isSelf ? " · 我" : ""}</strong>
+            <span>${escapeHTML(member.growth_title || "剧情新人")} · ${Number(member.points || 0)} 分 · ${Number(
+              member.badge_count || 0
+            )} 枚徽章</span>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
 }
 
 function roomEventSummary(event) {
@@ -1749,10 +1773,25 @@ function roomEventSummary(event) {
   if (event.event_type === "danmaku_like") return `${user} 赞了弹幕：${payload.text || ""}`;
   if (event.event_type === "danmaku_reply") return `${user} 回复：${payload.reply || ""}`;
   if (event.event_type === "interaction") {
-    const suffix = payload.reward_correct ? "，预判成功" : "";
+    if (payload.reward_correct) {
+      const badgeTitle = payload.reward_badge?.title || payload.reward_title || "新徽章";
+      return `${user} 答对「${payload.option_label || payload.option_key || "未知"}」，解锁「${badgeTitle}」`;
+    }
+    const suffix = payload.reward_message ? `，${payload.reward_message}` : "";
     return `${user} 选择了「${payload.option_label || payload.option_key || "未知"}」${suffix}`;
   }
   return `${user} 有新动态`;
+}
+
+function roomEventBadge(event) {
+  const payload = event.payload || {};
+  if (event.event_type === "interaction" && payload.reward_correct) {
+    return badgeArtHTML(payload.reward_badge?.title || payload.reward_title || "预判成功", false, "tiny");
+  }
+  if (event.user?.latest_badges?.length) {
+    return badgeArtHTML(event.user.latest_badges[0].title, false, "tiny");
+  }
+  return badgeArtHTML(event.user?.growth_title || "剧情新人", false, "tiny");
 }
 
 function renderRoomFeed() {
@@ -1766,8 +1805,11 @@ function renderRoomFeed() {
     .map(
       (event) => `
         <div class="room-feed-item ${event.event_type}">
-          <b>${escapeHTML(event.user?.display_name || "同看好友")}</b>
-          <span>${escapeHTML(roomEventSummary(event).replace(`${event.user?.display_name || "同看好友"} `, ""))}</span>
+          ${roomEventBadge(event)}
+          <div>
+            <b>${escapeHTML(event.user?.display_name || "同看好友")}</b>
+            <span>${escapeHTML(roomEventSummary(event).replace(`${event.user?.display_name || "同看好友"} `, ""))}</span>
+          </div>
         </div>
       `
     )
@@ -1785,8 +1827,11 @@ function showRoomEventToast(event) {
   const toast = document.createElement("div");
   toast.className = `room-event-toast ${event.event_type}`;
   toast.innerHTML = `
-    <b>${escapeHTML(event.user?.display_name || "同看好友")}</b>
-    <span>${escapeHTML(roomEventSummary(event))}</span>
+    ${roomEventBadge(event)}
+    <div>
+      <b>${escapeHTML(event.user?.display_name || "同看好友")}</b>
+      <span>${escapeHTML(roomEventSummary(event))}</span>
+    </div>
   `;
   wrap.appendChild(toast);
   window.setTimeout(() => toast.remove(), 5200);
@@ -1845,7 +1890,9 @@ function handleRoomEvent(event) {
   if (event.event_type === "interaction") {
     emitDanmaku({
       id: `room-choice-${event.id}`,
-      text: `${event.user?.display_name || "好友"}选了${payload.option_label || ""}`,
+      text: payload.reward_correct
+        ? `${event.user?.display_name || "好友"}答对了，解锁${payload.reward_badge?.title || "徽章"}`
+        : `${event.user?.display_name || "好友"}选了${payload.option_label || ""}`,
       time_sec: player.currentTime || 0,
       className: "danmaku-impact room-danmaku",
     });
@@ -1892,6 +1939,28 @@ function formatDateTime(value) {
     .getMinutes()
     .toString()
     .padStart(2, "0")}`;
+}
+
+function badgeSeed(title = "") {
+  return Array.from(String(title || "剧情新人")).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+}
+
+function badgeMark(title = "") {
+  const text = String(title || "剧情");
+  const chars = Array.from(text).filter((char) => /[\u4e00-\u9fa5A-Za-z0-9]/.test(char));
+  return (chars.slice(0, 2).join("") || "剧").slice(0, 2);
+}
+
+function badgeArtHTML(title = "", locked = false, size = "normal") {
+  const seed = badgeSeed(title);
+  const tone = seed % 5;
+  const shape = seed % 3;
+  return `
+    <div class="badge-art tone-${tone} shape-${shape} ${locked ? "locked" : ""} size-${size}" title="${escapeHTML(title)}">
+      <span>${escapeHTML(locked ? "待" : badgeMark(title))}</span>
+      <i></i>
+    </div>
+  `;
 }
 
 function renderProfileGallery() {
@@ -1988,7 +2057,7 @@ function renderProfileGallery() {
 function renderCollectionBadge(item) {
   return `
     <article class="collection-badge ${item.unlocked ? "unlocked" : "locked"}">
-      <div class="badge-medal">${item.unlocked ? "奖" : "锁"}</div>
+      ${badgeArtHTML(item.title, !item.unlocked)}
       <div>
         <span>${escapeHTML(item.drama_title)} · 第${Number(item.episode_no || 1)}集</span>
         <h4>${escapeHTML(item.title)}</h4>
@@ -2500,9 +2569,13 @@ async function submitInteraction(optionKey, anchor) {
     option_label: option?.label || optionKey,
     reward_correct: Boolean(result.reward?.correct),
     reward_message: result.reward?.message || "",
+    reward_title: result.reward?.badge?.title || "",
+    reward_points: result.reward?.points || 0,
+    reward_badge: result.reward?.badge || null,
   });
   if (result.reward?.correct) {
     await loadRewardProfile();
+    if (state.watchRoom) await fetchRoomState();
   }
 }
 

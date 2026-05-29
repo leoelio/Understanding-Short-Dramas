@@ -383,10 +383,21 @@ def danmaku_user_payload(comment: DanmakuComment) -> dict:
 def user_brief(user: User | None) -> dict | None:
     if not user:
         return None
+    rewards = sorted(user.rewards, key=lambda item: (item.created_at or datetime.min, item.id or 0), reverse=True)
+    points = sum(item.points or 0 for item in rewards)
+    title = rewards[0].title if rewards else "剧情新人"
+    if points >= 80:
+        title = "高光收藏家"
+    elif points >= 40:
+        title = "剧情读心者"
     return {
         "id": user.id,
         "display_name": user.display_name,
         "role": user.role,
+        "growth_title": title,
+        "points": points,
+        "badge_count": len(rewards),
+        "latest_badges": [reward_payload(item) for item in rewards[:3]],
     }
 
 
