@@ -1,46 +1,20 @@
 # Project Status
 
-更新时间：2026-05-30 06:54:36
+更新时间：2026-05-30 07:42:11
 
 ## 当前目标
 
-北往第一集片尾二创图片主角纠偏
+优化登录界面为 Apple 风格产品首屏
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`5feb834`
+- 最新提交：`c6a91dd`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M .gitignore`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_1.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_2.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_3.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_convertible_shot_1.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_convertible_shot_2.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_convertible_shot_3.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_wuling_van_shot_1.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_wuling_van_shot_2.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_wuling_van_shot_3.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_chain_bridge_shot_1.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_chain_bridge_shot_2.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_chain_bridge_shot_3.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_flat_tire_shot_1.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_flat_tire_shot_2.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_flat_tire_shot_3.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_frozen_engine_shot_1.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_frozen_engine_shot_2.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_frozen_engine_shot_3.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_coach_ticket_shot_1.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_coach_ticket_shot_2.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_coach_ticket_shot_3.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_green_train_shot_1.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_green_train_shot_2.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_green_train_shot_3.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_1.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_2.png`
-- `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_3.png`
-- `M scripts/generate_beiwang_remix_images.py`
+- `M frontend/app.js`
+- `M frontend/index.html`
+- `M frontend/styles.css`
 
 ## 数据状态
 
@@ -53,7 +27,7 @@
 - 互动记录：50
 - 弹幕记录：220
 - 体验配置：4
-- 片尾 AI 二创：25
+- 片尾 AI 二创：29
 
 ## 高光来源
 
@@ -74,11 +48,11 @@
 
 ## 本次变更摘要
 
-- 将图片编辑脚本的人物参考帧改为皮德胜与李世鑫两位正确男主，增加中景参考帧，提示词要求故事构图、关键物件可见、票据和标牌不可读；按新策略重跑 27 张片尾二创图片资产。
+- 重构登录页为暗色大留白产品首屏、玻璃拟态登录卡、产品状态指标、移动播放器视觉舞台和可横滑账号能力卡；新增登录/注册按钮涟漪反馈、输入框聚焦动效、注册模式视觉切换，并修复 hidden 属性被 user-bar 样式覆盖的问题。
 
 ## 下一步建议
 
-- 由产品侧检查 27 张图片是否符合人物与剧情预期；如果通过，继续补充 27 条对应音频并接入播放；如果不通过，优先针对问题分支单独重跑。
+- 产品侧检查登录页视觉是否符合比赛展示预期；如果认可，下一步继续优化选片首页或把登录后的首页也升级成同一套高级视觉体系。
 
 ## 安全提醒
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260530-remix-audio" />
+    <link rel="stylesheet" href="/styles.css?v=20260530-auth-apple" />
   </head>
   <body>
     <div class="app-shell">
@@ -26,34 +26,86 @@
       </header>
 
       <main>
-        <section id="authView" class="view active">
-          <div class="auth-panel">
-            <p class="eyebrow">Product V2</p>
-            <h2>登录后进入短剧互动体验</h2>
-            <p>账号体系会作为后续同看房间、用户画像、AI 二创和用户带入功能的数据底座。</p>
-            <form id="authForm" class="auth-form">
-              <label>
-                用户名
-                <input id="authUsername" autocomplete="username" value="admin_demo" />
-              </label>
-              <label id="displayNameField" hidden>
-                昵称
-                <input id="authDisplayName" autocomplete="nickname" />
-              </label>
-              <label>
-                密码
-                <input id="authPassword" autocomplete="current-password" type="password" value="Admin12345!" />
-              </label>
-              <div class="auth-actions">
-                <button id="authSubmit" class="primary-button" type="submit">登录</button>
-                <button id="toggleAuthMode" class="ghost-button" type="button">注册新用户</button>
+        <section id="authView" class="view active auth-view">
+          <div class="auth-hero-shell">
+            <div class="auth-store-strip" aria-label="登录页状态">
+              <span>AI Drama ID</span>
+              <strong>Private MVP</strong>
+              <span>Web Mobile</span>
+            </div>
+            <div class="auth-hero-grid">
+              <div class="auth-copy">
+                <p class="eyebrow">Product V2</p>
+                <h2>登录，进入你的短剧互动宇宙。</h2>
+                <p>
+                  高光识别、同看房间、弹幕互动、勋章成长和片尾 AI 二创会沉淀到同一个账号里，形成可展示、可复用的产品闭环。
+                </p>
+                <div class="auth-metrics" aria-label="产品状态">
+                  <span><b>20</b> 集素材</span>
+                  <span><b>65</b> 个高光</span>
+                  <span><b>4</b> 集已复核</span>
+                </div>
+                <div class="auth-product-stage" aria-hidden="true">
+                  <div class="auth-device">
+                    <div class="auth-device-bar"></div>
+                    <div class="auth-video-glass">
+                      <span></span>
+                      <strong>高潮点已触发</strong>
+                      <em>68% 选择震惊</em>
+                    </div>
+                    <div class="auth-device-controls">
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                    </div>
+                  </div>
+                </div>
+                <div class="auth-feature-rail" aria-label="账号能力">
+                  <article>
+                    <strong>同看同步</strong>
+                    <span>房间成员、弹幕、竞猜和徽章实时联动。</span>
+                  </article>
+                  <article>
+                    <strong>AI 二创</strong>
+                    <span>片尾剧情预测会生成可点击分镜卡。</span>
+                  </article>
+                  <article>
+                    <strong>成长展馆</strong>
+                    <span>积分、称号和 Q 版徽章沉淀到个人主页。</span>
+                  </article>
+                </div>
               </div>
-            </form>
-            <div id="authStatus" class="review-status">演示管理员：admin_demo / Admin12345!</div>
-            <div class="demo-accounts">
-              <button type="button" data-demo-user="admin_demo" data-demo-pass="Admin12345!">管理员</button>
-              <button type="button" data-demo-user="reviewer_demo" data-demo-pass="Review12345!">复核员</button>
-              <button type="button" data-demo-user="user_demo" data-demo-pass="User12345!">普通用户</button>
+              <div class="auth-panel">
+                <div class="auth-card-head">
+                  <span>Continue</span>
+                  <strong>短剧互动账号</strong>
+                  <em>演示环境</em>
+                </div>
+                <form id="authForm" class="auth-form">
+                  <label>
+                    用户名
+                    <input id="authUsername" autocomplete="username" value="admin_demo" />
+                  </label>
+                  <label id="displayNameField" hidden>
+                    昵称
+                    <input id="authDisplayName" autocomplete="nickname" />
+                  </label>
+                  <label>
+                    密码
+                    <input id="authPassword" autocomplete="current-password" type="password" value="Admin12345!" />
+                  </label>
+                  <div class="auth-actions">
+                    <button id="authSubmit" class="primary-button" type="submit">登录</button>
+                    <button id="toggleAuthMode" class="ghost-button" type="button">注册新用户</button>
+                  </div>
+                </form>
+                <div id="authStatus" class="review-status">演示管理员：admin_demo / Admin12345!</div>
+                <div class="demo-accounts" aria-label="演示账号">
+                  <button type="button" data-demo-user="admin_demo" data-demo-pass="Admin12345!">管理员</button>
+                  <button type="button" data-demo-user="reviewer_demo" data-demo-pass="Review12345!">复核员</button>
+                  <button type="button" data-demo-user="user_demo" data-demo-pass="User12345!">普通用户</button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -271,6 +323,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=20260530-remix-audio"></script>
+    <script type="module" src="/app.js?v=20260530-auth-apple"></script>
   </body>
 </html>

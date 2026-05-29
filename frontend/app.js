@@ -382,6 +382,7 @@ function setAuthStatus(message, isError = false) {
 
 function syncAuthMode() {
   const isRegister = state.authMode === "register";
+  $("#authView").classList.toggle("register-mode", isRegister);
   $("#displayNameField").hidden = !isRegister;
   $("#authSubmit").textContent = isRegister ? "注册并登录" : "登录";
   $("#toggleAuthMode").textContent = isRegister ? "返回登录" : "注册新用户";
@@ -506,6 +507,7 @@ function setView(name) {
     name = "home";
   }
   Object.entries(views).forEach(([key, element]) => element.classList.toggle("active", key === name));
+  document.body.dataset.view = name;
   homeTab.classList.toggle("active", name === "home");
   profileTab.classList.toggle("active", name === "profile");
   adminTab.classList.toggle("active", name === "admin");
@@ -524,6 +526,17 @@ function setView(name) {
   if (name === "review") {
     loadReviewEpisodes();
   }
+}
+
+function authTapEffect(event) {
+  const button = event.target.closest("#authView button");
+  if (!button) return;
+  const rect = button.getBoundingClientRect();
+  button.style.setProperty("--tap-x", `${event.clientX - rect.left}px`);
+  button.style.setProperty("--tap-y", `${event.clientY - rect.top}px`);
+  button.classList.remove("tap-animate");
+  void button.offsetWidth;
+  button.classList.add("tap-animate");
 }
 
 function syncEpisodeUrl(episodeId) {
@@ -4927,6 +4940,7 @@ profileTab.addEventListener("click", () => setView("profile"));
 adminTab.addEventListener("click", () => setView("admin"));
 reviewTab.addEventListener("click", () => setView("review"));
 $("#authForm").addEventListener("submit", submitAuth);
+$("#authView").addEventListener("pointerdown", authTapEffect);
 $("#toggleAuthMode").addEventListener("click", () => {
   state.authMode = state.authMode === "login" ? "register" : "login";
   syncAuthMode();
