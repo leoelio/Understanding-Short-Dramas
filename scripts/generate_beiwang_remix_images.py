@@ -27,8 +27,10 @@ CHOICE_CLIP_STARTS = {
 }
 
 LEAD_REFERENCES = {
-    "older_male_lead": 42,
-    "younger_male_lead": 178,
+    "pi_desheng_blue_overshirt": 145,
+    "pi_desheng_scene_body": 265,
+    "li_shixin_plaid_overshirt": 250,
+    "li_shixin_scene_body": 95,
 }
 
 
@@ -40,22 +42,55 @@ def output_path(choice_key: str, variant: dict, shot_index: int) -> Path:
     return OUT_DIR / f"{slot_name(choice_key, variant)}_shot_{shot_index}.png"
 
 
+def image_safe_text(value: str | None) -> str:
+    text = value or ""
+    replacements = {
+        "被偷": "临时不见",
+        "偷": "不见",
+        "陷进雪沟": "停在雪边",
+        "陷在雪沟": "停在雪边",
+        "医院": "镇上办事地点",
+        "冻得发抖": "冷得缩着肩",
+    }
+    for source, target in replacements.items():
+        text = text.replace(source, target)
+    return text
+
+
+def story_scene_guidance(choice_key: str, variant: dict) -> str:
+    variant_key = variant["variant_key"]
+    if choice_key == "road_breakdown":
+        return "Use a medium or wide roadside story composition, not a close-up portrait. The old motorcycle and the specific breakdown detail must be clearly visible."
+    if choice_key == "ticket_home":
+        return "Use a medium or wide transport story composition, not a close-up portrait. The station, train, coach bus, ticket, or crowded carriage must be clearly visible; any paper text must be blank or unreadable."
+    if variant_key == "wuling_van":
+        return "Use a medium or wide roadside story composition. A white Wuling-style minivan must be clearly visible, with both leads helping near the van or getting into it."
+    if variant_key == "audi_sedan":
+        return "Use a medium or wide roadside story composition. A dark sedan must be clearly visible, with both leads near the car, luggage, or passenger door."
+    if variant_key == "convertible":
+        return "Use a medium or wide road-trip story composition. A colorful convertible sports car must be clearly visible, with both leads preparing to ride north."
+    return ""
+
+
 def build_prompt(choice_key: str, variant: dict, shot_index: int, shot: dict) -> str:
     storyboard = variant["storyboard"][shot_index - 1]
     return "\n".join(
         [
             "Edit the uploaded episode stills into one vertical 9:16 cinematic still for a Chinese short drama extension.",
             "Use the uploaded stills as character and scene references, not as exact screenshots.",
-            "The image must feature two male leads as the primary characters: one older, serious man from the reference still, and one younger worker from the reference still.",
+            "The image must feature the two correct male leads as the primary characters: Pi Desheng, a young man with messy black hair, blue-gray overshirt and red inner shirt; and Li Shixin, a young man with short black hair, clearly visible beige plaid/checkered overshirt and gray tee.",
             "Keep both male leads visually consistent with the episode references, with natural Chinese short-drama realism.",
+            "Do not replace either lead with the early debt-collector character in a burgundy striped polo.",
             "Leave a clean lower-third safe area for app subtitle and voice-caption overlay.",
             "Do not draw any subtitles, text, logos, watermarks, road-sign words, UI, or captions inside the image.",
+            "Any papers, tickets, phone screens, signs, labels, plates, and route boards must be blank or unreadable.",
             "Use realistic lighting, grounded emotion, and mobile-drama composition.",
-            f"Story direction: {variant['label']} / {variant['variable_label']}.",
-            f"Shot: {shot.get('caption') or storyboard.get('shot')}.",
-            f"Visual: {shot.get('video_prompt') or storyboard.get('visual')}.",
-            f"Voice subtitle to reserve space for, but not draw: {storyboard.get('subtitle', '')}",
-            f"Sound mood reference: {shot.get('sound') or storyboard.get('sound', '')}.",
+            story_scene_guidance(choice_key, variant),
+            f"Story direction: {image_safe_text(variant['label'])} / {image_safe_text(variant['variable_label'])}.",
+            f"Shot: {image_safe_text(shot.get('caption') or storyboard.get('shot'))}.",
+            f"Visual: {image_safe_text(shot.get('video_prompt') or storyboard.get('visual'))}.",
+            f"Voice subtitle to reserve space for, but not draw: {image_safe_text(storyboard.get('subtitle', ''))}",
+            f"Sound mood reference: {image_safe_text(shot.get('sound') or storyboard.get('sound', ''))}.",
         ]
     )
 
@@ -127,7 +162,8 @@ def reference_images(choice_key: str, shot_index: int) -> list[Path]:
         extract_frame(second, REFERENCE_DIR / f"{name}.png")
         for name, second in LEAD_REFERENCES.items()
     ]
-    refs.append(extract_frame(scene_second, REFERENCE_DIR / f"{choice_key}_scene_{shot_index}.png"))
+    if choice_key != "kindness_ride":
+        refs.append(extract_frame(scene_second, REFERENCE_DIR / f"{choice_key}_scene_{shot_index}.png"))
     return refs
 
 

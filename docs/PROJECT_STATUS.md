@@ -1,20 +1,18 @@
 # Project Status
 
-更新时间：2026-05-30 06:17:22
+更新时间：2026-05-30 06:54:36
 
 ## 当前目标
 
-北往第一集片尾二创图片分镜已按剧集参考帧重跑：每张图以两位男主作为主体，并预留语音台词与音频文件路径。
+北往第一集片尾二创图片主角纠偏
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`4c60605`
+- 最新提交：`5feb834`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M .gitignore`
-- `M backend/app/main.py`
-- `M frontend/app.js`
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_1.png`
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_2.png`
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_3.png`
@@ -42,11 +40,7 @@
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_1.png`
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_2.png`
 - `M frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_3.png`
-- `M frontend/index.html`
-- `M frontend/styles.css`
 - `M scripts/generate_beiwang_remix_images.py`
-- `?? docs/BEIWANG_EP1_REMIX_AUDIO_LINES.md`
-- `?? frontend/assets/remix_audio/`
 
 ## 数据状态
 
@@ -80,16 +74,11 @@
 
 ## 本次变更摘要
 
-- 图片生成脚本新增 openai-edit 模式，会从原剧抽取两位男主参考帧和场景参考帧，再调用图片编辑接口生成 27 张分镜图。
-- 已重新生成北往第一集 3 个二创方向 x 3 个变体 x 3 个镜头，共 27 张双男主图片分镜。
-- 后端 image_plan 新增 audio_text、audio_storage_hint、audio_status，音频缺失时标记 pending_upload。
-- 前端二创分镜点击时已预留音频播放逻辑；复核页可看到每张图的语音台词和待上传音频路径。
-- 新增 docs/BEIWANG_EP1_REMIX_AUDIO_LINES.md，列出 27 条台词和对应 mp3 路径。
+- 将图片编辑脚本的人物参考帧改为皮德胜与李世鑫两位正确男主，增加中景参考帧，提示词要求故事构图、关键物件可见、票据和标牌不可读；按新策略重跑 27 张片尾二创图片资产。
 
 ## 下一步建议
 
-- 等音频文件准备好后，按清单文件名放入 frontend/assets/remix_audio/beiwang_ep1/，刷新页面即可自动播放。
-- 下一步可在复核页增加单张图片重生成按钮，使用同一 openai-edit 脚本按 choice/variant/shot 单独覆盖。
+- 由产品侧检查 27 张图片是否符合人物与剧情预期；如果通过，继续补充 27 条对应音频并接入播放；如果不通过，优先针对问题分支单独重跑。
 
 ## 安全提醒
 
