@@ -1984,10 +1984,13 @@ main {
   grid-template-columns: 42px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 9px;
+  color: var(--text);
   background: rgba(255, 255, 255, 0.035);
+  text-align: left;
 }
 
 .room-member-card.self {
@@ -2009,6 +2012,121 @@ main {
 .room-member-card span {
   color: var(--muted);
   font-size: 11px;
+}
+
+.profile-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: end center;
+  padding: 18px;
+  background: rgba(3, 7, 12, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.profile-modal.hidden {
+  display: none;
+}
+
+.profile-modal-card {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  width: min(100%, 520px);
+  max-height: min(78vh, 720px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: #111720;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
+}
+
+.profile-modal-card .close-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.public-profile-hero {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.public-profile-hero h3 {
+  margin-bottom: 4px;
+  font-size: 20px;
+}
+
+.public-profile-hero strong {
+  display: block;
+  color: var(--gold);
+}
+
+.public-profile-hero span,
+.public-badge-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.public-profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.public-profile-stats div,
+.public-badge-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.public-profile-stats div {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+}
+
+.public-profile-stats span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.public-profile-stats strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+
+.public-badge-list {
+  display: grid;
+  gap: 8px;
+}
+
+.public-badge-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+.public-badge-row.locked {
+  opacity: 0.68;
+}
+
+.public-badge-row strong {
+  display: block;
+  margin-bottom: 3px;
 }
 
 .reward-gallery-link {
@@ -3608,6 +3726,10 @@ textarea.experience-field-input {
 
   .growth-pipeline {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .public-profile-stats {
+    grid-template-columns: 1fr;
   }
 
   .profile-ring {

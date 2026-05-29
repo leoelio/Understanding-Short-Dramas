@@ -249,6 +249,8 @@ const roomCodeInput = $("#roomCodeInput");
 const roomMemberList = $("#roomMemberList");
 const roomFeed = $("#roomFeed");
 const rewardPanel = $("#rewardPanel");
+const publicProfileModal = $("#publicProfileModal");
+const publicProfileContent = $("#publicProfileContent");
 
 const HIGHLIGHT_ALIAS_TO_KEY = Object.fromEntries(
   Object.entries(HIGHLIGHT_UI).flatMap(([key, config]) => config.aliases.map((alias) => [alias, key]))
@@ -1752,7 +1754,7 @@ function renderRoomMembers(room) {
     .map((member) => {
       const isSelf = member.id === state.currentUser?.id;
       return `
-        <article class="room-member-card ${isSelf ? "self" : ""}">
+        <button class="room-member-card ${isSelf ? "self" : ""}" type="button" data-user-id="${member.id}">
           ${badgeArtHTML(member.growth_title || "剧情新人", false, "mini")}
           <div>
             <strong>${escapeHTML(member.display_name || "同看用户")}${isSelf ? " · 我" : ""}</strong>
@@ -1760,7 +1762,7 @@ function renderRoomMembers(room) {
               member.badge_count || 0
             )} 枚徽章</span>
           </div>
-        </article>
+        </button>
       `;
     })
     .join("");
@@ -2069,6 +2071,71 @@ function renderCollectionBadge(item) {
       </button>
     </article>
   `;
+}
+
+function renderPublicProfileBadge(item) {
+  return `
+    <article class="public-badge-row ${item.unlocked ? "unlocked" : "locked"}">
+      ${badgeArtHTML(item.title, !item.unlocked, "mini")}
+      <div>
+        <strong>${escapeHTML(item.title)}</strong>
+        <span>${escapeHTML(item.drama_title || "短剧")} · ${escapeHTML(item.highlight_title || "竞猜高光")}</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderPublicProfile(payload) {
+  const user = payload.user || {};
+  const collection = payload.collection || [];
+  const unlocked = collection.filter((item) => item.unlocked);
+  const badges = payload.badges || [];
+  const visibleBadges = unlocked.length ? unlocked : badges.map((badge) => ({ ...badge, unlocked: true }));
+  publicProfileContent.innerHTML = `
+    <section class="public-profile-hero">
+      ${badgeArtHTML(payload.title || user.growth_title || "剧情新人", false)}
+      <div>
+        <p class="eyebrow">Public Gallery</p>
+        <h3>${escapeHTML(user.display_name || "同看用户")}</h3>
+        <strong>${escapeHTML(payload.title || user.growth_title || "剧情新人")}</strong>
+        <span>${Number(payload.points || 0)} 分 · ${Number(payload.collection_unlocked || badges.length || 0)}/${Number(
+          payload.collection_total || collection.length || badges.length || 0
+        )} 枚徽章</span>
+      </div>
+    </section>
+    <section class="public-profile-stats">
+      <div><span>积分</span><strong>${Number(payload.points || 0)}</strong></div>
+      <div><span>称号</span><strong>${escapeHTML(payload.title || user.growth_title || "剧情新人")}</strong></div>
+      <div><span>收集率</span><strong>${Math.round(Number(payload.completion_percent || 0))}%</strong></div>
+    </section>
+    <section class="public-badge-list">
+      <div class="profile-section-title">
+        <h3>已展示徽章</h3>
+        <span>${visibleBadges.length}</span>
+      </div>
+      ${
+        visibleBadges.length
+          ? visibleBadges.slice(0, 8).map(renderPublicProfileBadge).join("")
+          : `<div class="empty-state">这个用户还没有解锁公开徽章。</div>`
+      }
+    </section>
+  `;
+}
+
+async function openPublicProfile(userId) {
+  if (!userId || !publicProfileModal || !publicProfileContent) return;
+  publicProfileModal.classList.remove("hidden");
+  publicProfileContent.innerHTML = `<div class="empty-state">正在加载用户成长展馆...</div>`;
+  try {
+    renderPublicProfile(await fetchJSON(`/api/users/${userId}/growth`));
+  } catch (error) {
+    publicProfileContent.innerHTML = `<div class="empty-state">无法加载展馆：${escapeHTML(errorMessage(error))}</div>`;
+  }
+}
+
+function closePublicProfile() {
+  publicProfileModal?.classList.add("hidden");
+  if (publicProfileContent) publicProfileContent.innerHTML = "";
 }
 
 async function loadRewardProfile() {
@@ -4054,6 +4121,14 @@ $("#profileGallery").addEventListener("click", (event) => {
   if (button) {
     openEpisodeFromUrl(Number(button.dataset.episodeId));
   }
+});
+roomMemberList?.addEventListener("click", (event) => {
+  const card = event.target.closest(".room-member-card");
+  if (card) openPublicProfile(Number(card.dataset.userId));
+});
+$("#closePublicProfile").addEventListener("click", closePublicProfile);
+publicProfileModal?.addEventListener("click", (event) => {
+  if (event.target === publicProfileModal) closePublicProfile();
 });
 rewardPanel?.addEventListener("click", (event) => {
   if (event.target.closest(".reward-gallery-link")) {

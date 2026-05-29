@@ -824,6 +824,18 @@ def get_my_rewards(user: User = Depends(get_current_user), db: Session = Depends
     return reward_profile(user, db)
 
 
+@app.get("/api/users/{user_id}/growth")
+def get_user_growth(
+    user_id: int,
+    _viewer: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    user = db.get(User, user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return {"user": user_brief(user), **reward_profile(user, db)}
+
+
 @app.post("/api/watch-rooms")
 def create_watch_room(
     payload: WatchRoomCreate,
