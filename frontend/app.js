@@ -197,6 +197,8 @@ const state = {
   reviewExperience: null,
   reviewRemixes: [],
   reviewFilter: "all",
+  reviewSection: "highlights",
+  reviewRemixFilter: "all",
   currentUser: null,
   adminUsers: [],
   authToken: localStorage.getItem("auth_token") || "",
@@ -3359,6 +3361,7 @@ async function renderReviewEpisodeOptions(preferredEpisodeId) {
     $("#reviewPreview").innerHTML = "";
     $("#experiencePreview").innerHTML = "";
     $("#remixReviewPanel").innerHTML = "";
+    updateReviewWorkbenchCounts({ highlights: [] }, { config: {} }, []);
     setReviewStatus("当前筛选没有剧集");
     return;
   }
@@ -3389,6 +3392,7 @@ async function loadReviewEpisodes() {
     $("#reviewPreview").innerHTML = `<div class="empty-state">无法加载复核列表：${escapeHTML(errorMessage(error))}</div>`;
     $("#experiencePreview").innerHTML = "";
     $("#remixReviewPanel").innerHTML = "";
+    updateReviewWorkbenchCounts({ highlights: [] }, { config: {} }, []);
     setReviewStatus(errorMessage(error), true);
     return;
   }
@@ -3413,6 +3417,8 @@ async function loadReviewPayload(episodeId) {
   renderReviewPreview(payload);
   renderExperiencePreview(experience);
   renderRemixReviewPanel(remixes);
+  updateReviewWorkbenchCounts(payload, experience, remixes);
+  setReviewSection(state.reviewSection);
   const status = meta
     ? `${meta.review_status_label} · 人工 ${meta.reviewed_highlight_count || 0}/${meta.highlight_count || 0}`
     : "已加载";
@@ -3423,8 +3429,24 @@ function parseReviewJson() {
   return JSON.parse($("#reviewJson").value);
 }
 
+function parseReviewJsonSafe() {
+  try {
+    return parseReviewJson();
+  } catch {
+    return { highlights: [] };
+  }
+}
+
 function parseExperienceJson() {
   return JSON.parse($("#experienceJson").value);
+}
+
+function parseExperienceJsonSafe() {
+  try {
+    return parseExperienceJson();
+  } catch {
+    return { config: {} };
+  }
 }
 
 function setReviewStatus(message, isError = false) {
@@ -3439,6 +3461,30 @@ function syncReviewJson(payload) {
 
 function syncExperienceJson(payload) {
   $("#experienceJson").value = JSON.stringify(payload, null, 2);
+}
+
+function setReviewSection(section = "highlights") {
+  state.reviewSection = section;
+  document.querySelectorAll("[data-review-section]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.reviewSection === section);
+  });
+  document.querySelectorAll("[data-review-section-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.reviewSectionPanel !== section;
+    panel.classList.toggle("active", panel.dataset.reviewSectionPanel === section);
+  });
+  $("#saveReview").hidden = section !== "highlights";
+}
+
+function updateReviewWorkbenchCounts(payload = null, experience = null, remixes = state.reviewRemixes) {
+  const highlights = payload?.highlights || [];
+  const timeline = experience?.config?.sticker_timeline || [];
+  const quiz = experience?.config?.quiz_rewards || [];
+  const highlightCount = $("#reviewHighlightCount");
+  const experienceCount = $("#reviewExperienceCount");
+  const remixCount = $("#reviewRemixCount");
+  if (highlightCount) highlightCount.textContent = String(highlights.length);
+  if (experienceCount) experienceCount.textContent = String(timeline.length + quiz.length);
+  if (remixCount) remixCount.textContent = String(remixes.length);
 }
 
 function remixStatusLabel(status, featured) {
@@ -3488,96 +3534,158 @@ function renderRemixStoryboardEditor(item) {
   `;
 }
 
+function renderRemixImagePlanReview(item) {
+  const imagePlan = item.image_plan || item.prompt_trace?.image_plan || null;
+  const shots = imagePlan?.shots || [];
+  if (!shots.length) return "";
+  return `
+    <div class="remix-asset-review">
+      <div class="remix-asset-review-head">
+        <div>
+          <strong>图片分镜素材</strong>
+          <span>${escapeHTML(remixImageStatusLabel(imagePlan.asset_status))} · ${Number(imagePlan.shot_count || shots.length)} 张</span>
+        </div>
+        <em>${escapeHTML(imagePlan.replacement_axis || item.variant?.variable_label || "")}</em>
+      </div>
+      <div class="remix-asset-grid">
+        ${shots
+          .map(
+            (shot, index) => `
+              <figure>
+                ${
+                  shot.storage_hint
+                    ? `<img src="${escapeHTML(shot.storage_hint)}" alt="${escapeHTML(shot.caption || `分镜${index + 1}`)}" loading="lazy" />`
+                    : `<div class="remix-asset-placeholder">待生成</div>`
+                }
+                <figcaption>
+                  <b>0${index + 1} ${escapeHTML(shot.caption || `分镜${index + 1}`)}</b>
+                  <span>${escapeHTML(shot.storage_hint || "暂无素材路径")}</span>
+                </figcaption>
+              </figure>
+            `
+          )
+          .join("")}
+      </div>
+      <small>需要替换素材时，保持同名文件路径覆盖即可，播放页会自动读取新图。</small>
+    </div>
+  `;
+}
+
+function hasRemixImagePlan(item) {
+  const imagePlan = item.image_plan || item.prompt_trace?.image_plan || null;
+  return Boolean(imagePlan?.shots?.length);
+}
+
 function renderRemixReviewPanel(remixes = state.reviewRemixes) {
   const panel = $("#remixReviewPanel");
   if (!panel) return;
   const featuredCount = remixes.filter((item) => item.is_featured).length;
+  const visibleRemixes = remixes.filter((item) => {
+    if (state.reviewRemixFilter === "featured") return item.is_featured;
+    if (state.reviewRemixFilter === "hidden") return item.review_status === "hidden";
+    if (state.reviewRemixFilter === "draft") return !item.is_featured && item.review_status !== "hidden";
+    return true;
+  });
+  const preferredOpenIndex = Math.max(0, visibleRemixes.findIndex(hasRemixImagePlan));
   panel.innerHTML = `
     <div class="remix-review-summary">
-      <span>共 ${remixes.length} 条生成记录</span>
-      <strong>${featuredCount} 条精选</strong>
+      <div>
+        <span>共 ${remixes.length} 条生成记录</span>
+        <strong>${featuredCount} 条精选</strong>
+      </div>
+      <div class="review-filter-chips">
+        <button class="${state.reviewRemixFilter === "all" ? "active" : ""}" type="button" data-remix-filter="all">全部</button>
+        <button class="${state.reviewRemixFilter === "draft" ? "active" : ""}" type="button" data-remix-filter="draft">待复核</button>
+        <button class="${state.reviewRemixFilter === "featured" ? "active" : ""}" type="button" data-remix-filter="featured">精选</button>
+        <button class="${state.reviewRemixFilter === "hidden" ? "active" : ""}" type="button" data-remix-filter="hidden">隐藏</button>
+      </div>
     </div>
     ${
-      remixes.length
+      visibleRemixes.length
         ? `<div class="remix-review-list">
-            ${remixes
+            ${visibleRemixes
               .map(
-                (item) => `
+                (item, index) => `
                   <article class="remix-review-card ${item.is_featured ? "featured" : ""} ${
                     item.review_status === "hidden" ? "hidden-remix" : ""
                   }" data-remix-id="${item.id}">
-                    <div class="remix-review-card-head">
-                      <div>
-                        <span>${escapeHTML(remixStatusLabel(item.review_status, item.is_featured))} · #${Number(
-                          item.id
-                        )}</span>
-                        <h4>${escapeHTML(item.title)}</h4>
-                        <p>${escapeHTML(item.logline || "")}</p>
+                    <details class="remix-review-details" ${index === preferredOpenIndex ? "open" : ""}>
+                      <summary class="remix-review-card-head">
+                        <div>
+                          <span>${escapeHTML(remixStatusLabel(item.review_status, item.is_featured))} · #${Number(
+                            item.id
+                          )} · ${formatDateTime(item.created_at)}</span>
+                          <h4>${escapeHTML(item.title)}</h4>
+                          <p>${escapeHTML(item.logline || "")}</p>
+                        </div>
+                        <b>${escapeHTML(item.choice?.icon || "AI")}</b>
+                      </summary>
+                      <div class="remix-review-card-body">
+                        <div class="remix-review-meta">
+                          <span>${escapeHTML(item.choice_label || "")}</span>
+                          <span>${escapeHTML(remixSourceLabel(item.source))}</span>
+                          <span>${escapeHTML(item.model_version || "")}</span>
+                          <span>排序 ${Number(item.featured_order || 0)}</span>
+                        </div>
+                        ${renderRemixImagePlanReview(item)}
+                        <div class="remix-edit-grid">
+                          <label>
+                            标题
+                            <input class="remix-edit-field" data-remix-field="title" value="${escapeHTML(item.title || "")}" />
+                          </label>
+                          <label>
+                            情绪
+                            <input class="remix-edit-field" data-remix-field="emotion" value="${escapeHTML(item.emotion || "")}" />
+                          </label>
+                          <label>
+                            精选排序
+                            <input class="remix-edit-field" type="number" min="0" max="999" step="1" data-remix-field="featured_order" value="${Number(
+                              item.featured_order || 0
+                            )}" />
+                          </label>
+                          <label class="remix-wide-field">
+                            钩子句
+                            <textarea class="remix-edit-field" data-remix-field="logline" rows="2">${escapeHTML(item.logline || "")}</textarea>
+                          </label>
+                          <label class="remix-wide-field">
+                            正文
+                            <textarea class="remix-edit-field" data-remix-field="story_text" rows="4">${escapeHTML(
+                              item.story_text || ""
+                            )}</textarea>
+                          </label>
+                          <label class="remix-wide-field">
+                            分享文案
+                            <input class="remix-edit-field" data-remix-field="share_copy" value="${escapeHTML(item.share_copy || "")}" />
+                          </label>
+                          <label class="remix-wide-field">
+                            审核备注
+                            <input class="remix-edit-field" data-remix-field="review_note" value="${escapeHTML(item.review_note || "")}" />
+                          </label>
+                        </div>
+                        ${renderRemixStoryboardEditor(item)}
+                        <div class="remix-review-actions">
+                          <button class="primary-button remix-review-action" type="button" data-action="save" data-remix-id="${item.id}">保存内容</button>
+                          <button class="primary-button remix-review-action" type="button" data-action="feature" data-remix-id="${item.id}" ${
+                            item.is_featured ? "disabled" : ""
+                          }>设为精选</button>
+                          <button class="ghost-button remix-review-action" type="button" data-action="draft" data-remix-id="${item.id}" ${
+                            !item.is_featured && item.review_status !== "hidden" ? "disabled" : ""
+                          }>取消精选</button>
+                          <button class="danger-button remix-review-action" type="button" data-action="hide" data-remix-id="${item.id}" ${
+                            item.review_status === "hidden" ? "disabled" : ""
+                          }>隐藏</button>
+                        </div>
                       </div>
-                      <b>${escapeHTML(item.choice?.icon || "AI")}</b>
-                    </div>
-                    <div class="remix-review-meta">
-                      <span>${escapeHTML(item.choice_label || "")}</span>
-                      <span>${escapeHTML(item.source === "llm" ? "大模型" : "本地兜底")}</span>
-                      <span>${escapeHTML(item.model_version || "")}</span>
-                      <span>${formatDateTime(item.created_at)}</span>
-                      <span>排序 ${Number(item.featured_order || 0)}</span>
-                    </div>
-                    <div class="remix-edit-grid">
-                      <label>
-                        标题
-                        <input class="remix-edit-field" data-remix-field="title" value="${escapeHTML(item.title || "")}" />
-                      </label>
-                      <label>
-                        情绪
-                        <input class="remix-edit-field" data-remix-field="emotion" value="${escapeHTML(item.emotion || "")}" />
-                      </label>
-                      <label>
-                        精选排序
-                        <input class="remix-edit-field" type="number" min="0" max="999" step="1" data-remix-field="featured_order" value="${Number(
-                          item.featured_order || 0
-                        )}" />
-                      </label>
-                      <label class="remix-wide-field">
-                        钩子句
-                        <textarea class="remix-edit-field" data-remix-field="logline" rows="2">${escapeHTML(item.logline || "")}</textarea>
-                      </label>
-                      <label class="remix-wide-field">
-                        正文
-                        <textarea class="remix-edit-field" data-remix-field="story_text" rows="4">${escapeHTML(
-                          item.story_text || ""
-                        )}</textarea>
-                      </label>
-                      <label class="remix-wide-field">
-                        分享文案
-                        <input class="remix-edit-field" data-remix-field="share_copy" value="${escapeHTML(item.share_copy || "")}" />
-                      </label>
-                      <label class="remix-wide-field">
-                        审核备注
-                        <input class="remix-edit-field" data-remix-field="review_note" value="${escapeHTML(item.review_note || "")}" />
-                      </label>
-                    </div>
-                    ${renderRemixStoryboardEditor(item)}
-                    <div class="remix-review-actions">
-                      <button class="primary-button remix-review-action" type="button" data-action="save" data-remix-id="${item.id}">保存内容</button>
-                      <button class="primary-button remix-review-action" type="button" data-action="feature" data-remix-id="${item.id}" ${
-                        item.is_featured ? "disabled" : ""
-                      }>设为精选</button>
-                      <button class="ghost-button remix-review-action" type="button" data-action="draft" data-remix-id="${item.id}" ${
-                        !item.is_featured && item.review_status !== "hidden" ? "disabled" : ""
-                      }>取消精选</button>
-                      <button class="danger-button remix-review-action" type="button" data-action="hide" data-remix-id="${item.id}" ${
-                        item.review_status === "hidden" ? "disabled" : ""
-                      }>隐藏</button>
-                    </div>
+                    </details>
                   </article>
                 `
               )
               .join("")}
           </div>`
-        : `<div class="empty-state">当前剧集还没有片尾二创记录。先在播放页片尾生成一次，再回到这里精选。</div>`
+        : `<div class="empty-state">当前筛选没有片尾二创记录。</div>`
     }
   `;
+  updateReviewWorkbenchCounts(parseReviewJsonSafe(), parseExperienceJsonSafe(), remixes);
 }
 
 async function updateRemixReview(button) {
@@ -4311,77 +4419,85 @@ function renderReviewPreview(payload) {
       .map(
         (item, index) => `
           <article class="review-card" data-index="${index}">
-            <div class="review-card-title">
-              <div>
-                <span>高光点 ${index + 1}</span>
-                <h4 data-review-title>${escapeHTML(item.title)}</h4>
+            <details class="review-details" ${index === 0 ? "open" : ""}>
+              <summary class="review-card-title">
+                <div>
+                  <span>高光点 ${index + 1}</span>
+                  <h4 data-review-title>${escapeHTML(item.title)}</h4>
+                  <small>${formatTime(item.start_time_sec)}-${formatTime(item.end_time_sec)} · ${escapeHTML(
+                    item.highlight_type || ""
+                  )} · ${escapeHTML(item.emotion || "")}</small>
+                </div>
+              </summary>
+              <div class="review-card-body">
+                <div class="review-field-grid">
+                  <label>
+                    高光名称
+                    <input class="review-field-input" data-index="${index}" data-field="title" data-label="高光名称" value="${escapeHTML(item.title)}" />
+                  </label>
+                  <label>
+                    高光类型
+                    <select class="review-field-input" data-index="${index}" data-field="highlight_type" data-label="高光类型">
+                      ${renderSelectOptions(REVIEW_TYPE_LABELS, item.highlight_type)}
+                    </select>
+                  </label>
+                  <label>
+                    情绪
+                    <select class="review-field-input" data-index="${index}" data-field="emotion" data-label="情绪">
+                      ${renderSelectOptions(REVIEW_EMOTIONS, item.emotion)}
+                    </select>
+                  </label>
+                </div>
+                <div class="review-time-editor">
+                  <label>
+                    开始秒
+                    <input class="review-time-input" type="number" min="0" step="0.1" data-index="${index}" data-field="start_time_sec" value="${Number(
+                      item.start_time_sec
+                    )}" />
+                  </label>
+                  <label>
+                    结束秒
+                    <input class="review-time-input" type="number" min="0" step="0.1" data-index="${index}" data-field="end_time_sec" value="${Number(
+                      item.end_time_sec
+                    )}" />
+                  </label>
+                  <strong data-time-label>${formatTime(item.start_time_sec)}-${formatTime(item.end_time_sec)}</strong>
+                </div>
+                <label class="review-wide-field">
+                  剧情说明
+                  <textarea class="review-field-input" data-index="${index}" data-field="description" data-label="剧情说明" rows="2">${escapeHTML(
+                    item.description || ""
+                  )}</textarea>
+                </label>
+                <div class="review-options-editor">
+                  ${(item.options || [])
+                    .map(
+                      (option, optionIndex) => `
+                        <label>
+                          按钮 ${optionIndex + 1}
+                          <input class="review-option-input" data-index="${index}" data-option-index="${optionIndex}" data-field="label" value="${escapeHTML(
+                            option.label
+                          )}" />
+                        </label>
+                      `
+                    )
+                    .join("")}
+                </div>
+                <label class="review-wide-field">
+                  证据文本
+                  <textarea class="review-field-input" data-index="${index}" data-field="evidence_text" data-label="证据文本" rows="2">${escapeHTML(
+                    item.evidence_text || ""
+                  )}</textarea>
+                </label>
+                <button class="danger-button delete-highlight-button" type="button" data-index="${index}">删除这个高光</button>
               </div>
-              <button class="danger-button delete-highlight-button" type="button" data-index="${index}">删除</button>
-            </div>
-            <div class="review-field-grid">
-              <label>
-                高光名称
-                <input class="review-field-input" data-index="${index}" data-field="title" data-label="高光名称" value="${escapeHTML(item.title)}" />
-              </label>
-              <label>
-                高光类型
-                <select class="review-field-input" data-index="${index}" data-field="highlight_type" data-label="高光类型">
-                  ${renderSelectOptions(REVIEW_TYPE_LABELS, item.highlight_type)}
-                </select>
-              </label>
-              <label>
-                情绪
-                <select class="review-field-input" data-index="${index}" data-field="emotion" data-label="情绪">
-                  ${renderSelectOptions(REVIEW_EMOTIONS, item.emotion)}
-                </select>
-              </label>
-            </div>
-            <div class="review-time-editor">
-              <label>
-                开始秒
-                <input class="review-time-input" type="number" min="0" step="0.1" data-index="${index}" data-field="start_time_sec" value="${Number(
-                  item.start_time_sec
-                )}" />
-              </label>
-              <label>
-                结束秒
-                <input class="review-time-input" type="number" min="0" step="0.1" data-index="${index}" data-field="end_time_sec" value="${Number(
-                  item.end_time_sec
-                )}" />
-              </label>
-              <strong data-time-label>${formatTime(item.start_time_sec)}-${formatTime(item.end_time_sec)}</strong>
-            </div>
-            <label class="review-wide-field">
-              剧情说明
-              <textarea class="review-field-input" data-index="${index}" data-field="description" data-label="剧情说明" rows="2">${escapeHTML(
-                item.description || ""
-              )}</textarea>
-            </label>
-            <div class="review-options-editor">
-              ${(item.options || [])
-                .map(
-                  (option, optionIndex) => `
-                    <label>
-                      按钮 ${optionIndex + 1}
-                      <input class="review-option-input" data-index="${index}" data-option-index="${optionIndex}" data-field="label" value="${escapeHTML(
-                        option.label
-                      )}" />
-                    </label>
-                  `
-                )
-                .join("")}
-            </div>
-            <label class="review-wide-field">
-              证据文本
-              <textarea class="review-field-input" data-index="${index}" data-field="evidence_text" data-label="证据文本" rows="2">${escapeHTML(
-                item.evidence_text || ""
-              )}</textarea>
-            </label>
+            </details>
           </article>
         `
       )
       .join("")}
   `;
+  updateReviewWorkbenchCounts(payload, parseExperienceJsonSafe(), state.reviewRemixes);
 }
 
 function renderExperiencePreview(payload) {
@@ -4428,62 +4544,67 @@ function renderExperiencePreview(payload) {
               .map(
                 (rule, index) => `
                   <div class="quiz-reward-card">
-                    <div class="experience-slot-head">
-                      <strong>${escapeHTML(rule.title || `竞猜奖励 ${index + 1}`)}</strong>
-                      <button class="danger-button delete-quiz-reward-button" type="button" data-index="${index}">删除</button>
-                    </div>
-                    <div class="experience-field-grid">
-                      <label>
-                        高光名称
-                        <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="highlight_title" value="${escapeHTML(
-                          rule.highlight_title || ""
-                        )}" />
-                      </label>
-                      <label>
-                        正确选项 key
-                        <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="correct_option_key" value="${escapeHTML(
-                          rule.correct_option_key || ""
-                        )}" />
-                      </label>
-                      <label>
-                        正确选项文案
-                        <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="correct_label" value="${escapeHTML(
-                          rule.correct_label || ""
-                        )}" />
-                      </label>
-                    </div>
-                    <div class="experience-field-grid">
-                      <label>
-                        积分
-                        <input class="experience-field-input" type="number" min="1" step="1" data-section="quiz" data-index="${index}" data-field="points" value="${Number(
-                          rule.points || 20
-                        )}" />
-                      </label>
-                      <label>
-                        奖励 key
-                        <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="reward_key" value="${escapeHTML(
-                          rule.reward_key || ""
-                        )}" />
-                      </label>
-                      <label>
-                        称号/徽章
-                        <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="title" value="${escapeHTML(
-                          rule.title || ""
-                        )}" />
-                      </label>
-                    </div>
-                    <label class="experience-wide-field">
-                      说明
-                      <textarea class="experience-field-input" data-section="quiz" data-index="${index}" data-field="description" rows="2">${escapeHTML(
-                        rule.description || ""
-                      )}</textarea>
-                    </label>
-                    <label class="experience-wide-field">
-                      前端提示
-                      <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="prompt" value="${escapeHTML(
-                        rule.prompt || "同看竞猜题，答对后解锁称号和积分。"
-                      )}" />
-                    </label>
+                    <details class="review-details" ${index === 0 ? "open" : ""}>
+                      <summary class="experience-slot-head">
+                        <strong>${escapeHTML(rule.title || `竞猜奖励 ${index + 1}`)}</strong>
+                        <span>${escapeHTML(rule.highlight_title || "未绑定高光")} · ${Number(rule.points || 20)} 分</span>
+                      </summary>
+                      <div class="review-card-body">
+                        <div class="experience-field-grid">
+                          <label>
+                            高光名称
+                            <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="highlight_title" value="${escapeHTML(
+                              rule.highlight_title || ""
+                            )}" />
+                          </label>
+                          <label>
+                            正确选项 key
+                            <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="correct_option_key" value="${escapeHTML(
+                              rule.correct_option_key || ""
+                            )}" />
+                          </label>
+                          <label>
+                            正确选项文案
+                            <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="correct_label" value="${escapeHTML(
+                              rule.correct_label || ""
+                            )}" />
+                          </label>
+                        </div>
+                        <div class="experience-field-grid">
+                          <label>
+                            积分
+                            <input class="experience-field-input" type="number" min="1" step="1" data-section="quiz" data-index="${index}" data-field="points" value="${Number(
+                              rule.points || 20
+                            )}" />
+                          </label>
+                          <label>
+                            奖励 key
+                            <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="reward_key" value="${escapeHTML(
+                              rule.reward_key || ""
+                            )}" />
+                          </label>
+                          <label>
+                            称号/徽章
+                            <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="title" value="${escapeHTML(
+                              rule.title || ""
+                            )}" />
+                          </label>
+                        </div>
+                        <label class="experience-wide-field">
+                          说明
+                          <textarea class="experience-field-input" data-section="quiz" data-index="${index}" data-field="description" rows="2">${escapeHTML(
+                            rule.description || ""
+                          )}</textarea>
+                        </label>
+                        <label class="experience-wide-field">
+                          前端提示
+                          <input class="experience-field-input" data-section="quiz" data-index="${index}" data-field="prompt" value="${escapeHTML(
+                            rule.prompt || "同看竞猜题，答对后解锁称号和积分。"
+                          )}" />
+                        </label>
+                        <button class="danger-button delete-quiz-reward-button" type="button" data-index="${index}">删除这条竞猜</button>
+                      </div>
+                    </details>
                   </div>
                 `
               )
@@ -4522,45 +4643,50 @@ function renderExperiencePreview(payload) {
                 const assets = slot.asset_ids || slot.assets || [];
                 return `
                   <div class="experience-slot-card">
-                    <div class="experience-slot-head">
-                      <strong>${formatTime(start)}-${formatTime(end)}</strong>
-                      <button class="danger-button delete-slot-button" type="button" data-index="${index}">删除</button>
-                    </div>
-                    <div class="experience-field-grid">
-                      <label>
-                        开始秒
-                        <input class="experience-field-input" type="number" min="0" step="0.1" data-section="slot" data-index="${index}" data-field="start_time_sec" value="${start}" />
-                      </label>
-                      <label>
-                        结束秒
-                        <input class="experience-field-input" type="number" min="0" step="0.1" data-section="slot" data-index="${index}" data-field="end_time_sec" value="${end}" />
-                      </label>
-                    </div>
-                    <label class="experience-wide-field">
-                      贴图ID，用逗号分隔
-                      <input class="experience-field-input" data-section="slot" data-index="${index}" data-field="asset_ids" value="${assets.map(escapeHTML).join(", ")}" />
-                    </label>
-                    ${renderStickerAssetPicker(assets, index)}
-                    <div class="experience-field-grid">
-                      <label>
-                        频率秒
-                        <input class="experience-field-input" type="number" min="1" step="1" data-section="slot" data-index="${index}" data-field="cadence_sec" value="${Number(
-                          slot.cadence_sec || 3
-                        )}" />
-                      </label>
-                      <label>
-                        出现数量
-                        <input class="experience-field-input" type="number" min="1" step="1" data-section="slot" data-index="${index}" data-field="burst_count" value="${Number(
-                          slot.burst_count || 2
-                        )}" />
-                      </label>
-                    </div>
-                    <label class="experience-wide-field">
-                      贴图含义
-                      <textarea class="experience-field-input" data-section="slot" data-index="${index}" data-field="meaning" rows="2">${escapeHTML(
-                        slot.meaning || ""
-                      )}</textarea>
-                    </label>
+                    <details class="review-details" ${index === 0 ? "open" : ""}>
+                      <summary class="experience-slot-head">
+                        <strong>${formatTime(start)}-${formatTime(end)}</strong>
+                        <span>${assets.length} 个贴图 · ${escapeHTML(slot.meaning || "待补充含义")}</span>
+                      </summary>
+                      <div class="review-card-body">
+                        <div class="experience-field-grid">
+                          <label>
+                            开始秒
+                            <input class="experience-field-input" type="number" min="0" step="0.1" data-section="slot" data-index="${index}" data-field="start_time_sec" value="${start}" />
+                          </label>
+                          <label>
+                            结束秒
+                            <input class="experience-field-input" type="number" min="0" step="0.1" data-section="slot" data-index="${index}" data-field="end_time_sec" value="${end}" />
+                          </label>
+                        </div>
+                        <label class="experience-wide-field">
+                          贴图ID，用逗号分隔
+                          <input class="experience-field-input" data-section="slot" data-index="${index}" data-field="asset_ids" value="${assets.map(escapeHTML).join(", ")}" />
+                        </label>
+                        ${renderStickerAssetPicker(assets, index)}
+                        <div class="experience-field-grid">
+                          <label>
+                            频率秒
+                            <input class="experience-field-input" type="number" min="1" step="1" data-section="slot" data-index="${index}" data-field="cadence_sec" value="${Number(
+                              slot.cadence_sec || 3
+                            )}" />
+                          </label>
+                          <label>
+                            出现数量
+                            <input class="experience-field-input" type="number" min="1" step="1" data-section="slot" data-index="${index}" data-field="burst_count" value="${Number(
+                              slot.burst_count || 2
+                            )}" />
+                          </label>
+                        </div>
+                        <label class="experience-wide-field">
+                          贴图含义
+                          <textarea class="experience-field-input" data-section="slot" data-index="${index}" data-field="meaning" rows="2">${escapeHTML(
+                            slot.meaning || ""
+                          )}</textarea>
+                        </label>
+                        <button class="danger-button delete-slot-button" type="button" data-index="${index}">删除这个时间窗</button>
+                      </div>
+                    </details>
                   </div>
                 `;
               })
@@ -4583,6 +4709,7 @@ function renderExperiencePreview(payload) {
       </ul>
     </article>
   `;
+  updateReviewWorkbenchCounts(parseReviewJsonSafe(), payload, state.reviewRemixes);
 }
 
 function formatReviewJson() {
@@ -4878,6 +5005,10 @@ $("#formatReview").addEventListener("click", formatReviewJson);
 $("#saveReview").addEventListener("click", saveReviewPayload);
 $("#formatExperience").addEventListener("click", formatExperienceJson);
 $("#saveExperience").addEventListener("click", saveExperiencePayload);
+$("#reviewWorkbenchTabs").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-review-section]");
+  if (button) setReviewSection(button.dataset.reviewSection);
+});
 $("#reviewPreview").addEventListener("input", (event) => {
   if (event.target.classList.contains("review-time-input")) {
     updateReviewTimeInput(event.target);
@@ -4953,6 +5084,12 @@ $("#experiencePreview").addEventListener("click", (event) => {
   }
 });
 $("#remixReviewPanel").addEventListener("click", (event) => {
+  const filterButton = event.target.closest("[data-remix-filter]");
+  if (filterButton) {
+    state.reviewRemixFilter = filterButton.dataset.remixFilter;
+    renderRemixReviewPanel();
+    return;
+  }
   const button = event.target.closest(".remix-review-action");
   if (button) updateRemixReview(button);
 });

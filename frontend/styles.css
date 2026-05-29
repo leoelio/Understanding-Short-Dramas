@@ -3929,42 +3929,62 @@ main {
   margin-bottom: 12px;
 }
 
+.review-workbench-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.review-workbench-tabs button,
+.review-filter-chips button {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.035);
+  font: inherit;
+  font-weight: 800;
+}
+
+.review-workbench-tabs button.active,
+.review-filter-chips button.active {
+  border-color: color-mix(in srgb, var(--accent-2) 54%, transparent);
+  color: #071012;
+  background: var(--accent-2);
+}
+
+.review-workbench-tabs span {
+  display: inline-grid;
+  min-width: 22px;
+  min-height: 22px;
+  margin-left: 5px;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+}
+
 .review-summary {
   margin-bottom: 12px;
 }
 
-.review-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 12px;
+.review-section {
+  display: block;
 }
 
-#reviewJson {
-  min-height: 62vh;
-  width: 100%;
-  resize: vertical;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-  color: var(--text);
-  background: #080c12;
-  font-family: "Cascadia Code", Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.55;
+.review-section[hidden] {
+  display: none;
 }
 
-#experienceJson {
-  min-height: 42vh;
-  width: 100%;
-  resize: vertical;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-  color: var(--text);
-  background: #080c12;
-  font-family: "Cascadia Code", Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.55;
+.review-raw-json {
+  display: none;
+}
+
+.interactive-review-layout {
+  display: block;
 }
 
 .review-status {
@@ -4089,8 +4109,32 @@ main {
 .review-card {
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 12px;
+  padding: 0;
   background: var(--panel);
+}
+
+.review-details,
+.remix-review-details {
+  display: block;
+}
+
+.review-details > summary,
+.remix-review-details > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.review-details > summary::-webkit-details-marker,
+.remix-review-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.review-card-body,
+.remix-review-card-body {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px;
 }
 
 .experience-card {
@@ -4142,7 +4186,7 @@ main {
   align-items: start;
   justify-content: space-between;
   gap: 4px;
-  margin-bottom: 8px;
+  padding: 12px;
 }
 
 .review-card-title span {
@@ -4270,6 +4314,18 @@ textarea.experience-field-input {
   background: rgba(255, 255, 255, 0.035);
 }
 
+.review-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.review-filter-chips button {
+  padding: 7px 9px;
+  font-size: 12px;
+}
+
 .remix-review-summary span,
 .remix-review-card-head span,
 .remix-review-meta,
@@ -4293,7 +4349,7 @@ textarea.experience-field-input {
   gap: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 12px;
+  padding: 0;
   background: rgba(255, 255, 255, 0.035);
 }
 
@@ -4311,6 +4367,7 @@ textarea.experience-field-input {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: start;
+  padding: 12px;
 }
 
 .remix-review-card-head h4 {
@@ -4420,6 +4477,84 @@ textarea.remix-edit-field {
 .remix-review-actions button:disabled {
   cursor: default;
   opacity: 0.45;
+}
+
+.remix-asset-review {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.remix-asset-review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.remix-asset-review-head strong,
+.remix-asset-review-head span {
+  display: block;
+}
+
+.remix-asset-review-head span,
+.remix-asset-review small,
+.remix-asset-grid figcaption span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.remix-asset-review-head em {
+  color: var(--gold);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.remix-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.remix-asset-grid figure {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+}
+
+.remix-asset-grid img,
+.remix-asset-placeholder {
+  width: 100%;
+  aspect-ratio: 9 / 13;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  object-fit: cover;
+  background: #080c12;
+}
+
+.remix-asset-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.remix-asset-grid figcaption {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.remix-asset-grid figcaption b,
+.remix-asset-grid figcaption span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sticker-suggestion-json {
@@ -4590,7 +4725,9 @@ textarea.remix-edit-field {
   .danmaku-form,
   .danmaku-settings,
   .remix-choice-grid,
-  .storyboard-grid {
+  .storyboard-grid,
+  .review-workbench-tabs,
+  .remix-asset-grid {
     grid-template-columns: 1fr;
   }
 
@@ -4619,7 +4756,6 @@ textarea.remix-edit-field {
   }
 
   .review-toolbar,
-  .review-layout,
   .experience-layout,
   .review-field-grid,
   .review-options-editor,

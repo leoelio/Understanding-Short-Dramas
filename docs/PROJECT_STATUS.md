@@ -1,50 +1,20 @@
 # Project Status
 
-更新时间：2026-05-30 05:14:01
+更新时间：2026-05-30 05:33:53
 
 ## 当前目标
 
-片尾 AI 二创策略从视频生成调整为三镜头图片分镜：北往第一集已支持按选项返回 3 张缓存图，前端点击进入下一张。
+复核页升级为可交互工作台：高光点、体验配置、片尾二创拆分为可切换复核区，底层 JSON 默认隐藏。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`859ebad`
+- 最新提交：`7a0123c`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M  backend/app/main.py`
-- `M  docs/PROJECT_STATUS.md`
-- `M  docs/RUN_LOG.md`
-- `M  frontend/app.js`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_1.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_2.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_audi_sedan_shot_3.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_convertible_shot_1.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_convertible_shot_2.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_convertible_shot_3.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_wuling_van_shot_1.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_wuling_van_shot_2.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_kindness_ride_wuling_van_shot_3.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_chain_bridge_shot_1.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_chain_bridge_shot_2.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_chain_bridge_shot_3.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_flat_tire_shot_1.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_flat_tire_shot_2.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_flat_tire_shot_3.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_frozen_engine_shot_1.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_frozen_engine_shot_2.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_road_breakdown_frozen_engine_shot_3.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_coach_ticket_shot_1.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_coach_ticket_shot_2.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_coach_ticket_shot_3.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_green_train_shot_1.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_green_train_shot_2.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_green_train_shot_3.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_1.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_2.png`
-- `A  frontend/assets/remix_images/beiwang_ep1/beiwang_ep1_ticket_home_standing_ticket_shot_3.png`
-- `M  frontend/styles.css`
-- `A  scripts/generate_beiwang_remix_images.py`
+- `M frontend/app.js`
+- `M frontend/index.html`
+- `M frontend/styles.css`
 
 ## 数据状态
 
@@ -57,7 +27,7 @@
 - 互动记录：47
 - 弹幕记录：220
 - 体验配置：4
-- 片尾 AI 二创：20
+- 片尾 AI 二创：21
 
 ## 高光来源
 
@@ -78,15 +48,15 @@
 
 ## 本次变更摘要
 
-- 后端新增 image_plan，按 choice + variant 下发三张图片分镜、缓存状态、生成模型和 storage_hint。
-- 前端片尾二创结果页新增图片分镜播放器，支持上一张/下一张点击翻页，并在有 image_plan 时不再展示视频播放器。
-- 新增 scripts/generate_beiwang_remix_images.py，支持本地占位图生成和 OpenAI 图片模型生成覆盖同名资产。
-- 已为北往第一集 3 个方向 x 3 个变体生成 27 张图片占位资产，保证演示流程无需等待实时生成。
+- 复核页新增内容类型切换：高光点、体验配置、片尾二创，可按剧集和复核状态先筛选再进入编辑。
+- 高光点、竞猜奖励、贴图时间窗、片尾二创记录改为折叠列表，默认只展开当前第一项，避免页面过长。
+- 片尾二创复核接入图片分镜素材预览，能看到每条记录的三张缓存图、素材状态和替换路径。
+- 二创记录新增精选/待复核/隐藏筛选，默认优先展开带图片分镜的记录。
 
 ## 下一步建议
 
-- 如需更高质量视觉效果，使用 OPENAI_API_KEY 运行图片生成脚本的 openai 模式，覆盖 frontend/assets/remix_images/beiwang_ep1 下同名图片。
-- 下一步建议把图片分镜资产纳入复核页管理：预览、替换、重新生成、精选排序。
+- 下一步建议增加图片分镜的单张替换/重新生成按钮，把素材路径覆盖动作从脚本进一步变成复核页操作。
+- 后续再把体验配置拆成更细的二级筛选：播放器主题、同看竞猜、贴图时间窗、弹幕模式。
 
 ## 安全提醒
 

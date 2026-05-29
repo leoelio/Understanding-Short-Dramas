@@ -202,9 +202,9 @@
           <div class="section-head">
             <div>
               <h2>标注复核</h2>
-              <p>编辑高光点 JSON，保存后立即更新播放页和统计页。</p>
+              <p>先选择要复核的内容，再进入对应编辑区；底层 JSON 已隐藏，日常复核只使用表单和列表。</p>
             </div>
-            <button id="saveReview" class="primary-button" type="button">保存</button>
+            <button id="saveReview" class="primary-button" type="button">保存高光</button>
           </div>
           <div id="reviewSummaryCards" class="summary-grid review-summary"></div>
           <div class="review-toolbar">
@@ -215,36 +215,51 @@
             </select>
             <select id="reviewEpisodeSelect" class="episode-select" aria-label="选择复核剧集"></select>
             <button id="reloadReview" class="ghost-button" type="button">重新加载</button>
-            <button id="formatReview" class="ghost-button" type="button">格式化</button>
+            <button id="formatReview" class="ghost-button" type="button" hidden>格式化高光数据</button>
           </div>
-          <div class="review-layout">
-            <textarea id="reviewJson" spellcheck="false" aria-label="高光点 JSON"></textarea>
+          <div id="reviewWorkbenchTabs" class="review-workbench-tabs" aria-label="选择复核内容">
+            <button class="active" type="button" data-review-section="highlights">
+              高光点 <span id="reviewHighlightCount">0</span>
+            </button>
+            <button type="button" data-review-section="experience">
+              体验配置 <span id="reviewExperienceCount">0</span>
+            </button>
+            <button type="button" data-review-section="remix">
+              片尾二创 <span id="reviewRemixCount">0</span>
+            </button>
+          </div>
+          <section class="review-section active" data-review-section-panel="highlights">
+            <textarea id="reviewJson" class="review-raw-json" spellcheck="false" aria-label="高光点 JSON" hidden></textarea>
             <div>
               <div id="reviewStatus" class="review-status">请选择剧集</div>
               <div id="reviewPreview" class="review-preview"></div>
             </div>
-          </div>
-          <div class="experience-head">
+          </section>
+          <section class="review-section" data-review-section-panel="experience" hidden>
+            <div class="experience-head">
             <div>
               <h3>体验配置</h3>
               <p>管理播放器主题、贴图时间轴、弹幕模式、来源和版本。</p>
             </div>
             <div>
-              <button id="formatExperience" class="ghost-button" type="button">格式化配置</button>
+              <button id="formatExperience" class="ghost-button" type="button" hidden>格式化配置</button>
               <button id="saveExperience" class="primary-button" type="button">保存体验配置</button>
             </div>
-          </div>
-          <div class="experience-layout">
-            <textarea id="experienceJson" spellcheck="false" aria-label="体验配置 JSON"></textarea>
+            </div>
+            <div class="experience-layout interactive-review-layout">
+            <textarea id="experienceJson" class="review-raw-json" spellcheck="false" aria-label="体验配置 JSON" hidden></textarea>
             <div id="experiencePreview" class="experience-preview"></div>
-          </div>
-          <div class="experience-head">
+            </div>
+          </section>
+          <section class="review-section" data-review-section-panel="remix" hidden>
+            <div class="experience-head">
             <div>
               <h3>片尾 AI 二创记录</h3>
-              <p>查看用户生成的剧情预测卡，并人工设为精选或隐藏。</p>
+              <p>查看用户生成的剧情预测卡和图片分镜素材，并人工设为精选、隐藏或调整文案。</p>
             </div>
-          </div>
-          <div id="remixReviewPanel" class="remix-review-panel"></div>
+            </div>
+            <div id="remixReviewPanel" class="remix-review-panel"></div>
+          </section>
         </section>
       </main>
     </div>
