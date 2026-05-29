@@ -1953,14 +1953,115 @@ function badgeMark(title = "") {
   return (chars.slice(0, 2).join("") || "剧").slice(0, 2);
 }
 
+function badgeTheme(title = "") {
+  const text = String(title || "");
+  if (/摇滚|返乡|北往|摩托/.test(text)) {
+    return { key: "road", mark: "返乡", a: "#ff9852", b: "#28d4c8", c: "#43224c" };
+  }
+  if (/冬至|心|爱|甜|预言/.test(text)) {
+    return { key: "winter", mark: "冬至", a: "#9fd8ff", b: "#ff8ebb", c: "#3c2c76" };
+  }
+  if (/北派|宝|护|寻/.test(text)) {
+    return { key: "treasure", mark: "护宝", a: "#f2bf63", b: "#4ed18c", c: "#24375e" };
+  }
+  if (/灵雨|云渺|识局|身份/.test(text)) {
+    return { key: "xianxia", mark: "灵雨", a: "#8bd3ff", b: "#b990ff", c: "#20356f" };
+  }
+  if (/读心|高光|收藏/.test(text)) {
+    return { key: "growth", mark: "高光", a: "#ffd66e", b: "#ff6d8f", c: "#2d335e" };
+  }
+  return { key: "default", mark: badgeMark(title), a: "#ffd66e", b: "#66e4c1", c: "#27324f" };
+}
+
+function badgeIconSVG(key) {
+  if (key === "road") {
+    return `
+      <g class="badge-icon road">
+        <circle cx="48" cy="72" r="9"></circle><circle cx="74" cy="72" r="9"></circle>
+        <path d="M46 69 L58 54 L75 58 L83 67"></path>
+        <path d="M61 54 L68 45 L79 48"></path>
+        <path d="M36 49 C47 42 58 40 70 44"></path>
+        <path d="M35 61 H22 M31 70 H17"></path>
+        <text x="57" y="39">家</text>
+      </g>
+    `;
+  }
+  if (key === "winter") {
+    return `
+      <g class="badge-icon winter">
+        <path d="M60 76 C38 60 45 42 58 46 C64 37 82 43 78 59 C76 68 66 73 60 76Z"></path>
+        <path d="M31 42 L39 42 M35 38 L35 46 M32 39 L38 45 M38 39 L32 45"></path>
+        <path d="M82 36 L92 36 M87 31 L87 41 M83 32 L91 40 M91 32 L83 40"></path>
+        <circle cx="42" cy="73" r="4"></circle><circle cx="82" cy="76" r="3"></circle>
+      </g>
+    `;
+  }
+  if (key === "treasure") {
+    return `
+      <g class="badge-icon treasure">
+        <path d="M35 58 H83 V79 H35Z"></path>
+        <path d="M39 58 C42 42 77 42 80 58"></path>
+        <path d="M58 58 V79 M33 67 H85"></path>
+        <rect x="54" y="62" width="8" height="8" rx="2"></rect>
+        <path d="M82 42 L91 34 L96 45 L87 53Z"></path>
+        <path d="M24 47 L29 37 L35 48"></path>
+      </g>
+    `;
+  }
+  if (key === "xianxia") {
+    return `
+      <g class="badge-icon xianxia">
+        <path d="M35 50 C39 39 54 41 57 50 C65 40 80 47 80 59 C80 69 66 72 55 68 C45 73 32 67 32 58 C32 54 33 52 35 50Z"></path>
+        <path d="M45 76 L42 88 M57 77 L55 91 M69 76 L66 88"></path>
+        <path d="M58 40 L66 54 L58 66 L50 54Z"></path>
+        <circle cx="58" cy="54" r="4"></circle>
+      </g>
+    `;
+  }
+  if (key === "growth") {
+    return `
+      <g class="badge-icon growth">
+        <path d="M60 35 L67 53 L86 54 L71 66 L76 84 L60 74 L44 84 L49 66 L34 54 L53 53Z"></path>
+        <path d="M34 76 C46 88 72 90 88 75"></path>
+        <circle cx="35" cy="42" r="4"></circle><circle cx="88" cy="43" r="4"></circle>
+      </g>
+    `;
+  }
+  return `
+    <g class="badge-icon default">
+      <path d="M60 37 L69 55 L89 58 L74 72 L78 92 L60 82 L42 92 L46 72 L31 58 L51 55Z"></path>
+      <rect x="38" y="48" width="44" height="33" rx="10"></rect>
+      <circle cx="53" cy="64" r="3"></circle><circle cx="67" cy="64" r="3"></circle>
+    </g>
+  `;
+}
+
 function badgeArtHTML(title = "", locked = false, size = "normal") {
   const seed = badgeSeed(title);
-  const tone = seed % 5;
-  const shape = seed % 3;
+  const theme = badgeTheme(title);
+  const gradientId = `badgeGradient${seed}${theme.key}${locked ? "Locked" : ""}`;
+  const mark = locked ? "待解锁" : theme.mark || badgeMark(title);
   return `
-    <div class="badge-art tone-${tone} shape-${shape} ${locked ? "locked" : ""} size-${size}" title="${escapeHTML(title)}">
-      <span>${escapeHTML(locked ? "待" : badgeMark(title))}</span>
-      <i></i>
+    <div class="badge-art q-badge kind-${theme.key} ${locked ? "locked" : ""} size-${size}" title="${escapeHTML(title)}">
+      <svg viewBox="0 0 120 140" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="${gradientId}" x1="20" y1="14" x2="100" y2="118" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="${theme.a}" />
+            <stop offset="1" stop-color="${theme.b}" />
+          </linearGradient>
+        </defs>
+        <path class="badge-shadow" d="M27 112 C42 124 79 124 95 111 L82 86 H40Z"></path>
+        <path class="badge-ribbon left" d="M46 88 L35 130 L58 116 L67 134 L72 91Z"></path>
+        <path class="badge-ribbon right" d="M74 88 L86 130 L63 116 L54 134 L48 91Z"></path>
+        <path class="badge-shell" fill="url(#${gradientId})" d="M60 8 C69 16 80 12 88 21 C96 30 91 41 101 50 C111 59 104 71 109 82 C99 88 103 102 91 108 C80 114 71 108 60 117 C49 108 40 114 29 108 C17 102 21 88 11 82 C16 71 9 59 19 50 C29 41 24 30 32 21 C40 12 51 16 60 8Z"></path>
+        <circle class="badge-inner" cx="60" cy="63" r="42"></circle>
+        <circle class="badge-highlight" cx="43" cy="41" r="9"></circle>
+        <circle class="badge-dot dot-a" cx="27" cy="57" r="4"></circle>
+        <circle class="badge-dot dot-b" cx="91" cy="39" r="4"></circle>
+        <circle class="badge-dot dot-c" cx="96" cy="78" r="3"></circle>
+        ${locked ? `<g class="badge-icon locked-icon"><rect x="43" y="56" width="34" height="28" rx="8"></rect><path d="M50 56 V48 C50 37 70 37 70 48 V56"></path></g>` : badgeIconSVG(theme.key)}
+        <text class="badge-label" x="60" y="105">${escapeHTML(mark)}</text>
+      </svg>
     </div>
   `;
 }

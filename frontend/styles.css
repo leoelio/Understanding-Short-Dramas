@@ -1981,7 +1981,7 @@ main {
 
 .room-member-card {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
   width: 100%;
@@ -2051,7 +2051,7 @@ main {
 
 .public-profile-hero {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 76px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   border: 1px solid var(--line);
@@ -2114,7 +2114,7 @@ main {
 
 .public-badge-row {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: 52px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   padding: 10px;
@@ -2277,7 +2277,7 @@ main {
 
 .collection-badge {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 12px;
@@ -2288,113 +2288,137 @@ main {
 }
 
 .badge-art {
-  --badge-a: #ffe2a0;
-  --badge-b: #f6bc4f;
-  --badge-c: rgba(255, 255, 255, 0.48);
-  position: relative;
-  display: grid;
-  width: 52px;
-  height: 52px;
-  place-items: center;
-  border: 1px solid rgba(246, 188, 79, 0.42);
-  border-radius: 50%;
-  color: #16100a;
-  background:
-    radial-gradient(circle at 32% 28%, var(--badge-c), transparent 18%),
-    linear-gradient(145deg, var(--badge-a), var(--badge-b));
-  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.18), 0 10px 24px rgba(0, 0, 0, 0.28);
+  --ink: #2b2442;
+  --ribbon-a: #f06045;
+  --ribbon-b: #2ec4b6;
+  display: block;
+  width: 68px;
+  height: 78px;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.28));
+}
+
+.badge-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.badge-shadow {
+  fill: rgba(0, 0, 0, 0.2);
+}
+
+.badge-shell {
+  stroke: rgba(255, 255, 255, 0.72);
+  stroke-width: 3;
+}
+
+.badge-inner {
+  fill: rgba(255, 255, 255, 0.34);
+  stroke: rgba(43, 36, 66, 0.42);
+  stroke-width: 3;
+}
+
+.badge-highlight,
+.badge-dot {
+  fill: rgba(255, 255, 255, 0.44);
+}
+
+.badge-ribbon.left {
+  fill: var(--ribbon-a);
+  stroke: rgba(43, 36, 66, 0.4);
+  stroke-width: 2;
+}
+
+.badge-ribbon.right {
+  fill: var(--ribbon-b);
+  stroke: rgba(43, 36, 66, 0.4);
+  stroke-width: 2;
+}
+
+.badge-icon {
+  fill: rgba(255, 244, 215, 0.96);
+  stroke: var(--ink);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.badge-icon text,
+.badge-label {
+  fill: var(--ink);
+  stroke: rgba(255, 255, 255, 0.52);
+  stroke-width: 2;
+  paint-order: stroke;
+  text-anchor: middle;
   font-weight: 900;
-  isolation: isolate;
-  overflow: hidden;
 }
 
-.badge-art::before,
-.badge-art::after,
-.badge-art i {
-  position: absolute;
-  content: "";
-  inset: 9px;
-  border: 1px solid rgba(22, 16, 10, 0.18);
-  border-radius: inherit;
-  z-index: -1;
+.badge-icon text {
+  font-size: 16px;
 }
 
-.badge-art::after {
-  inset: auto 9px 6px;
-  height: 10px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(22, 16, 10, 0.16);
-}
-
-.badge-art i {
-  inset: 15px;
-  border-style: dashed;
-  opacity: 0.58;
-}
-
-.badge-art span {
-  color: #16100a;
+.badge-label {
   font-size: 15px;
-  font-weight: 900;
 }
 
-.badge-art.tone-1 {
-  --badge-a: #b5f0ff;
-  --badge-b: #51a7ff;
+.badge-art.kind-winter {
+  --ink: #322a70;
+  --ribbon-a: #ff7da8;
+  --ribbon-b: #7bcfff;
 }
 
-.badge-art.tone-2 {
-  --badge-a: #ffc2dc;
-  --badge-b: #ff6b9b;
+.badge-art.kind-treasure {
+  --ink: #24375e;
+  --ribbon-a: #d79b3c;
+  --ribbon-b: #43bf77;
 }
 
-.badge-art.tone-3 {
-  --badge-a: #bfffd8;
-  --badge-b: #33c679;
+.badge-art.kind-xianxia {
+  --ink: #20356f;
+  --ribbon-a: #76cfff;
+  --ribbon-b: #a784ff;
 }
 
-.badge-art.tone-4 {
-  --badge-a: #d9c2ff;
-  --badge-b: #8b6cff;
-}
-
-.badge-art.shape-1 {
-  border-radius: 16px;
-}
-
-.badge-art.shape-2 {
-  clip-path: polygon(50% 0, 61% 18%, 82% 12%, 88% 35%, 100% 50%, 88% 65%, 82% 88%, 61% 82%, 50% 100%, 39% 82%, 18% 88%, 12% 65%, 0 50%, 12% 35%, 18% 12%, 39% 18%);
+.badge-art.kind-growth,
+.badge-art.kind-default {
+  --ink: #2d335e;
+  --ribbon-a: #ff6d8f;
+  --ribbon-b: #66e4c1;
 }
 
 .badge-art.locked {
-  border-color: var(--line);
-  color: var(--muted);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: none;
+  filter: grayscale(0.55) opacity(0.72);
 }
 
-.badge-art.locked span {
-  color: var(--muted);
+.badge-art.locked .badge-shell {
+  fill: rgba(255, 255, 255, 0.08);
+  stroke: rgba(255, 255, 255, 0.16);
+}
+
+.badge-art.locked .badge-inner {
+  fill: rgba(255, 255, 255, 0.08);
 }
 
 .badge-art.size-mini {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 52px;
 }
 
-.badge-art.size-mini span {
-  font-size: 12px;
+.badge-art.size-mini .badge-label,
+.badge-art.size-mini .badge-icon text {
+  font-size: 16px;
 }
 
 .badge-art.size-tiny {
-  width: 28px;
-  height: 28px;
+  width: 31px;
+  height: 37px;
   flex: none;
 }
 
-.badge-art.size-tiny span {
-  font-size: 10px;
+.badge-art.size-tiny .badge-label,
+.badge-art.size-tiny .badge-icon text {
+  font-size: 17px;
 }
 
 .collection-badge h4 {
