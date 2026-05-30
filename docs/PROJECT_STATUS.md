@@ -1,18 +1,19 @@
 # Project Status
 
-更新时间：2026-05-31 07:50:02
+更新时间：2026-05-31 07:57:03
 
 ## 当前目标
 
-Voice asset service: user voice profile upload, CosyVoice mp3 generation, cache, and remix playback hooks
+Voice asset service now supports direct microphone recording on the profile page
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`8c4a6d5`
+- 最新提交：`8d114aa`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- 工作区干净
+- `M frontend/app.js`
+- `M frontend/styles.css`
 
 ## 数据状态
 
@@ -46,14 +47,13 @@ Voice asset service: user voice profile upload, CosyVoice mp3 generation, cache,
 
 ## 本次变更摘要
 
-- Added voice_profiles and voice_clip_cache backend models, upload endpoint, mp3 generation endpoint, cache lookup, and /media/voice-clips serving.
-- Added profile page voice asset card with consent text, voice sample upload, original/user voice mode toggle, preview generation, and cached audio list.
-- Connected ending remix image cards to optional user-voice playback so future AI remix and companion flows can reuse cached clips.
+- Added browser-side microphone recording controls to the profile voice asset card, with start/stop, local preview, clear, and upload recorded sample flow.
+- Kept file upload as a fallback and reused the existing voice profile upload endpoint, so recorded webm audio and uploaded files share the same backend path.
 
 ## 下一步建议
 
-- Decide which fixed texts should be pre-generated after voice upload for Beiwang episode 1 and the next reviewed episodes.
-- Move generated voice clip usage rules into experience config once the target scenes are confirmed.
+- On the next product pass, confirm whether voice upload should trigger batch pre-generation for fixed Beiwang EP1 remix lines.
+- For public mobile deployment, ensure the voice capture page runs under HTTPS because browser microphone permission requires a secure context.
 
 ## 安全提醒
 

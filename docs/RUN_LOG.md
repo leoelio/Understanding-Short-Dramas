@@ -706,3 +706,15 @@
 - 下一步：
   - Decide which fixed texts should be pre-generated after voice upload for Beiwang episode 1 and the next reviewed episodes.
   - Move generated voice clip usage rules into experience config once the target scenes are confirmed.
+
+## 2026-05-31 07:57:03
+
+- 目标：Voice asset service now supports direct microphone recording on the profile page
+- Git：`8d114aa` / `main`
+- 数据：10 部短剧，20 集，65 个高光，4 集已复核，220 条弹幕，4 条体验配置，29 条片尾 AI 二创。
+- 变更：
+  - Added browser-side microphone recording controls to the profile voice asset card, with start/stop, local preview, clear, and upload recorded sample flow.
+  - Kept file upload as a fallback and reused the existing voice profile upload endpoint, so recorded webm audio and uploaded files share the same backend path.
+- 下一步：
+  - On the next product pass, confirm whether voice upload should trigger batch pre-generation for fixed Beiwang EP1 remix lines.
+  - For public mobile deployment, ensure the voice capture page runs under HTTPS because browser microphone permission requires a secure context.

@@ -220,6 +220,12 @@ const state = {
   voiceStatusError: false,
   voiceUsageMode: localStorage.getItem("voice_usage_mode") || "original",
   voiceClipLoading: false,
+  voiceRecording: false,
+  voiceRecorder: null,
+  voiceRecordChunks: [],
+  voiceRecordedBlob: null,
+  voiceRecordedUrl: "",
+  voiceRecordStream: null,
   danmakuFeedbackTimer: null,
   interactionMode: "choice",
   tapHideDelayMs: 2200,
@@ -379,6 +385,8 @@ function clearAuth() {
   state.voiceProfile = null;
   state.voiceStatus = "";
   state.voiceStatusError = false;
+  stopVoiceRecording();
+  clearRecordedVoice();
   leaveWatchRoom();
   localStorage.removeItem("auth_token");
   updateAuthUI();
@@ -2219,9 +2227,26 @@ function renderVoiceProfileSection() {
         <span>固定授权文本</span>
         <strong>${VOICE_CONSENT_TEXT}</strong>
       </div>
+      <div class="voice-record-row">
+        <div>
+          <strong>${state.voiceRecording ? "正在录音..." : state.voiceRecordedBlob ? "已录入一段麦克风声音" : "麦克风直接录入"}</strong>
+          <span>${state.voiceRecordedBlob ? "可先试听，确认后上传为新的声音样本。" : "请朗读固定授权文本，建议 3-8 秒。"}</span>
+        </div>
+        <button class="ghost-button voice-record-button" type="button" data-voice-record-action="${state.voiceRecording ? "stop" : "start"}">
+          ${state.voiceRecording ? "停止录音" : "开始录音"}
+        </button>
+      </div>
+      ${
+        state.voiceRecordedUrl
+          ? `<div class="voice-record-preview">
+              <audio controls preload="metadata" src="${escapeHTML(state.voiceRecordedUrl)}"></audio>
+              <button class="ghost-button voice-clear-record-button" type="button">重新录</button>
+            </div>`
+          : ""
+      }
       <div class="voice-upload-row">
         <input id="voiceSampleInput" type="file" accept="audio/*" />
-        <button class="primary-button voice-upload-button" type="button">上传声音样本</button>
+        <button class="primary-button voice-upload-button" type="button">${state.voiceRecordedBlob ? "上传录音样本" : "上传声音样本"}</button>
       </div>
       <div class="voice-preview-row">
         <input class="voice-preview-input" maxlength="180" value="片尾拓展已开启，我会用你的声音陪你猜下一段剧情。" />
@@ -2432,6 +2457,59 @@ function setVoiceStatus(message, isError = false) {
   renderProfileGallery();
 }
 
+function clearRecordedVoice() {
+  if (state.voiceRecordedUrl) URL.revokeObjectURL(state.voiceRecordedUrl);
+  state.voiceRecordedBlob = null;
+  state.voiceRecordedUrl = "";
+  state.voiceRecordChunks = [];
+}
+
+async function startVoiceRecording() {
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    setVoiceStatus("当前浏览器不支持直接录音，请使用文件上传。", true);
+    return;
+  }
+  if (state.voiceRecording) return;
+  clearRecordedVoice();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? "audio/webm;codecs=opus"
+      : "audio/webm";
+    const recorder = new MediaRecorder(stream, { mimeType });
+    state.voiceRecordStream = stream;
+    state.voiceRecorder = recorder;
+    state.voiceRecordChunks = [];
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data?.size) state.voiceRecordChunks.push(event.data);
+    });
+    recorder.addEventListener("stop", () => {
+      state.voiceRecordStream?.getTracks().forEach((track) => track.stop());
+      state.voiceRecordStream = null;
+      state.voiceRecording = false;
+      state.voiceRecorder = null;
+      state.voiceRecordedBlob = new Blob(state.voiceRecordChunks, { type: mimeType });
+      state.voiceRecordedUrl = URL.createObjectURL(state.voiceRecordedBlob);
+      setVoiceStatus("录音已完成。请先试听，确认后上传为声音样本。");
+    });
+    recorder.start();
+    state.voiceRecording = true;
+    setVoiceStatus("正在录音，请朗读固定授权文本。");
+  } catch {
+    state.voiceRecording = false;
+    state.voiceRecorder = null;
+    state.voiceRecordStream?.getTracks().forEach((track) => track.stop());
+    state.voiceRecordStream = null;
+    setVoiceStatus("无法开启麦克风，请检查浏览器权限，或改用文件上传。", true);
+  }
+}
+
+function stopVoiceRecording() {
+  if (state.voiceRecorder && state.voiceRecording) {
+    state.voiceRecorder.stop();
+  }
+}
+
 async function loadRewardProfile() {
   if (!state.currentUser) return;
   try {
@@ -2456,18 +2534,24 @@ async function loadVoiceProfile() {
 async function uploadVoiceProfile() {
   const input = $("#voiceSampleInput");
   const file = input?.files?.[0];
-  if (!file) {
-    setVoiceStatus("请先选择一段你本人授权的声音样本。", true);
+  const voiceSample = file || state.voiceRecordedBlob;
+  if (state.voiceRecording) {
+    setVoiceStatus("请先停止录音，再上传声音样本。", true);
+    return;
+  }
+  if (!voiceSample) {
+    setVoiceStatus("请先选择文件，或用麦克风录入一段你本人授权的声音样本。", true);
     return;
   }
   const form = new FormData();
   form.append("consent_text", VOICE_CONSENT_TEXT);
-  form.append("voice_sample", file);
+  form.append("voice_sample", voiceSample, file?.name || `voice_record_${Date.now()}.webm`);
   setVoiceStatus("正在上传声音样本...");
   try {
     state.voiceProfile = await fetchJSON("/api/users/me/voice-profile", { method: "POST", body: form });
     state.voiceUsageMode = "user";
     localStorage.setItem("voice_usage_mode", state.voiceUsageMode);
+    clearRecordedVoice();
     setVoiceStatus("声音样本已保存，后续可生成用户声音带入版音频。");
   } catch (error) {
     setVoiceStatus(errorMessage(error), true);
@@ -5256,6 +5340,21 @@ $("#profileGallery").addEventListener("click", (event) => {
     state.voiceUsageMode = modeButton.dataset.voiceMode;
     localStorage.setItem("voice_usage_mode", state.voiceUsageMode);
     setVoiceStatus(state.voiceUsageMode === "user" ? "已切换为用户声音带入版。" : "已切换为原版音频。");
+    return;
+  }
+  const recordButton = event.target.closest("[data-voice-record-action]");
+  if (recordButton) {
+    if (recordButton.dataset.voiceRecordAction === "stop") {
+      stopVoiceRecording();
+    } else {
+      startVoiceRecording();
+    }
+    return;
+  }
+  if (event.target.closest(".voice-clear-record-button")) {
+    stopVoiceRecording();
+    clearRecordedVoice();
+    setVoiceStatus("已清除本次录音，可以重新录入。");
     return;
   }
   if (event.target.closest(".voice-upload-button")) {

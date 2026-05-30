@@ -6297,6 +6297,8 @@ body[data-view="profile"] .topbar {
 }
 
 .voice-profile-head,
+.voice-record-row,
+.voice-record-preview,
 .voice-upload-row,
 .voice-preview-row,
 .voice-consent-line,
@@ -6360,6 +6362,35 @@ body[data-view="profile"] .topbar {
 .voice-consent-line strong {
   color: #1d1d1f;
   font-size: 14px;
+}
+
+.voice-record-row,
+.voice-record-preview {
+  border-radius: 16px;
+  padding: 12px 14px;
+  background:
+    linear-gradient(135deg, rgba(0, 113, 227, 0.1), rgba(255, 255, 255, 0.72)),
+    rgba(255, 255, 255, 0.76);
+}
+
+.voice-record-row div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.voice-record-row strong {
+  color: #1d1d1f;
+  font-size: 15px;
+}
+
+.voice-record-row span {
+  color: #6e6e73;
+  font-size: 13px;
+}
+
+.voice-record-preview audio {
+  width: min(100%, 360px);
 }
 
 .voice-upload-row input,
@@ -6784,6 +6815,8 @@ body[data-view="profile"] .topbar {
   .reward-panel,
   .profile-hero,
   .voice-profile-head,
+  .voice-record-row,
+  .voice-record-preview,
   .voice-upload-row,
   .voice-preview-row,
   .voice-consent-line,
@@ -6805,8 +6838,11 @@ body[data-view="profile"] .topbar {
     justify-content: flex-start;
   }
 
+  .voice-record-row,
+  .voice-record-preview,
   .voice-cache-list article {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .voice-cache-list audio {
