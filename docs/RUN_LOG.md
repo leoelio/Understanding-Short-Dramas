@@ -680,3 +680,29 @@
 - 下一步：
   - 继续针对不同剧集调整首页海报关键词和播放器主题细节，让每部剧入口与播放页主题更强关联。
   - 继续打磨片尾 AI 图片二创资产和复核页配置能力。
+
+## 2026-05-31 07:48:20
+
+- 目标：Voice asset service: user voice profile upload, CosyVoice mp3 generation, cache, and remix playback hooks
+- Git：`603cf10` / `main`
+- 数据：10 部短剧，20 集，65 个高光，4 集已复核，220 条弹幕，4 条体验配置，29 条片尾 AI 二创。
+- 变更：
+  - Added voice_profiles and voice_clip_cache backend models, upload endpoint, mp3 generation endpoint, cache lookup, and /media/voice-clips serving.
+  - Added profile page voice asset card with consent text, voice sample upload, original/user voice mode toggle, preview generation, and cached audio list.
+  - Connected ending remix image cards to optional user-voice playback so future AI remix and companion flows can reuse cached clips.
+- 下一步：
+  - Decide which fixed texts should be pre-generated after voice upload for Beiwang episode 1 and the next reviewed episodes.
+  - Move generated voice clip usage rules into experience config once the target scenes are confirmed.
+
+## 2026-05-31 07:50:02
+
+- 目标：Voice asset service: user voice profile upload, CosyVoice mp3 generation, cache, and remix playback hooks
+- Git：`8c4a6d5` / `main`
+- 数据：10 部短剧，20 集，65 个高光，4 集已复核，220 条弹幕，4 条体验配置，29 条片尾 AI 二创。
+- 变更：
+  - Added voice_profiles and voice_clip_cache backend models, upload endpoint, mp3 generation endpoint, cache lookup, and /media/voice-clips serving.
+  - Added profile page voice asset card with consent text, voice sample upload, original/user voice mode toggle, preview generation, and cached audio list.
+  - Connected ending remix image cards to optional user-voice playback so future AI remix and companion flows can reuse cached clips.
+- 下一步：
+  - Decide which fixed texts should be pre-generated after voice upload for Beiwang episode 1 and the next reviewed episodes.
+  - Move generated voice clip usage rules into experience config once the target scenes are confirmed.

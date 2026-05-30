@@ -1,20 +1,18 @@
 # Project Status
 
-更新时间：2026-05-30 22:32:32
+更新时间：2026-05-31 07:50:02
 
 ## 当前目标
 
-继续统一客户端视觉与播放行为：播放页外层改为同套玻璃产品语言，保留各剧主题 UI；白色内容区增强高级色彩层次；离开播放页自动停止视频。
+Voice asset service: user voice profile upload, CosyVoice mp3 generation, cache, and remix playback hooks
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`47cd141`
+- 最新提交：`8c4a6d5`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M frontend/app.js`
-- `M frontend/index.html`
-- `M frontend/styles.css`
+- 工作区干净
 
 ## 数据状态
 
@@ -48,15 +46,14 @@
 
 ## 本次变更摘要
 
-- 播放页新增主题色驱动的外层背景、顶部观看条、播放器外框和功能卡片质感，仍保留 theme-road/theme-winter 等剧集主题控件和装饰。
-- 首页和我的页白色内容区增加低饱和蓝、青、暖色背景层、玻璃分区标题和更有层次的内容卡片。
-- 新增离开播放页暂停逻辑：切换到短剧/我的/后台/复核/登录、浏览器隐藏或 pagehide 时自动 pause 并保存进度。
-- 浏览器验证：北往第一集播放页保留 theme-road，返回短剧页后 paused=true，首页/我的背景层次生效。
+- Added voice_profiles and voice_clip_cache backend models, upload endpoint, mp3 generation endpoint, cache lookup, and /media/voice-clips serving.
+- Added profile page voice asset card with consent text, voice sample upload, original/user voice mode toggle, preview generation, and cached audio list.
+- Connected ending remix image cards to optional user-voice playback so future AI remix and companion flows can reuse cached clips.
 
 ## 下一步建议
 
-- 继续针对不同剧集调整首页海报关键词和播放器主题细节，让每部剧入口与播放页主题更强关联。
-- 继续打磨片尾 AI 图片二创资产和复核页配置能力。
+- Decide which fixed texts should be pre-generated after voice upload for Beiwang episode 1 and the next reviewed episodes.
+- Move generated voice clip usage rules into experience config once the target scenes are confirmed.
 
 ## 安全提醒
 

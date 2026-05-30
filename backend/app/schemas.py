@@ -84,3 +84,8 @@ class UserAdminUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=64)
     role: str | None = Field(default=None, max_length=32)
     is_active: bool | None = None
+
+
+class VoiceClipCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=180)
+    scene_key: str = Field(default="manual_preview", min_length=1, max_length=96)

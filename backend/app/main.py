@@ -8,13 +8,13 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from .config import APP_NAME, FRONTEND_DIR
+from .config import APP_NAME, COSYVOICE_BASE_URL, COSYVOICE_TIMEOUT_SECONDS, FRONTEND_DIR, VOICE_ASSET_DIR
 from .database import SessionLocal, get_db
 from .danmaku_moderation import moderate_danmaku, moderation_rules_payload
 from .migrations import ensure_database_schema
@@ -29,6 +29,8 @@ from .models import (
     Interaction,
     User,
     UserReward,
+    VoiceClipCache,
+    VoiceProfile,
     WatchHistory,
     WatchRoom,
     WatchRoomEvent,
@@ -42,6 +44,7 @@ from .schemas import (
     LoginRequest,
     RegisterRequest,
     UserAdminUpdate,
+    VoiceClipCreate,
     WatchHistoryUpdate,
     WatchRoomCreate,
     WatchRoomEventCreate,
@@ -73,6 +76,203 @@ def on_startup() -> None:
     with SessionLocal() as db:
         seed_from_video_library(db)
         ensure_default_users(db)
+
+
+VOICE_CONSENT_TEXT = "同意利用录入声音生成音频"
+VOICE_ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".aac", ".ogg", ".webm"}
+VOICE_MAX_BYTES = 12 * 1024 * 1024
+VOICE_PROMPT_DIR = VOICE_ASSET_DIR / "prompts"
+VOICE_CLIP_DIR = VOICE_ASSET_DIR / "clips"
+
+
+def ensure_voice_dirs() -> None:
+    VOICE_PROMPT_DIR.mkdir(parents=True, exist_ok=True)
+    VOICE_CLIP_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def voice_clip_payload(clip: VoiceClipCache, cached: bool = True) -> dict:
+    return {
+        "id": clip.id,
+        "scene_key": clip.scene_key,
+        "text": clip.text,
+        "status": clip.status,
+        "source": clip.source,
+        "model_version": clip.model_version,
+        "audio_url": clip.audio_url,
+        "duration_sec": clip.duration_sec,
+        "cached": cached,
+        "created_at": clip.created_at.isoformat() if clip.created_at else None,
+        "updated_at": clip.updated_at.isoformat() if clip.updated_at else None,
+    }
+
+
+def voice_profile_payload(profile: VoiceProfile | None, db: Session) -> dict:
+    if not profile:
+        return {
+            "profile": None,
+            "consent_text": VOICE_CONSENT_TEXT,
+            "clips": [],
+            "generation_ready": bool(COSYVOICE_BASE_URL),
+        }
+    clips = (
+        db.query(VoiceClipCache)
+        .filter(VoiceClipCache.voice_profile_id == profile.id)
+        .order_by(VoiceClipCache.updated_at.desc(), VoiceClipCache.id.desc())
+        .limit(8)
+        .all()
+    )
+    return {
+        "profile": {
+            "id": profile.id,
+            "status": profile.status,
+            "source": profile.source,
+            "prompt_text": profile.prompt_text,
+            "prompt_audio_filename": profile.prompt_audio_filename,
+            "created_at": profile.created_at.isoformat() if profile.created_at else None,
+            "updated_at": profile.updated_at.isoformat() if profile.updated_at else None,
+        },
+        "consent_text": VOICE_CONSENT_TEXT,
+        "clips": [voice_clip_payload(clip) for clip in clips],
+        "generation_ready": bool(COSYVOICE_BASE_URL),
+    }
+
+
+def active_voice_profile(db: Session, user: User) -> VoiceProfile | None:
+    return (
+        db.query(VoiceProfile)
+        .filter(VoiceProfile.user_id == user.id, VoiceProfile.status == "active")
+        .order_by(VoiceProfile.updated_at.desc(), VoiceProfile.id.desc())
+        .first()
+    )
+
+
+def post_multipart_json(
+    url: str,
+    fields: dict[str, str],
+    file_field: str,
+    file_path: Path,
+    filename: str,
+    content_type: str,
+) -> dict:
+    boundary = f"----short-drama-voice-{uuid4().hex}"
+    chunks: list[bytes] = []
+    for key, value in fields.items():
+        chunks.extend(
+            [
+                f"--{boundary}".encode("utf-8"),
+                f'Content-Disposition: form-data; name="{key}"'.encode("utf-8"),
+                b"",
+                str(value).encode("utf-8"),
+            ]
+        )
+    chunks.extend(
+        [
+            f"--{boundary}".encode("utf-8"),
+            (
+                f'Content-Disposition: form-data; name="{file_field}"; filename="{filename}"'
+            ).encode("utf-8"),
+            f"Content-Type: {content_type}".encode("utf-8"),
+            b"",
+            file_path.read_bytes(),
+            f"--{boundary}--".encode("utf-8"),
+            b"",
+        ]
+    )
+    body = b"\r\n".join(chunks)
+    request = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=COSYVOICE_TIMEOUT_SECONDS) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def download_voice_audio(provider_payload: dict, target_path: Path) -> None:
+    provider_url = str(provider_payload.get("url") or "").strip()
+    provider_path = Path(str(provider_payload.get("path") or ""))
+    if provider_url:
+        with urllib.request.urlopen(provider_url, timeout=COSYVOICE_TIMEOUT_SECONDS) as response:
+            target_path.write_bytes(response.read())
+        return
+    if provider_path.exists():
+        target_path.write_bytes(provider_path.read_bytes())
+        return
+    raise RuntimeError("CosyVoice did not return an audio file")
+
+
+def generate_voice_clip_file(profile: VoiceProfile, text: str, output_path: Path) -> dict:
+    ensure_voice_dirs()
+    payload = post_multipart_json(
+        f"{COSYVOICE_BASE_URL}/api/tts/zero_shot",
+        {
+            "tts_text": text,
+            "prompt_text": profile.prompt_text,
+            "seed": "0",
+            "speed": "1.0",
+            "format": "mp3",
+        },
+        "prompt_wav",
+        Path(profile.prompt_audio_path),
+        profile.prompt_audio_filename or "voice_prompt.wav",
+        "audio/wav",
+    )
+    download_voice_audio(payload, output_path)
+    return payload
+
+
+def ensure_voice_clip(db: Session, user: User, profile: VoiceProfile, payload: VoiceClipCreate) -> dict:
+    text = payload.text.strip()
+    scene_key = payload.scene_key.strip()
+    text_hash = sha256_text(text)
+    cache_key = sha256_text(f"cosyvoice-local-v1:{profile.id}:{scene_key}:{text_hash}")
+    existing = db.query(VoiceClipCache).filter(VoiceClipCache.cache_key == cache_key).first()
+    if existing and existing.status == "ready" and existing.audio_path and Path(existing.audio_path).exists():
+        return voice_clip_payload(existing, cached=True)
+
+    ensure_voice_dirs()
+    clip = existing or VoiceClipCache(
+        user_id=user.id,
+        voice_profile_id=profile.id,
+        cache_key=cache_key,
+        scene_key=scene_key,
+        text=text,
+        text_hash=text_hash,
+    )
+    clip.status = "generating"
+    clip.error_message = ""
+    clip.updated_at = datetime.utcnow()
+    if not existing:
+        db.add(clip)
+    db.commit()
+    db.refresh(clip)
+
+    filename = f"{uuid4().hex}.mp3"
+    output_path = VOICE_CLIP_DIR / filename
+    try:
+        provider_payload = generate_voice_clip_file(profile, text, output_path)
+        clip.status = "ready"
+        clip.audio_path = str(output_path)
+        clip.audio_url = f"/media/voice-clips/{filename}"
+        clip.provider_url = str(provider_payload.get("url") or "")
+        clip.duration_sec = float(provider_payload.get("duration_seconds") or 0)
+        clip.source = "cosyvoice_zero_shot"
+        clip.model_version = "cosyvoice-local-v1"
+        clip.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(clip)
+        return voice_clip_payload(clip, cached=False)
+    except Exception:
+        clip.status = "failed"
+        clip.error_message = "voice generation failed"
+        clip.updated_at = datetime.utcnow()
+        db.commit()
+        raise HTTPException(status_code=503, detail="语音生成服务暂时不可用，请确认本地 CosyVoice 服务已启动")
 
 
 def parse_options(highlight: Highlight) -> list[dict]:
@@ -1363,6 +1563,16 @@ def episode_media(episode_id: int, db: Session = Depends(get_db)) -> FileRespons
     return FileResponse(path, media_type="video/mp4", filename=path.name)
 
 
+@app.get("/media/voice-clips/{filename}")
+def voice_clip_media(filename: str) -> FileResponse:
+    if not re.fullmatch(r"[a-f0-9]{32}\.mp3", filename):
+        raise HTTPException(status_code=404, detail="语音文件不存在")
+    path = VOICE_CLIP_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="语音文件不存在")
+    return FileResponse(path, media_type="audio/mpeg", filename=filename)
+
+
 @app.post("/api/interactions")
 def create_interaction(
     payload: InteractionCreate,
@@ -1590,6 +1800,68 @@ def upsert_watch_history(
 @app.get("/api/users/me/rewards")
 def get_my_rewards(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
     return reward_profile(user, db)
+
+
+@app.get("/api/users/me/voice-profile")
+def get_my_voice_profile(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    return voice_profile_payload(active_voice_profile(db, user), db)
+
+
+@app.post("/api/users/me/voice-profile")
+async def upload_my_voice_profile(
+    consent_text: str = Form(...),
+    voice_sample: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if consent_text.strip() != VOICE_CONSENT_TEXT:
+        raise HTTPException(status_code=400, detail=f"请先朗读并确认固定授权文本：{VOICE_CONSENT_TEXT}")
+    original_name = voice_sample.filename or "voice_sample.wav"
+    suffix = Path(original_name).suffix.lower() or ".wav"
+    if suffix not in VOICE_ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="声音样本仅支持 wav、mp3、m4a、aac、ogg 或 webm")
+    data = await voice_sample.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="声音样本不能为空")
+    if len(data) > VOICE_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="声音样本不能超过 12MB")
+
+    ensure_voice_dirs()
+    user_dir = VOICE_PROMPT_DIR / f"user_{user.id}"
+    user_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", original_name)[-120:]
+    stored_name = f"{uuid4().hex}_{safe_name}"
+    stored_path = user_dir / stored_name
+    stored_path.write_bytes(data)
+
+    db.query(VoiceProfile).filter(VoiceProfile.user_id == user.id, VoiceProfile.status == "active").update(
+        {"status": "replaced", "updated_at": datetime.utcnow()}
+    )
+    profile = VoiceProfile(
+        user_id=user.id,
+        status="active",
+        source="user_upload",
+        consent_text=VOICE_CONSENT_TEXT,
+        prompt_text=VOICE_CONSENT_TEXT,
+        prompt_audio_path=str(stored_path),
+        prompt_audio_filename=original_name,
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return voice_profile_payload(profile, db)
+
+
+@app.post("/api/users/me/voice-clips")
+def create_my_voice_clip(
+    payload: VoiceClipCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    profile = active_voice_profile(db, user)
+    if not profile:
+        raise HTTPException(status_code=400, detail="请先在个人主页上传声音样本")
+    return ensure_voice_clip(db, user, profile, payload)
 
 
 @app.get("/api/users/{user_id}/growth")

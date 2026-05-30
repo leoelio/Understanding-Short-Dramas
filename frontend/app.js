@@ -9,6 +9,7 @@ const DEFAULT_DANMAKU_SETTINGS = {
 const MIN_INTERACTION_GAP_SEC = 18;
 const REVIEW_MIN_HIGHLIGHT_GAP_SEC = 20;
 const REVIEW_MAX_HIGHLIGHTS = 5;
+const VOICE_CONSENT_TEXT = "同意利用录入声音生成音频";
 
 const DANMAKU_MODES = {
   light: { label: "轻聊", enabled: true, density: 0.72, includeModes: ["light"] },
@@ -214,6 +215,11 @@ const state = {
   roomFeed: [],
   roomApplyingRemote: false,
   rewardProfile: null,
+  voiceProfile: null,
+  voiceStatus: "",
+  voiceStatusError: false,
+  voiceUsageMode: localStorage.getItem("voice_usage_mode") || "original",
+  voiceClipLoading: false,
   danmakuFeedbackTimer: null,
   interactionMode: "choice",
   tapHideDelayMs: 2200,
@@ -327,7 +333,8 @@ function saveDanmakuSettings() {
 }
 
 async function fetchJSON(url, options = {}) {
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const body = options.body;
+  const headers = body instanceof FormData ? { ...(options.headers || {}) } : { "Content-Type": "application/json", ...(options.headers || {}) };
   if (state.authToken) headers.Authorization = `Bearer ${state.authToken}`;
   const response = await fetch(url, {
     ...options,
@@ -369,6 +376,9 @@ function clearAuth() {
   state.currentUser = null;
   state.watchHistory = [];
   state.rewardProfile = null;
+  state.voiceProfile = null;
+  state.voiceStatus = "";
+  state.voiceStatusError = false;
   leaveWatchRoom();
   localStorage.removeItem("auth_token");
   updateAuthUI();
@@ -419,6 +429,7 @@ async function afterAuth(options = {}) {
   await loadDramas();
   await loadWatchHistory();
   await loadRewardProfile();
+  await loadVoiceProfile();
   if (options.forceHome) {
     syncHomeUrl();
     setView("home");
@@ -546,6 +557,7 @@ function setView(name) {
   }
   if (name === "profile") {
     loadRewardProfile();
+    loadVoiceProfile();
   }
   if (name === "review") {
     loadReviewEpisodes();
@@ -2182,6 +2194,63 @@ function badgeArtHTML(title = "", locked = false, size = "normal") {
   `;
 }
 
+function renderVoiceProfileSection() {
+  const payload = state.voiceProfile || {};
+  const profile = payload.profile || null;
+  const clips = payload.clips || [];
+  const hasVoice = Boolean(profile && profile.status === "active");
+  const statusClass = state.voiceStatusError ? " error" : "";
+  return `
+    <section class="voice-profile-card ${hasVoice ? "ready" : "empty"}">
+      <div class="voice-profile-head">
+        <div>
+          <p class="eyebrow">Voice Asset</p>
+          <h3>陪看声音资产</h3>
+          <span>${hasVoice ? `已保存：${escapeHTML(profile.prompt_audio_filename || "声音样本")}` : "上传 3 秒以上声音样本后，可生成用户声音带入版音频"}</span>
+        </div>
+        <div class="voice-mode-toggle" aria-label="声音使用方式">
+          <button class="${state.voiceUsageMode === "original" ? "active" : ""}" type="button" data-voice-mode="original">原版</button>
+          <button class="${state.voiceUsageMode === "user" ? "active" : ""}" type="button" data-voice-mode="user" ${
+            hasVoice ? "" : "disabled"
+          }>我的声音</button>
+        </div>
+      </div>
+      <div class="voice-consent-line">
+        <span>固定授权文本</span>
+        <strong>${VOICE_CONSENT_TEXT}</strong>
+      </div>
+      <div class="voice-upload-row">
+        <input id="voiceSampleInput" type="file" accept="audio/*" />
+        <button class="primary-button voice-upload-button" type="button">上传声音样本</button>
+      </div>
+      <div class="voice-preview-row">
+        <input class="voice-preview-input" maxlength="180" value="片尾拓展已开启，我会用你的声音陪你猜下一段剧情。" />
+        <button class="ghost-button voice-preview-button" type="button" ${hasVoice ? "" : "disabled"}>生成试听</button>
+      </div>
+      ${state.voiceStatus ? `<div class="voice-status${statusClass}">${escapeHTML(state.voiceStatus)}</div>` : ""}
+      <div class="voice-cache-list">
+        ${
+          clips.length
+            ? clips
+                .map(
+                  (clip) => `
+                    <article>
+                      <div>
+                        <strong>${escapeHTML(clip.scene_key || "voice")}</strong>
+                        <span>${escapeHTML(clip.text || "")}</span>
+                      </div>
+                      ${clip.audio_url ? `<audio controls preload="none" src="${escapeHTML(clip.audio_url)}"></audio>` : ""}
+                    </article>
+                  `
+                )
+                .join("")
+            : `<span>暂无缓存音频。后续片尾二创、陪看小助手会复用这里的生成结果。</span>`
+        }
+      </div>
+    </section>
+  `;
+}
+
 function renderProfileGallery() {
   const host = $("#profileGallery");
   if (!host) return;
@@ -2213,6 +2282,8 @@ function renderProfileGallery() {
         <small>收集率</small>
       </div>
     </section>
+
+    ${renderVoiceProfileSection()}
 
     <section class="growth-pipeline">
       ${["高光竞猜", "答对入账", "称号升级", "展馆沉淀"]
@@ -2355,6 +2426,12 @@ function closePublicProfile() {
   if (publicProfileContent) publicProfileContent.innerHTML = "";
 }
 
+function setVoiceStatus(message, isError = false) {
+  state.voiceStatus = message;
+  state.voiceStatusError = isError;
+  renderProfileGallery();
+}
+
 async function loadRewardProfile() {
   if (!state.currentUser) return;
   try {
@@ -2364,6 +2441,60 @@ async function loadRewardProfile() {
   }
   renderRewardProfile();
   renderProfileGallery();
+}
+
+async function loadVoiceProfile() {
+  if (!state.currentUser) return;
+  try {
+    state.voiceProfile = await fetchJSON("/api/users/me/voice-profile");
+  } catch {
+    state.voiceProfile = null;
+  }
+  renderProfileGallery();
+}
+
+async function uploadVoiceProfile() {
+  const input = $("#voiceSampleInput");
+  const file = input?.files?.[0];
+  if (!file) {
+    setVoiceStatus("请先选择一段你本人授权的声音样本。", true);
+    return;
+  }
+  const form = new FormData();
+  form.append("consent_text", VOICE_CONSENT_TEXT);
+  form.append("voice_sample", file);
+  setVoiceStatus("正在上传声音样本...");
+  try {
+    state.voiceProfile = await fetchJSON("/api/users/me/voice-profile", { method: "POST", body: form });
+    state.voiceUsageMode = "user";
+    localStorage.setItem("voice_usage_mode", state.voiceUsageMode);
+    setVoiceStatus("声音样本已保存，后续可生成用户声音带入版音频。");
+  } catch (error) {
+    setVoiceStatus(errorMessage(error), true);
+  }
+}
+
+async function createVoiceClip(text, sceneKey = "manual_preview") {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) throw new Error("请输入要合成的文本");
+  return fetchJSON("/api/users/me/voice-clips", {
+    method: "POST",
+    body: JSON.stringify({ text: trimmed, scene_key: sceneKey }),
+  });
+}
+
+async function generateVoicePreview() {
+  const input = $(".voice-preview-input");
+  const text = input?.value || "片尾拓展已开启，我会用你的声音陪你猜下一段剧情。";
+  setVoiceStatus("正在生成试听音频，首次生成会稍慢...");
+  try {
+    const clip = await createVoiceClip(text, "profile_preview");
+    state.voiceProfile = await fetchJSON("/api/users/me/voice-profile");
+    setVoiceStatus(clip.cached ? "已命中缓存，直接播放试听。" : "试听音频已生成并缓存。");
+    if (clip.audio_url) new Audio(clip.audio_url).play().catch(() => {});
+  } catch (error) {
+    setVoiceStatus(errorMessage(error), true);
+  }
 }
 
 function leaveWatchRoom() {
@@ -2719,7 +2850,9 @@ function renderRemixImageSequence(imagePlan) {
         ${shots
           .map(
             (shot, index) => `
-              <figure class="remix-image-frame ${index === 0 ? "active" : ""}" data-shot-index="${index}" data-audio-ready="${
+              <figure class="remix-image-frame ${index === 0 ? "active" : ""}" data-shot-index="${index}" data-audio-scene-key="${
+                imagePlan.variant_slot || "remix"
+              }_shot_${index + 1}" data-audio-ready="${
                 shot.audio_status === "ready" ? "true" : "false"
               }" data-audio-src="${escapeHTML(shot.audio_storage_hint || "")}" data-audio-text="${escapeHTML(shot.audio_text || "")}">
                 ${
@@ -2749,6 +2882,11 @@ function renderRemixImageSequence(imagePlan) {
         <button class="ghost-button" type="button" data-remix-action="image-prev">上一张</button>
         <span><b data-remix-image-current>1</b> / ${shots.length}</span>
         <button class="primary-button" type="button" data-remix-action="image-next">下一张</button>
+        ${
+          state.voiceProfile?.profile
+            ? `<button class="ghost-button remix-voice-button" type="button" data-remix-action="voice-current">我的声音读这句</button>`
+            : ""
+        }
       </div>
       <p>${escapeHTML(imagePlan.note || "点击图片进入下一张分镜。")}</p>
       <div class="video-slot-pill">${escapeHTML(imagePlan.storage_dir || imagePlan.variant_slot || "")}</div>
@@ -2756,11 +2894,48 @@ function renderRemixImageSequence(imagePlan) {
   `;
 }
 
+function playAudioSrc(src) {
+  if (!src) return;
+  new Audio(src).play().catch(() => {});
+}
+
+async function playFrameWithUserVoice(frame) {
+  const text = frame?.dataset.audioText;
+  if (!frame || !text || state.voiceClipLoading) return;
+  if (frame.dataset.userAudioSrc) {
+    playAudioSrc(frame.dataset.userAudioSrc);
+    return;
+  }
+  frame.classList.add("voice-generating");
+  state.voiceClipLoading = true;
+  try {
+    const clip = await createVoiceClip(text, frame.dataset.audioSceneKey || "remix_shot");
+    if (clip.audio_url) {
+      frame.dataset.userAudioSrc = clip.audio_url;
+      playAudioSrc(clip.audio_url);
+    }
+  } catch {
+    const src = frame.dataset.audioSrc;
+    if (src && frame.dataset.audioReady === "true") playAudioSrc(src);
+  } finally {
+    state.voiceClipLoading = false;
+    frame.classList.remove("voice-generating");
+  }
+}
+
 function playRemixShotAudio(frame) {
+  if (state.voiceUsageMode === "user" && state.voiceProfile?.profile) {
+    playFrameWithUserVoice(frame);
+    return;
+  }
   const src = frame?.dataset.audioSrc;
   if (!src || frame?.dataset.audioReady !== "true") return;
-  const audio = new Audio(src);
-  audio.play().catch(() => {});
+  playAudioSrc(src);
+}
+
+function playCurrentRemixFrameVoice() {
+  const frame = endingRemixLayer?.querySelector(".remix-image-frame.active");
+  if (frame) playFrameWithUserVoice(frame);
 }
 
 function stepRemixImage(delta) {
@@ -5074,6 +5249,21 @@ $("#profileGallery").addEventListener("click", (event) => {
   const button = event.target.closest(".profile-open-episode");
   if (button) {
     openEpisodeFromUrl(Number(button.dataset.episodeId));
+    return;
+  }
+  const modeButton = event.target.closest("[data-voice-mode]");
+  if (modeButton && !modeButton.disabled) {
+    state.voiceUsageMode = modeButton.dataset.voiceMode;
+    localStorage.setItem("voice_usage_mode", state.voiceUsageMode);
+    setVoiceStatus(state.voiceUsageMode === "user" ? "已切换为用户声音带入版。" : "已切换为原版音频。");
+    return;
+  }
+  if (event.target.closest(".voice-upload-button")) {
+    uploadVoiceProfile();
+    return;
+  }
+  if (event.target.closest(".voice-preview-button")) {
+    generateVoicePreview();
   }
 });
 endingRemixLayer?.addEventListener("click", (event) => {
@@ -5100,6 +5290,10 @@ endingRemixLayer?.addEventListener("click", (event) => {
   }
   if (action === "image-prev") {
     stepRemixImage(-1);
+    return;
+  }
+  if (action === "voice-current") {
+    playCurrentRemixFrameVoice();
     return;
   }
   if (action === "back" && state.remixOptions) {

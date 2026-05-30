@@ -52,6 +52,7 @@ class User(Base):
     sessions = relationship("AuthSession", back_populates="user", cascade="all, delete-orphan")
     watch_history = relationship("WatchHistory", back_populates="user", cascade="all, delete-orphan")
     rewards = relationship("UserReward", back_populates="user", cascade="all, delete-orphan")
+    voice_profiles = relationship("VoiceProfile", back_populates="user", cascade="all, delete-orphan")
 
 
 class AuthSession(Base):
@@ -181,6 +182,49 @@ class UserReward(Base):
 
     user = relationship("User", back_populates="rewards")
     highlight = relationship("Highlight")
+
+
+class VoiceProfile(Base):
+    __tablename__ = "voice_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(String(32), default="active", nullable=False, index=True)
+    source = Column(String(64), default="user_upload", nullable=False)
+    consent_text = Column(String(128), nullable=False)
+    prompt_text = Column(String(128), nullable=False)
+    prompt_audio_path = Column(Text, nullable=False)
+    prompt_audio_filename = Column(String(255), default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="voice_profiles")
+    clips = relationship("VoiceClipCache", back_populates="voice_profile", cascade="all, delete-orphan")
+
+
+class VoiceClipCache(Base):
+    __tablename__ = "voice_clip_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    voice_profile_id = Column(Integer, ForeignKey("voice_profiles.id"), nullable=False, index=True)
+    cache_key = Column(String(64), unique=True, nullable=False, index=True)
+    scene_key = Column(String(96), default="manual_preview", nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    text_hash = Column(String(64), nullable=False, index=True)
+    status = Column(String(32), default="ready", nullable=False, index=True)
+    source = Column(String(64), default="cosyvoice_zero_shot", nullable=False)
+    model_version = Column(String(64), default="cosyvoice-local-v1", nullable=False)
+    audio_path = Column(Text, default="")
+    audio_url = Column(Text, default="")
+    provider_url = Column(Text, default="")
+    duration_sec = Column(Float, default=0)
+    error_message = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")
+    voice_profile = relationship("VoiceProfile", back_populates="clips")
 
 
 class EpisodeExperienceConfig(Base):
