@@ -1643,6 +1643,10 @@ function renderDramas() {
                 : `<div class="thumb-empty">暂无视频</div>`
             }
             <div class="thumb-shade"></div>
+            <div class="thumb-glass">
+              <strong>${history ? "继续高光" : "开启体验"}</strong>
+              <span>${signals.slice(0, 2).map((signal) => escapeHTML(signal)).join(" / ")}</span>
+            </div>
             <div class="thumb-meta">
               <span>${escapeHTML(drama.genre)}</span>
               <b>${Number(drama.episode_count || 0)} 集</b>
