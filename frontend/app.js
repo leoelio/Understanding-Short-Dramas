@@ -223,6 +223,7 @@ const state = {
   stickerCombo: 0,
   danmakuActionTimer: null,
   stickerSuggestionDraft: "",
+  routeTransitionTimer: null,
 };
 
 localStorage.setItem("session_id", state.sessionId);
@@ -258,6 +259,7 @@ const roomCodeInput = $("#roomCodeInput");
 const roomMemberList = $("#roomMemberList");
 const roomFeed = $("#roomFeed");
 const rewardPanel = $("#rewardPanel");
+const routeTransition = $("#routeTransition");
 const publicProfileModal = $("#publicProfileModal");
 const publicProfileContent = $("#publicProfileContent");
 
@@ -526,6 +528,25 @@ function setView(name) {
   if (name === "review") {
     loadReviewEpisodes();
   }
+  const activeView = views[name];
+  if (activeView) {
+    activeView.classList.remove("view-enter");
+    void activeView.offsetWidth;
+    activeView.classList.add("view-enter");
+  }
+}
+
+function showRouteTransition(label = "准备进入互动播放器") {
+  if (!routeTransition) return;
+  window.clearTimeout(state.routeTransitionTimer);
+  const title = routeTransition.querySelector("strong");
+  if (title) title.textContent = label;
+  routeTransition.classList.add("active");
+}
+
+function hideRouteTransition() {
+  if (!routeTransition) return;
+  routeTransition.classList.remove("active");
 }
 
 function authTapEffect(event) {
@@ -2422,17 +2443,28 @@ async function joinWatchRoom() {
 }
 
 async function openDrama(dramaId, preferredEpisodeId = null, resumeTime = 0) {
-  state.episodes = await fetchJSON(`/api/dramas/${dramaId}/episodes`);
-  if (!state.episodes.length) return;
-  const select = $("#episodeSelect");
-  select.innerHTML = state.episodes
-    .map((episode) => `<option value="${episode.id}">${episode.title}</option>`)
-    .join("");
-  select.onchange = () => openEpisode(Number(select.value));
-  renderEpisodePanel();
-  const targetEpisode = state.episodes.find((episode) => episode.id === preferredEpisodeId) || state.episodes[0];
-  await openEpisode(targetEpisode.id, { resumeTime });
-  setView("watch");
+  const fromOutsidePlayer = !views.watch.classList.contains("active");
+  const transitionStartedAt = performance.now();
+  if (fromOutsidePlayer) showRouteTransition("准备进入互动播放器");
+  try {
+    state.episodes = await fetchJSON(`/api/dramas/${dramaId}/episodes`);
+    if (!state.episodes.length) return;
+    const select = $("#episodeSelect");
+    select.innerHTML = state.episodes
+      .map((episode) => `<option value="${episode.id}">${episode.title}</option>`)
+      .join("");
+    select.onchange = () => openEpisode(Number(select.value));
+    renderEpisodePanel();
+    const targetEpisode = state.episodes.find((episode) => episode.id === preferredEpisodeId) || state.episodes[0];
+    await openEpisode(targetEpisode.id, { resumeTime });
+    setView("watch");
+  } finally {
+    if (fromOutsidePlayer) {
+      window.clearTimeout(state.routeTransitionTimer);
+      const elapsed = performance.now() - transitionStartedAt;
+      state.routeTransitionTimer = window.setTimeout(hideRouteTransition, Math.max(360, 860 - elapsed));
+    }
+  }
 }
 
 async function openEpisode(episodeId, options = {}) {

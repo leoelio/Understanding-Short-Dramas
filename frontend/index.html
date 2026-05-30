@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260530-home-polish" />
+    <link rel="stylesheet" href="/styles.css?v=20260530-flow-polish" />
   </head>
   <body>
     <div class="app-shell">
@@ -162,8 +162,14 @@
           <div id="profileGallery" class="profile-gallery"></div>
         </section>
 
-        <section id="watchView" class="view">
-          <button id="backButton" class="ghost-button" type="button">返回列表</button>
+        <section id="watchView" class="view watch-view">
+          <div class="watch-stage-head">
+            <button id="backButton" class="ghost-button" type="button">返回片库</button>
+            <div>
+              <span>Now Watching</span>
+              <strong>互动播放器</strong>
+            </div>
+          </div>
           <div class="player-card">
             <div class="player-title">
               <div>
@@ -352,6 +358,14 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=20260530-home-polish"></script>
+    <div id="routeTransition" class="route-transition" aria-hidden="true">
+      <div>
+        <span>Opening</span>
+        <strong>准备进入互动播放器</strong>
+        <em>高光时间轴加载中</em>
+      </div>
+    </div>
+
+    <script type="module" src="/app.js?v=20260530-flow-polish"></script>
   </body>
 </html>

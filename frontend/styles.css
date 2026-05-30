@@ -141,6 +141,21 @@ main {
   display: block;
 }
 
+.view.active.view-enter {
+  animation: view-rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes view-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .auth-view {
   min-height: calc(100vh - 112px);
 }
@@ -189,6 +204,13 @@ body[data-view="auth"] .tabs {
   box-shadow: 0 34px 90px rgba(0, 0, 0, 0.42);
   backdrop-filter: blur(28px) saturate(165%);
   animation: auth-rise 0.72s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: border-color 0.32s ease, box-shadow 0.32s ease, transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.auth-panel:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 38px 100px rgba(0, 0, 0, 0.48);
+  transform: translateY(-2px);
 }
 
 .auth-panel::before {
@@ -248,6 +270,7 @@ body[data-view="auth"] .tabs {
   background: rgba(255, 255, 255, 0.055);
   backdrop-filter: blur(18px);
   font-size: 12px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .auth-store-strip strong {
@@ -341,6 +364,11 @@ body[data-view="auth"] .tabs {
     linear-gradient(135deg, #171a20, #07080a 58%, #161616);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.18), 0 32px 90px rgba(0, 0, 0, 0.46);
   transform: translateY(10px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.auth-device:hover {
+  transform: translateY(4px);
 }
 
 .auth-device::before {
@@ -640,6 +668,56 @@ body[data-view="auth"] .tabs {
   }
 }
 
+.route-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(0, 113, 227, 0.28), transparent 28%),
+    rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(18px) saturate(160%);
+  transition: opacity 0.34s ease;
+}
+
+.route-transition.active {
+  opacity: 1;
+}
+
+.route-transition > div {
+  display: grid;
+  gap: 8px;
+  min-width: min(320px, 82vw);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 26px;
+  padding: 24px;
+  color: #f5f5f7;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05)),
+    rgba(18, 18, 20, 0.82);
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.46);
+  transform: translateY(10px) scale(0.98);
+  transition: transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.route-transition.active > div {
+  transform: translateY(0) scale(1);
+}
+
+.route-transition span,
+.route-transition em {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.route-transition strong {
+  font-size: 24px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .auth-panel,
   .auth-panel::before,
@@ -647,7 +725,10 @@ body[data-view="auth"] .tabs {
   .auth-feature-rail article,
   .auth-form input,
   .auth-panel button,
-  .demo-accounts button {
+  .demo-accounts button,
+  .route-transition,
+  .route-transition > div,
+  .view.active.view-enter {
     animation: none;
     transition: none;
   }
@@ -681,10 +762,12 @@ body[data-view="home"] .topbar {
 }
 
 .home-hero {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
   align-items: end;
   gap: 22px;
+  overflow: hidden;
   min-height: 330px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 22px;
@@ -695,6 +778,23 @@ body[data-view="home"] .topbar {
     radial-gradient(circle at 78% 18%, rgba(255, 125, 44, 0.2), transparent 34%),
     linear-gradient(145deg, #101217, #050506 58%, #181818);
   box-shadow: 0 28px 72px rgba(0, 0, 0, 0.34);
+}
+
+.home-hero::before {
+  position: absolute;
+  right: -14%;
+  bottom: -34%;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  content: "";
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.14), transparent 62%);
+  pointer-events: none;
+}
+
+.home-hero > * {
+  position: relative;
+  z-index: 1;
 }
 
 .home-hero-copy {
@@ -738,8 +838,10 @@ body[data-view="home"] .topbar {
 }
 
 .home-hero-panel {
+  position: relative;
   display: grid;
   gap: 14px;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 18px;
   padding: 22px;
@@ -748,6 +850,21 @@ body[data-view="home"] .topbar {
     rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.18), 0 26px 60px rgba(0, 0, 0, 0.26);
   backdrop-filter: blur(24px) saturate(160%);
+}
+
+.home-hero-panel::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(115deg, transparent 8%, rgba(255, 255, 255, 0.12), transparent 30%);
+  transform: translateX(-44%);
+  animation: auth-sheen 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.home-hero-panel > * {
+  position: relative;
+  z-index: 1;
 }
 
 .home-hero-panel span,
@@ -921,6 +1038,10 @@ body[data-view="home"] .topbar {
 .drama-card:hover {
   box-shadow: 0 28px 60px rgba(0, 0, 0, 0.14);
   transform: translateY(-5px);
+}
+
+.drama-card:active {
+  transform: translateY(-2px) scale(0.992);
 }
 
 .thumb {
@@ -1097,6 +1218,171 @@ body[data-view="home"] .topbar {
   justify-content: space-between;
   gap: 12px;
   padding: 14px;
+}
+
+.watch-view {
+  min-height: calc(100vh - 78px);
+  padding: 18px;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(0, 113, 227, 0.16), transparent 32%),
+    radial-gradient(circle at 84% 0%, rgba(255, 125, 44, 0.14), transparent 30%),
+    linear-gradient(180deg, #050506 0%, #0b0d12 52%, #111720 100%);
+}
+
+body[data-view="watch"] {
+  background: #050506;
+}
+
+body[data-view="watch"] .app-shell {
+  width: min(100%, 1180px);
+  background: #050506;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body[data-view="watch"] main {
+  padding: 0;
+}
+
+body[data-view="watch"] .topbar {
+  background: rgba(22, 22, 24, 0.82);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(22px) saturate(180%);
+}
+
+.watch-stage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: min(100%, 1040px);
+  margin: 0 auto 14px;
+}
+
+.watch-stage-head .ghost-button {
+  border-radius: 999px;
+  color: #f5f5f7;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.watch-stage-head > div {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  color: #f5f5f7;
+}
+
+.watch-stage-head span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+}
+
+.watch-stage-head strong {
+  font-size: 18px;
+}
+
+.watch-view .player-card {
+  overflow: hidden;
+  width: min(100%, 1040px);
+  margin: 0 auto;
+  border-color: rgba(255, 255, 255, 0.12);
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)),
+    rgba(18, 18, 20, 0.82);
+  box-shadow: 0 34px 92px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(20px) saturate(145%);
+}
+
+.watch-view .player-title {
+  padding: 22px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 70%),
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--player-accent, #0071e3) 18%, transparent), transparent 34%);
+}
+
+.watch-view .player-title h2 {
+  max-width: 680px;
+  font-size: clamp(24px, 4vw, 42px);
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.watch-view .episode-select {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.watch-view .episode-panel {
+  padding: 0 22px 16px;
+  scrollbar-width: none;
+}
+
+.watch-view .episode-panel::-webkit-scrollbar {
+  display: none;
+}
+
+.watch-view .episode-pill {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+  transition: transform 0.24s ease, background 0.24s ease, border-color 0.24s ease;
+}
+
+.watch-view .episode-pill:hover {
+  transform: translateY(-2px);
+}
+
+.watch-view .video-wrap {
+  margin: 0 18px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 24px 70px rgba(0, 0, 0, 0.3);
+}
+
+.watch-view #player {
+  max-height: min(74vh, 760px);
+}
+
+.watch-view .theme-controls {
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  border-radius: 18px;
+  padding: 9px;
+  background: rgba(8, 12, 18, 0.72);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.watch-view .watch-tools,
+.watch-view .co-watch-card,
+.watch-view .reward-panel,
+.watch-view .room-feed,
+.watch-view .danmaku-settings,
+.watch-view .danmaku-form,
+.watch-view .danmaku-feedback,
+.watch-view .timeline {
+  margin-left: 18px;
+  margin-right: 18px;
+}
+
+.watch-view .watch-tools {
+  padding: 0;
+}
+
+.watch-view .mode-switch,
+.watch-view .co-watch-card,
+.watch-view .reward-panel,
+.watch-view .timeline-item {
+  border-color: rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.watch-view .co-watch-card {
+  padding: 14px;
+}
+
+.watch-view .timeline {
+  padding: 14px 0 18px;
 }
 
 .theme-badge {
@@ -5546,6 +5832,58 @@ textarea.remix-edit-field {
   .watch-history,
   .drama-grid {
     grid-template-columns: 1fr;
+  }
+
+  .watch-view {
+    padding: 12px;
+  }
+
+  .watch-stage-head {
+    align-items: flex-start;
+    flex-direction: column-reverse;
+  }
+
+  .watch-stage-head > div {
+    justify-items: start;
+  }
+
+  .watch-view .player-card {
+    border-radius: 22px;
+  }
+
+  .watch-view .player-title {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 18px;
+  }
+
+  .watch-view .episode-panel {
+    padding: 0 18px 14px;
+  }
+
+  .watch-view .video-wrap {
+    margin: 0 12px 14px;
+    border-radius: 18px;
+  }
+
+  .watch-view .theme-controls {
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+  }
+
+  .watch-view .player-time {
+    display: none;
+  }
+
+  .watch-view .watch-tools,
+  .watch-view .co-watch-card,
+  .watch-view .reward-panel,
+  .watch-view .room-feed,
+  .watch-view .danmaku-settings,
+  .watch-view .danmaku-form,
+  .watch-view .danmaku-feedback,
+  .watch-view .timeline {
+    margin-left: 12px;
+    margin-right: 12px;
   }
 
   .watch-tools,
