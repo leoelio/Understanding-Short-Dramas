@@ -407,11 +407,23 @@ async function restoreAuth() {
   }
 }
 
-async function afterAuth() {
+function syncHomeUrl() {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
+  history.replaceState(null, "", url);
+}
+
+async function afterAuth(options = {}) {
   updateAuthUI();
   await loadDramas();
   await loadWatchHistory();
   await loadRewardProfile();
+  if (options.forceHome) {
+    syncHomeUrl();
+    setView("home");
+    return;
+  }
   await routeAfterAuth();
 }
 
@@ -451,7 +463,7 @@ async function submitAuth(event) {
     state.currentUser = payload.user;
     localStorage.setItem("auth_token", payload.token);
     setAuthStatus(`已登录：${payload.user.display_name}`);
-    await afterAuth();
+    await afterAuth({ forceHome: true });
   } catch (error) {
     setAuthStatus(errorMessage(error), true);
   }
@@ -1626,6 +1638,20 @@ function dramaSignals(drama) {
   return ["高光互动", "弹幕氛围", "同看竞猜"];
 }
 
+function renderDramaPoster(drama, signals) {
+  const title = drama.title || "短剧";
+  const genre = drama.genre || "互动短剧";
+  return `
+    <div class="thumb-poster" aria-hidden="true">
+      <span>${escapeHTML(genre)}</span>
+      <strong>${escapeHTML(title)}</strong>
+      <em>${escapeHTML(signals[0] || "高光互动")}</em>
+      <i class="poster-mark">${escapeHTML(title.slice(0, 2))}</i>
+      <i class="poster-road"></i>
+    </div>
+  `;
+}
+
 function renderDramas() {
   $("#dramaCount").textContent = `${state.dramas.length} 部短剧`;
   $("#dramaGrid").innerHTML = state.dramas
@@ -1642,6 +1668,7 @@ function renderDramas() {
                 ? `<video src="${drama.preview_video_url}" muted playsinline preload="metadata"></video>`
                 : `<div class="thumb-empty">暂无视频</div>`
             }
+            ${renderDramaPoster(drama, signals)}
             <div class="thumb-shade"></div>
             <div class="thumb-glass">
               <strong>${history ? "继续高光" : "开启体验"}</strong>
@@ -1713,8 +1740,11 @@ function renderWatchHistory() {
       .slice(0, 4)
       .map(
         (item) => `
-          <button class="history-row" type="button" data-episode-id="${item.episode_id}">
-            <span class="history-orb">${escapeHTML((item.drama.title || "剧").slice(0, 1))}</span>
+          <button class="history-row" type="button" data-episode-id="${item.episode_id}" style="--card-hue:${dramaHue(item.drama)}deg">
+            <span class="history-poster">
+              <b>${escapeHTML((item.drama.title || "剧").slice(0, 1))}</b>
+              <i>${escapeHTML(item.drama.genre || "短剧")}</i>
+            </span>
             <div>
               <strong>${escapeHTML(item.drama.title)} · ${escapeHTML(item.episode_title)}</strong>
               <span>${escapeHTML(item.drama.genre)} · 进度 ${formatTime(item.progress_sec)}</span>
