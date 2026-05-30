@@ -1593,28 +1593,52 @@ function checkDanmaku(currentTime) {
   }
 }
 
+function dramaHue(drama) {
+  return Math.round(190 + stableRatio(`${drama.id}-${drama.title}`) * 130);
+}
+
+function dramaSignals(drama) {
+  const genre = drama.genre || "";
+  if (genre.includes("爱情") || genre.includes("甜")) return ["甜蜜互动", "心动弹幕", "片尾猜想"];
+  if (genre.includes("悬疑") || genre.includes("寻宝")) return ["悬念投票", "反转弹幕", "线索复盘"];
+  if (genre.includes("修仙") || genre.includes("系统")) return ["爽点连击", "热度爆发", "升级徽章"];
+  return ["高光互动", "弹幕氛围", "同看竞猜"];
+}
+
 function renderDramas() {
   $("#dramaCount").textContent = `${state.dramas.length} 部短剧`;
   $("#dramaGrid").innerHTML = state.dramas
     .map(
       (drama) => {
         const history = state.watchHistory.find((item) => item.drama.id === drama.id);
+        const progress = Math.min(100, Math.max(0, Number(history?.progress_percent || 0)));
+        const signals = dramaSignals(drama);
         return `
-        <article class="drama-card" data-id="${drama.id}">
+        <article class="drama-card premium-drama-card" data-id="${drama.id}" style="--card-hue:${dramaHue(drama)}deg; --progress:${progress}%">
           <div class="thumb">
             ${
               drama.preview_video_url
                 ? `<video src="${drama.preview_video_url}" muted playsinline preload="metadata"></video>`
                 : `<div class="thumb-empty">暂无视频</div>`
             }
-            <span>${escapeHTML(drama.genre)}</span>
+            <div class="thumb-shade"></div>
+            <div class="thumb-meta">
+              <span>${escapeHTML(drama.genre)}</span>
+              <b>${Number(drama.episode_count || 0)} 集</b>
+            </div>
           </div>
           <div class="drama-info">
-            <h3>${escapeHTML(drama.title)}</h3>
-            <p>${drama.episode_count} 集已导入${history ? ` · 上次看到 ${formatTime(history.progress_sec)}` : ""}</p>
+            <div class="drama-card-title">
+              <h3>${escapeHTML(drama.title)}</h3>
+              <span>AI</span>
+            </div>
+            <p>${drama.episode_count} 集已导入${history ? ` · 上次看到 ${formatTime(history.progress_sec)}` : " · 待开启体验"}</p>
+            <div class="drama-card-signals">
+              ${signals.map((signal) => `<span>${escapeHTML(signal)}</span>`).join("")}
+            </div>
             ${
               history
-                ? `<div class="drama-progress"><i style="width:${Math.min(100, Math.max(0, Number(history.progress_percent || 0)))}%"></i></div>`
+                ? `<div class="drama-progress"><i style="width:${progress}%"></i></div>`
                 : ""
             }
             <div class="drama-actions">
@@ -1651,22 +1675,27 @@ function renderWatchHistory() {
   const host = $("#watchHistory");
   if (!host) return;
   if (!state.watchHistory.length) {
-    host.innerHTML = "";
+    host.innerHTML = `
+      <div class="history-empty">
+        <strong>还没有观看记录</strong>
+        <span>从下方选择一部短剧，系统会自动记录进度。</span>
+      </div>
+    `;
     return;
   }
   host.innerHTML = `
-    <div class="history-title">最近观看</div>
     ${state.watchHistory
       .slice(0, 4)
       .map(
         (item) => `
           <button class="history-row" type="button" data-episode-id="${item.episode_id}">
+            <span class="history-orb">${escapeHTML((item.drama.title || "剧").slice(0, 1))}</span>
             <div>
               <strong>${escapeHTML(item.drama.title)} · ${escapeHTML(item.episode_title)}</strong>
               <span>${escapeHTML(item.drama.genre)} · 进度 ${formatTime(item.progress_sec)}</span>
               <span class="history-progress"><i style="width:${Math.min(100, Math.max(0, Number(item.progress_percent || 0)))}%"></i></span>
             </div>
-            <span>继续</span>
+            <em>继续</em>
           </button>
         `
       )

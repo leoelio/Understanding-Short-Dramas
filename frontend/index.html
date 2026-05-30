@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260530-auth-apple" />
+    <link rel="stylesheet" href="/styles.css?v=20260530-home-polish" />
   </head>
   <body>
     <div class="app-shell">
@@ -110,15 +110,44 @@
           </div>
         </section>
 
-        <section id="homeView" class="view">
-          <div class="section-head">
-            <div>
-              <h2>选片首页</h2>
-              <p>登录后选择一部短剧，进入移动端播放互动体验。</p>
+        <section id="homeView" class="view home-view">
+          <div class="home-hero">
+            <div class="home-hero-copy">
+              <p class="eyebrow">Drama Hub</p>
+              <h2>选择今晚要进入的剧情。</h2>
+              <p>每一部短剧都会带着高光时间轴、弹幕氛围、同看房间和片尾 AI 二创能力进入播放页。</p>
+              <div class="home-hero-stats" aria-label="内容状态">
+                <span id="dramaCount">加载中</span>
+                <span>高光互动</span>
+                <span>同看房间</span>
+              </div>
             </div>
-            <span id="dramaCount" class="pill">加载中</span>
+            <div class="home-hero-panel" aria-label="产品能力">
+              <span>Now Playing</span>
+              <strong>高光互动体验链路</strong>
+              <div>
+                <em>弹幕</em>
+                <em>竞猜</em>
+                <em>徽章</em>
+                <em>AI 二创</em>
+              </div>
+            </div>
+          </div>
+          <div class="home-section-title">
+            <div>
+              <span>Continue</span>
+              <h3>最近观看</h3>
+            </div>
+            <small>保留进度，直接回到剧情高光前后。</small>
           </div>
           <div id="watchHistory" class="watch-history"></div>
+          <div class="home-section-title">
+            <div>
+              <span>Library</span>
+              <h3>短剧片库</h3>
+            </div>
+            <small>选择一部短剧进入移动端播放互动体验。</small>
+          </div>
           <div id="dramaGrid" class="drama-grid"></div>
         </section>
 
@@ -323,6 +352,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=20260530-auth-apple"></script>
+    <script type="module" src="/app.js?v=20260530-home-polish"></script>
   </body>
 </html>
