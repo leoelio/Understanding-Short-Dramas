@@ -513,12 +513,22 @@ function clearPlayerStatus() {
   setPlayerStatus("");
 }
 
+function stopPlaybackForExit() {
+  if (!player || player.paused) return;
+  player.pause();
+  recordWatchHistory(player.currentTime || 0, true);
+}
+
 function setView(name) {
+  const previousView = document.body.dataset.view || "";
   if (name !== "auth" && !state.currentUser) {
     name = "auth";
   }
   if ((name === "admin" || name === "review") && !canManage()) {
     name = "home";
+  }
+  if (previousView === "watch" && name !== "watch") {
+    stopPlaybackForExit();
   }
   Object.entries(views).forEach(([key, element]) => element.classList.toggle("active", key === name));
   document.body.dataset.view = name;
@@ -5029,6 +5039,14 @@ progressSlider.addEventListener("input", () => {
   player.currentTime = duration * (Number(progressSlider.value) / 1000);
   updatePlayerControls();
 });
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && document.body.dataset.view === "watch") {
+    stopPlaybackForExit();
+  }
+});
+
+window.addEventListener("pagehide", stopPlaybackForExit);
 
 homeTab.addEventListener("click", () => setView("home"));
 profileTab.addEventListener("click", () => setView("profile"));
