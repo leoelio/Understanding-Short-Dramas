@@ -729,3 +729,15 @@
   - Added generation-time fallback normalization for old non-wav voice profiles, fixing existing recorded samples without requiring users to re-upload.
 - 下一步：
   - Keep voice prompt normalization on the server path for mobile deployment; mobile clients can upload native recordings without knowing CosyVoice audio format requirements.
+
+## 2026-05-31 08:11:14
+
+- 目标：Separate original preview audio from user-cloned voice preview
+- Git：`eb8ae77` / `main`
+- 数据：10 部短剧，20 集，65 个高光，4 集已复核，220 条弹幕，4 条体验配置，29 条片尾 AI 二创。
+- 变更：
+  - Profile voice preview now has two distinct paths: original mode uses local system narration and does not write to user voice cache; user mode calls CosyVoice and caches mp3 under a user-specific scene key.
+  - Updated preview copy and button labels so original narration no longer says it uses the user's voice.
+  - Bumped frontend asset version to prevent the browser from serving stale voice preview logic.
+- 下一步：
+  - Decide where original narration should eventually come from in production: system TTS, pre-rendered narrator clips, or platform audio assets.

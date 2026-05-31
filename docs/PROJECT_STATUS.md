@@ -1,18 +1,19 @@
 # Project Status
 
-更新时间：2026-05-31 08:04:44
+更新时间：2026-05-31 08:11:14
 
 ## 当前目标
 
-Fix microphone recording voice generation by normalizing browser audio to wav before CosyVoice calls
+Separate original preview audio from user-cloned voice preview
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`2bac371`
+- 最新提交：`eb8ae77`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M backend/app/main.py`
+- `M frontend/app.js`
+- `M frontend/index.html`
 
 ## 数据状态
 
@@ -46,12 +47,13 @@ Fix microphone recording voice generation by normalizing browser audio to wav be
 
 ## 本次变更摘要
 
-- Added backend ffmpeg normalization for uploaded voice samples, so browser webm/opus recordings are converted to wav before being stored as active voice profiles.
-- Added generation-time fallback normalization for old non-wav voice profiles, fixing existing recorded samples without requiring users to re-upload.
+- Profile voice preview now has two distinct paths: original mode uses local system narration and does not write to user voice cache; user mode calls CosyVoice and caches mp3 under a user-specific scene key.
+- Updated preview copy and button labels so original narration no longer says it uses the user's voice.
+- Bumped frontend asset version to prevent the browser from serving stale voice preview logic.
 
 ## 下一步建议
 
-- Keep voice prompt normalization on the server path for mobile deployment; mobile clients can upload native recordings without knowing CosyVoice audio format requirements.
+- Decide where original narration should eventually come from in production: system TTS, pre-rendered narrator clips, or platform audio assets.
 
 ## 安全提醒
 

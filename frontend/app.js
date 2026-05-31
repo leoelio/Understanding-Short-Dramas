@@ -10,6 +10,10 @@ const MIN_INTERACTION_GAP_SEC = 18;
 const REVIEW_MIN_HIGHLIGHT_GAP_SEC = 20;
 const REVIEW_MAX_HIGHLIGHTS = 5;
 const VOICE_CONSENT_TEXT = "同意利用录入声音生成音频";
+const VOICE_PREVIEW_TEXTS = {
+  original: "片尾拓展已开启，我会陪你猜下一段剧情。",
+  user: "片尾拓展已开启，我会用你的声音陪你猜下一段剧情。",
+};
 
 const DANMAKU_MODES = {
   light: { label: "轻聊", enabled: true, density: 0.72, includeModes: ["light"] },
@@ -2208,6 +2212,9 @@ function renderVoiceProfileSection() {
   const clips = payload.clips || [];
   const hasVoice = Boolean(profile && profile.status === "active");
   const statusClass = state.voiceStatusError ? " error" : "";
+  const previewText = state.voiceUsageMode === "user" ? VOICE_PREVIEW_TEXTS.user : VOICE_PREVIEW_TEXTS.original;
+  const previewButtonText = state.voiceUsageMode === "user" ? "生成我的声音试听" : "播放原版试听";
+  const previewDisabled = state.voiceUsageMode === "user" && !hasVoice;
   return `
     <section class="voice-profile-card ${hasVoice ? "ready" : "empty"}">
       <div class="voice-profile-head">
@@ -2249,8 +2256,8 @@ function renderVoiceProfileSection() {
         <button class="primary-button voice-upload-button" type="button">${state.voiceRecordedBlob ? "上传录音样本" : "上传声音样本"}</button>
       </div>
       <div class="voice-preview-row">
-        <input class="voice-preview-input" maxlength="180" value="片尾拓展已开启，我会用你的声音陪你猜下一段剧情。" />
-        <button class="ghost-button voice-preview-button" type="button" ${hasVoice ? "" : "disabled"}>生成试听</button>
+        <input class="voice-preview-input" maxlength="180" value="${escapeHTML(previewText)}" />
+        <button class="ghost-button voice-preview-button" type="button" ${previewDisabled ? "disabled" : ""}>${previewButtonText}</button>
       </div>
       ${state.voiceStatus ? `<div class="voice-status${statusClass}">${escapeHTML(state.voiceStatus)}</div>` : ""}
       <div class="voice-cache-list">
@@ -2567,14 +2574,41 @@ async function createVoiceClip(text, sceneKey = "manual_preview") {
   });
 }
 
+function playOriginalVoicePreview(text) {
+  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+    setVoiceStatus("当前浏览器不支持原版旁白试听，请切换到我的声音或使用支持语音朗读的浏览器。", true);
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "zh-CN";
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  const voice = window.speechSynthesis
+    .getVoices()
+    .find((item) => /zh|Chinese|Mandarin|中文/i.test(`${item.lang} ${item.name}`));
+  if (voice) utterance.voice = voice;
+  window.speechSynthesis.speak(utterance);
+  setVoiceStatus("正在播放原版旁白试听。它不会写入用户声音缓存。");
+}
+
 async function generateVoicePreview() {
   const input = $(".voice-preview-input");
-  const text = input?.value || "片尾拓展已开启，我会用你的声音陪你猜下一段剧情。";
+  const mode = state.voiceUsageMode === "user" ? "user" : "original";
+  const text = input?.value.trim() || VOICE_PREVIEW_TEXTS[mode];
+  if (mode === "original") {
+    playOriginalVoicePreview(text);
+    return;
+  }
+  if (!state.voiceProfile?.profile) {
+    setVoiceStatus("请先上传或录入声音样本，再生成我的声音试听。", true);
+    return;
+  }
   setVoiceStatus("正在生成试听音频，首次生成会稍慢...");
   try {
-    const clip = await createVoiceClip(text, "profile_preview");
+    const clip = await createVoiceClip(text, "profile_preview_user");
     state.voiceProfile = await fetchJSON("/api/users/me/voice-profile");
-    setVoiceStatus(clip.cached ? "已命中缓存，直接播放试听。" : "试听音频已生成并缓存。");
+    setVoiceStatus(clip.cached ? "已命中我的声音缓存，直接播放试听。" : "我的声音试听已生成并缓存。");
     if (clip.audio_url) new Audio(clip.audio_url).play().catch(() => {});
   } catch (error) {
     setVoiceStatus(errorMessage(error), true);
