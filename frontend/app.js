@@ -1887,25 +1887,67 @@ function renderWatchRoom() {
   renderRoomMembers(room);
 }
 
+function roomMemberBadgeTitle(member) {
+  return member?.latest_badges?.[0]?.title || member?.growth_title || "剧情新人";
+}
+
 function renderRoomMembers(room) {
   if (!roomMemberList) return;
-  const members = [room.host, room.guest].filter(Boolean);
-  roomMemberList.innerHTML = members
-    .map((member) => {
-      const isSelf = member.id === state.currentUser?.id;
-      return `
-        <button class="room-member-card ${isSelf ? "self" : ""}" type="button" data-user-id="${member.id}">
-          ${badgeArtHTML(member.growth_title || "剧情新人", false, "mini")}
-          <div>
-            <strong>${escapeHTML(member.display_name || "同看用户")}${isSelf ? " · 我" : ""}</strong>
-            <span>${escapeHTML(member.growth_title || "剧情新人")} · ${Number(member.points || 0)} 分 · ${Number(
-              member.badge_count || 0
-            )} 枚徽章</span>
-          </div>
-        </button>
-      `;
-    })
-    .join("");
+  const stateLabel = room.playback_state === "playing" ? "同步播放中" : "同步暂停中";
+  const updatedBy = room.updated_by?.display_name ? `${room.updated_by.display_name} 刚同步` : "等待首次同步";
+  const slots = [
+    { key: "host", label: "房主", member: room.host },
+    { key: "guest", label: room.guest ? "同看好友" : "待邀请", member: room.guest },
+  ];
+  roomMemberList.innerHTML = `
+    <div class="room-social-summary">
+      <div>
+        <span>Social Room</span>
+        <strong>${escapeHTML(room.code)}</strong>
+      </div>
+      <div>
+        <em>${escapeHTML(stateLabel)}</em>
+        <small>${Number(room.member_count || 1)}/2 人 · ${escapeHTML(updatedBy)} · ${formatTime(Number(room.progress_sec || 0))}</small>
+      </div>
+    </div>
+    ${slots
+      .map(({ key, label, member }) => {
+        if (!member) {
+          return `
+            <button class="room-member-card empty slot-${key}" type="button" disabled>
+              ${badgeArtHTML("等待好友", true, "mini")}
+              <div class="room-member-main">
+                <span class="room-role-chip">${escapeHTML(label)}</span>
+                <strong>邀请好友加入</strong>
+                <span>输入房间码即可同步观看</span>
+                <div class="room-member-metrics">
+                  <em>房间码 ${escapeHTML(room.code)}</em>
+                  <em>等待中</em>
+                </div>
+              </div>
+              <small>空位</small>
+            </button>
+          `;
+        }
+        const isSelf = member.id === state.currentUser?.id;
+        return `
+          <button class="room-member-card ${isSelf ? "self" : ""} slot-${key}" type="button" data-user-id="${member.id}">
+            ${badgeArtHTML(roomMemberBadgeTitle(member), false, "mini")}
+            <div class="room-member-main">
+              <span class="room-role-chip">${escapeHTML(label)}${isSelf ? " · 我" : ""}</span>
+              <strong>${escapeHTML(member.display_name || "同看用户")}</strong>
+              <span>${escapeHTML(member.growth_title || "剧情新人")}</span>
+              <div class="room-member-metrics">
+                <em>${Number(member.points || 0)} 分</em>
+                <em>${Number(member.badge_count || 0)} 枚徽章</em>
+              </div>
+            </div>
+            <small>${isSelf ? "我的展馆" : "查看展馆"}</small>
+          </button>
+        `;
+      })
+      .join("")}
+  `;
 }
 
 function roomEventSummary(event) {
@@ -1936,26 +1978,102 @@ function roomEventBadge(event) {
   return badgeArtHTML(event.user?.growth_title || "剧情新人", false, "tiny");
 }
 
+function roomEventMeta(event) {
+  const payload = event.payload || {};
+  if (event.event_type === "interaction" && payload.reward_correct) return { label: "竞猜命中", tone: "correct" };
+  if (event.event_type === "interaction") return { label: "高光选择", tone: "choice" };
+  if (event.event_type === "danmaku_like") return { label: "弹幕点赞", tone: "like" };
+  if (event.event_type === "danmaku_reply") return { label: "弹幕回复", tone: "reply" };
+  if (event.event_type === "danmaku") return { label: "实时弹幕", tone: "chat" };
+  return { label: payload.label || "房间动态", tone: "default" };
+}
+
+function roomEventTime(value) {
+  if (!value) return "刚刚";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "刚刚";
+  return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+}
+
+function roomEventDetailHTML(event) {
+  const payload = event.payload || {};
+  if (event.event_type === "interaction") {
+    const highlight = payload.highlight_title || "高光互动";
+    const option = payload.option_label || payload.option_key || "未知选择";
+    const points = Number(payload.reward_points || 0);
+    const result = payload.reward_correct
+      ? `<em class="room-result correct">答对 +${points}</em>`
+      : `<em class="room-result choice">${escapeHTML(payload.reward_message || "已选择")}</em>`;
+    const badge = payload.reward_correct
+      ? `<small>解锁「${escapeHTML(payload.reward_badge?.title || payload.reward_title || "新徽章")}」</small>`
+      : "";
+    return `
+      <strong>${escapeHTML(highlight)}</strong>
+      <span>选择「${escapeHTML(option)}」 ${result}</span>
+      ${badge}
+    `;
+  }
+  if (event.event_type === "danmaku") {
+    return `
+      <strong>发了一条弹幕</strong>
+      <span>“${escapeHTML(payload.text || payload.comment?.text || "")}”</span>
+    `;
+  }
+  if (event.event_type === "danmaku_like") {
+    return `
+      <strong>赞了弹幕</strong>
+      <span>“${escapeHTML(payload.text || "")}”</span>
+    `;
+  }
+  if (event.event_type === "danmaku_reply") {
+    return `
+      <strong>回复了弹幕</strong>
+      <span>${escapeHTML(payload.reply || "")}</span>
+    `;
+  }
+  return `<strong>${escapeHTML(roomEventSummary(event))}</strong>`;
+}
+
 function renderRoomFeed() {
   if (!roomFeed) return;
-  if (!state.watchRoom || !state.roomFeed.length) {
+  if (!state.watchRoom) {
     roomFeed.innerHTML = "";
     return;
   }
-  roomFeed.innerHTML = state.roomFeed
-    .slice(0, 5)
-    .map(
-      (event) => `
-        <div class="room-feed-item ${event.event_type}">
-          ${roomEventBadge(event)}
-          <div>
-            <b>${escapeHTML(event.user?.display_name || "同看好友")}</b>
-            <span>${escapeHTML(roomEventSummary(event).replace(`${event.user?.display_name || "同看好友"} `, ""))}</span>
-          </div>
-        </div>
-      `
-    )
-    .join("");
+  const events = state.roomFeed.slice(0, 6);
+  roomFeed.innerHTML = `
+    <div class="room-feed-head">
+      <div>
+        <span>Room Live</span>
+        <strong>同看战报</strong>
+      </div>
+      <em>${events.length ? `${events.length} 条实时动态` : "等待互动"}</em>
+    </div>
+    ${
+      events.length
+        ? `<div class="room-feed-list">
+            ${events
+              .map((event) => {
+                const meta = roomEventMeta(event);
+                return `
+                  <article class="room-feed-item ${event.event_type} event-tone-${meta.tone}">
+                    ${roomEventBadge(event)}
+                    <div class="room-feed-copy">
+                      <div>
+                        <b>${escapeHTML(event.user?.display_name || "同看好友")}</b>
+                        <time>${escapeHTML(roomEventTime(event.created_at))}</time>
+                      </div>
+                      <mark>${escapeHTML(meta.label)}</mark>
+                      ${roomEventDetailHTML(event)}
+                    </div>
+                  </article>
+                `;
+              })
+              .join("")}
+          </div>`
+        : `<div class="room-feed-empty">还没有房间动态。发弹幕、点赞、回复或完成高光竞猜后，会在这里形成实时社交战报。</div>`
+    }
+  `;
 }
 
 function pushRoomFeed(event) {
