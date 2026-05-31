@@ -6913,3 +6913,406 @@ body[data-view="profile"] .topbar {
     grid-template-columns: 1fr;
   }
 }
+
+/* Final cascade: premium surfaces for auth, home and profile. */
+body[data-view="auth"] .topbar,
+body[data-view="home"] .topbar,
+body[data-view="profile"] .topbar {
+  background:
+    linear-gradient(180deg, rgba(25, 28, 34, 0.92), rgba(12, 14, 18, 0.78)),
+    rgba(18, 18, 20, 0.82);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+}
+
+body[data-view="auth"] .tabs,
+body[data-view="home"] .tabs,
+body[data-view="profile"] .tabs {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px) saturate(155%);
+}
+
+body[data-view="auth"] .tab,
+body[data-view="home"] .tab,
+body[data-view="profile"] .tab {
+  min-height: 36px;
+  color: rgba(245, 245, 247, 0.72);
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+body[data-view="auth"] .tab:hover,
+body[data-view="home"] .tab:hover,
+body[data-view="profile"] .tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+body[data-view="auth"] .tab.active,
+body[data-view="home"] .tab.active,
+body[data-view="profile"] .tab.active {
+  color: #071018;
+  background: linear-gradient(135deg, #f8fbff, #dfeaf7 62%, #f3edf8);
+  box-shadow: 0 12px 28px rgba(0, 113, 227, 0.18);
+}
+
+.auth-hero-shell {
+  background:
+    linear-gradient(120deg, rgba(0, 113, 227, 0.15), transparent 30%),
+    linear-gradient(250deg, rgba(255, 125, 44, 0.13), transparent 36%),
+    linear-gradient(180deg, #050506 0%, #080a0f 56%, #e9f0f8 56.2%, #f5eef6 100%);
+}
+
+.auth-hero-shell::after {
+  position: absolute;
+  inset: 56% 0 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.52), rgba(225, 235, 246, 0.36)),
+    repeating-linear-gradient(90deg, rgba(18, 29, 45, 0.035) 0 1px, transparent 1px 42px);
+}
+
+.auth-store-strip,
+.auth-hero-grid {
+  z-index: 2;
+}
+
+.auth-store-strip {
+  border-color: rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.045)),
+    rgba(11, 13, 18, 0.52);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.14), 0 18px 44px rgba(0, 0, 0, 0.2);
+}
+
+.auth-store-strip strong {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.09));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.auth-panel {
+  border-color: rgba(255, 255, 255, 0.16);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055)),
+    linear-gradient(230deg, rgba(0, 113, 227, 0.12), transparent 42%),
+    rgba(17, 19, 24, 0.88);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.14), 0 34px 92px rgba(0, 0, 0, 0.48);
+}
+
+.auth-feature-rail article,
+.home-section-title,
+.history-empty,
+.history-row,
+.drama-card,
+.premium-drama-card,
+.profile-view .profile-hero,
+.profile-view .growth-pipeline div,
+.profile-view .next-badge-card,
+.profile-view .collection-badge,
+.profile-view .badge-history article,
+.voice-profile-card,
+.voice-record-row,
+.voice-record-preview,
+.voice-consent-line,
+.voice-cache-list article {
+  border-color: rgba(255, 255, 255, 0.74);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(238, 245, 252, 0.68)),
+    linear-gradient(260deg, rgba(255, 240, 232, 0.34), transparent 42%),
+    rgba(237, 244, 252, 0.78);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72), 0 20px 52px rgba(29, 38, 55, 0.12);
+  backdrop-filter: blur(18px) saturate(145%);
+}
+
+.auth-feature-rail article:hover,
+.history-row:hover,
+.drama-card:hover,
+.premium-drama-card:hover,
+.profile-view .collection-badge:hover,
+.voice-profile-card:hover {
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.78), 0 28px 66px rgba(29, 38, 55, 0.16);
+}
+
+.home-view {
+  background:
+    radial-gradient(circle at 12% 46%, rgba(0, 113, 227, 0.12), transparent 30%),
+    radial-gradient(circle at 84% 52%, rgba(18, 214, 176, 0.1), transparent 28%),
+    radial-gradient(circle at 52% 92%, rgba(255, 125, 44, 0.08), transparent 34%),
+    linear-gradient(180deg, #050506 0 380px, #eaf2fa 380px 73%, #f5eef7 100%);
+}
+
+.home-view::before {
+  inset: 380px 0 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.54), rgba(228, 238, 249, 0.3) 44%, rgba(249, 237, 246, 0.34)),
+    repeating-linear-gradient(90deg, rgba(17, 28, 43, 0.03) 0 1px, transparent 1px 42px);
+}
+
+body[data-view="home"] .app-shell,
+body[data-view="profile"] .app-shell {
+  background:
+    linear-gradient(145deg, rgba(0, 113, 227, 0.08), transparent 32%),
+    linear-gradient(235deg, rgba(255, 125, 44, 0.08), transparent 38%),
+    linear-gradient(180deg, #edf5fb 0%, #f7eff7 100%);
+}
+
+.home-hero,
+.profile-page-head {
+  border-color: rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(135deg, rgba(0, 113, 227, 0.2), transparent 34%),
+    linear-gradient(245deg, rgba(255, 125, 44, 0.18), transparent 36%),
+    linear-gradient(155deg, #11151d, #050506 56%, #19151b);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12), 0 30px 78px rgba(0, 0, 0, 0.38);
+}
+
+.home-hero-panel {
+  border-color: rgba(255, 255, 255, 0.16);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05)),
+    rgba(10, 12, 16, 0.42);
+}
+
+.home-section-title,
+.history-empty,
+.history-row,
+.premium-drama-card,
+.profile-view .profile-hero,
+.profile-view .growth-pipeline div,
+.profile-view .next-badge-card,
+.profile-view .collection-badge,
+.profile-view .badge-history article {
+  color: #171b22;
+}
+
+.premium-drama-card {
+  overflow: hidden;
+}
+
+.premium-drama-card::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(115deg, transparent 8%, rgba(255, 255, 255, 0.28), transparent 30%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.28) 0 1px, transparent 1px 34px);
+  opacity: 0.36;
+}
+
+.premium-drama-card .drama-info {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(235, 243, 252, 0.48));
+}
+
+.home-view .drama-card-signals span {
+  border-color: hsla(var(--card-hue), 72%, 44%, 0.12);
+  background:
+    linear-gradient(135deg, hsla(var(--card-hue), 82%, 58%, 0.12), rgba(255, 255, 255, 0.56)),
+    rgba(239, 246, 252, 0.78);
+}
+
+.profile-view {
+  background:
+    radial-gradient(circle at 12% 42%, rgba(0, 113, 227, 0.11), transparent 30%),
+    radial-gradient(circle at 86% 54%, rgba(246, 188, 79, 0.1), transparent 28%),
+    linear-gradient(180deg, #050506 0 300px, #eaf2fa 300px 72%, #f7eff7 100%);
+}
+
+.profile-view::before {
+  inset: 300px 0 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.54), rgba(226, 237, 249, 0.34), rgba(249, 238, 246, 0.36)),
+    repeating-linear-gradient(90deg, rgba(17, 28, 43, 0.03) 0 1px, transparent 1px 42px);
+}
+
+.profile-view .profile-hero {
+  background:
+    linear-gradient(130deg, rgba(0, 113, 227, 0.13), transparent 34%),
+    linear-gradient(260deg, rgba(246, 188, 79, 0.16), transparent 35%),
+    rgba(239, 246, 252, 0.8);
+}
+
+.profile-view .profile-ring {
+  background:
+    radial-gradient(circle at center, #f7fbff 56%, transparent 57%),
+    conic-gradient(#0071e3 var(--progress), rgba(19, 29, 43, 0.1) 0);
+}
+
+.voice-profile-card {
+  background:
+    linear-gradient(135deg, rgba(0, 113, 227, 0.12), transparent 36%),
+    linear-gradient(280deg, rgba(255, 79, 100, 0.1), transparent 42%),
+    rgba(239, 246, 252, 0.82);
+}
+
+.voice-profile-card::before {
+  inset: -40px -40px auto auto;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background:
+    linear-gradient(135deg, rgba(0, 113, 227, 0.1), transparent 58%),
+    linear-gradient(225deg, rgba(255, 125, 44, 0.12), transparent 62%);
+}
+
+.auth-form input,
+.voice-upload-row input,
+.voice-preview-row input {
+  border-color: rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.045)),
+    rgba(0, 0, 0, 0.26);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.voice-upload-row input,
+.voice-preview-row input {
+  border-color: rgba(19, 29, 43, 0.1);
+  color: #171b22;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(238, 245, 252, 0.72)),
+    rgba(239, 246, 252, 0.82);
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: #071018;
+  background: linear-gradient(135deg, #f8fbff, #dbe8f6);
+  box-shadow: 0 8px 18px rgba(29, 38, 55, 0.12);
+  cursor: pointer;
+}
+
+body[data-view="auth"] .primary-button,
+body[data-view="home"] .primary-button,
+body[data-view="profile"] .primary-button,
+body[data-view="auth"] .ghost-button,
+body[data-view="home"] .ghost-button,
+body[data-view="profile"] .ghost-button,
+body[data-view="auth"] .danger-button,
+body[data-view="home"] .danger-button,
+body[data-view="profile"] .danger-button,
+.demo-accounts button,
+.voice-mode-toggle button {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease, background 0.22s ease;
+}
+
+body[data-view="auth"] .primary-button,
+body[data-view="home"] .primary-button,
+body[data-view="profile"] .primary-button {
+  border: 0;
+  color: #fff;
+  background: linear-gradient(135deg, #0071e3, #526dff 48%, #ff4f64);
+  box-shadow: 0 14px 30px rgba(0, 113, 227, 0.24), inset 0 1px rgba(255, 255, 255, 0.22);
+  font-weight: 800;
+}
+
+body[data-view="auth"] .ghost-button,
+body[data-view="home"] .ghost-button,
+body[data-view="profile"] .ghost-button,
+.demo-accounts button {
+  border-color: rgba(23, 27, 34, 0.08);
+  color: #171b22;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(228, 238, 249, 0.7)),
+    rgba(239, 246, 252, 0.82);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.76), 0 12px 26px rgba(29, 38, 55, 0.1);
+}
+
+body[data-view="auth"] .ghost-button {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f5f5f7;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.055)),
+    rgba(255, 255, 255, 0.06);
+}
+
+body[data-view="auth"] .danger-button,
+body[data-view="home"] .danger-button,
+body[data-view="profile"] .danger-button {
+  border-color: rgba(255, 79, 100, 0.2);
+  color: #b4233f;
+  background:
+    linear-gradient(135deg, rgba(255, 236, 241, 0.92), rgba(255, 247, 238, 0.72)),
+    rgba(255, 242, 246, 0.8);
+}
+
+body[data-view="auth"] .primary-button:hover,
+body[data-view="home"] .primary-button:hover,
+body[data-view="profile"] .primary-button:hover,
+body[data-view="auth"] .ghost-button:hover,
+body[data-view="home"] .ghost-button:hover,
+body[data-view="profile"] .ghost-button:hover,
+body[data-view="auth"] .danger-button:hover,
+body[data-view="home"] .danger-button:hover,
+body[data-view="profile"] .danger-button:hover,
+.demo-accounts button:hover,
+.voice-mode-toggle button:hover {
+  filter: brightness(1.035);
+  transform: translateY(-2px);
+}
+
+body[data-view="auth"] .primary-button:active,
+body[data-view="home"] .primary-button:active,
+body[data-view="profile"] .primary-button:active,
+body[data-view="auth"] .ghost-button:active,
+body[data-view="home"] .ghost-button:active,
+body[data-view="profile"] .ghost-button:active,
+.demo-accounts button:active,
+.voice-mode-toggle button:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.voice-mode-toggle {
+  background:
+    linear-gradient(135deg, rgba(23, 27, 34, 0.08), rgba(255, 255, 255, 0.38)),
+    rgba(226, 237, 249, 0.72);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.voice-mode-toggle button.active {
+  background: linear-gradient(135deg, #0071e3, #526dff);
+}
+
+@media (max-width: 720px) {
+  .auth-hero-shell {
+    background:
+      linear-gradient(120deg, rgba(0, 113, 227, 0.14), transparent 32%),
+      linear-gradient(250deg, rgba(255, 125, 44, 0.12), transparent 36%),
+      linear-gradient(180deg, #050506 0%, #080a0f 64%, #e9f0f8 64.2%, #f5eef7 100%);
+  }
+
+  .auth-hero-shell::after {
+    inset: 64% 0 0;
+  }
+
+  .home-view {
+    background:
+      radial-gradient(circle at 12% 54%, rgba(0, 113, 227, 0.08), transparent 28%),
+      radial-gradient(circle at 90% 62%, rgba(18, 214, 176, 0.07), transparent 26%),
+      linear-gradient(180deg, #050506 0 520px, #eaf2fa 520px 78%, #f7eff7 100%);
+  }
+
+  .home-view::before {
+    inset: 520px 0 0;
+  }
+
+  .profile-view {
+    background:
+      linear-gradient(180deg, #050506 0 360px, #eaf2fa 360px 78%, #f7eff7 100%);
+  }
+
+  .profile-view::before {
+    inset: 360px 0 0;
+  }
+}

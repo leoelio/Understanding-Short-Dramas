@@ -1,19 +1,19 @@
 # Project Status
 
-更新时间：2026-05-31 08:11:14
+更新时间：2026-06-01 04:20:41
 
 ## 当前目标
 
-Separate original preview audio from user-cloned voice preview
+优化登录页、选片首页和我的页的高级视觉质感
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`eb8ae77`
+- 最新提交：`5cdca69`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M frontend/app.js`
 - `M frontend/index.html`
+- `M frontend/styles.css`
 
 ## 数据状态
 
@@ -23,7 +23,7 @@ Separate original preview audio from user-cloned voice preview
 - 高光点：65
 - 已复核剧集：4
 - 待复核剧集：16
-- 互动记录：50
+- 互动记录：52
 - 弹幕记录：220
 - 体验配置：4
 - 片尾 AI 二创：29
@@ -47,13 +47,13 @@ Separate original preview audio from user-cloned voice preview
 
 ## 本次变更摘要
 
-- Profile voice preview now has two distinct paths: original mode uses local system narration and does not write to user voice cache; user mode calls CosyVoice and caches mp3 under a user-specific scene key.
-- Updated preview copy and button labels so original narration no longer says it uses the user's voice.
-- Bumped frontend asset version to prevent the browser from serving stale voice preview logic.
+- 登录页、选片首页、我的页加入浅色材质层、细纹理背景和更强的卡片层次，减少纯白平面感。
+- 统一三页内主要按钮、次要按钮、退出按钮、文件选择按钮和声音模式切换的圆角、渐变、阴影与点击反馈。
+- 验证登录、选片首页、我的页切换正常，静态资源版本已更新为 20260601-surface-polish-2。
 
 ## 下一步建议
 
-- Decide where original narration should eventually come from in production: system TTS, pre-rendered narrator clips, or platform audio assets.
+- 继续清理和组件化视觉样式，减少重复 CSS，并把播放页内部弹层进一步并入同一套设计语言。
 
 ## 安全提醒
 
