@@ -718,3 +718,14 @@
 - 下一步：
   - On the next product pass, confirm whether voice upload should trigger batch pre-generation for fixed Beiwang EP1 remix lines.
   - For public mobile deployment, ensure the voice capture page runs under HTTPS because browser microphone permission requires a secure context.
+
+## 2026-05-31 08:04:44
+
+- 目标：Fix microphone recording voice generation by normalizing browser audio to wav before CosyVoice calls
+- Git：`2bac371` / `main`
+- 数据：10 部短剧，20 集，65 个高光，4 集已复核，220 条弹幕，4 条体验配置，29 条片尾 AI 二创。
+- 变更：
+  - Added backend ffmpeg normalization for uploaded voice samples, so browser webm/opus recordings are converted to wav before being stored as active voice profiles.
+  - Added generation-time fallback normalization for old non-wav voice profiles, fixing existing recorded samples without requiring users to re-upload.
+- 下一步：
+  - Keep voice prompt normalization on the server path for mobile deployment; mobile clients can upload native recordings without knowing CosyVoice audio format requirements.

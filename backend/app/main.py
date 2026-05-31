@@ -2,6 +2,7 @@ import json
 import hashlib
 import os
 import re
+import subprocess
 import urllib.request
 from collections import Counter
 from datetime import datetime
@@ -92,6 +93,29 @@ def ensure_voice_dirs() -> None:
 
 def sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def normalize_voice_prompt_audio(source_path: Path, original_suffix: str) -> Path:
+    target_path = source_path.with_name(f"{source_path.stem}_prompt.wav")
+    if target_path.exists():
+        return target_path
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(source_path), "-ar", "16000", "-ac", "1", str(target_path)],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
+        )
+        return target_path
+    except FileNotFoundError:
+        if original_suffix == ".wav":
+            return source_path
+        raise HTTPException(status_code=500, detail="服务器缺少 ffmpeg，暂时无法处理浏览器录音")
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        if original_suffix == ".wav":
+            return source_path
+        raise HTTPException(status_code=400, detail="录音转码失败，请重新录制，或上传 wav 格式声音样本")
 
 
 def voice_clip_payload(clip: VoiceClipCache, cached: bool = True) -> dict:
@@ -208,6 +232,9 @@ def download_voice_audio(provider_payload: dict, target_path: Path) -> None:
 
 def generate_voice_clip_file(profile: VoiceProfile, text: str, output_path: Path) -> dict:
     ensure_voice_dirs()
+    prompt_path = Path(profile.prompt_audio_path)
+    prompt_suffix = prompt_path.suffix.lower() or ".wav"
+    prompt_wav_path = normalize_voice_prompt_audio(prompt_path, prompt_suffix)
     payload = post_multipart_json(
         f"{COSYVOICE_BASE_URL}/api/tts/zero_shot",
         {
@@ -218,8 +245,8 @@ def generate_voice_clip_file(profile: VoiceProfile, text: str, output_path: Path
             "format": "mp3",
         },
         "prompt_wav",
-        Path(profile.prompt_audio_path),
-        profile.prompt_audio_filename or "voice_prompt.wav",
+        prompt_wav_path,
+        prompt_wav_path.name,
         "audio/wav",
     )
     download_voice_audio(payload, output_path)
@@ -1833,6 +1860,7 @@ async def upload_my_voice_profile(
     stored_name = f"{uuid4().hex}_{safe_name}"
     stored_path = user_dir / stored_name
     stored_path.write_bytes(data)
+    prompt_path = normalize_voice_prompt_audio(stored_path, suffix)
 
     db.query(VoiceProfile).filter(VoiceProfile.user_id == user.id, VoiceProfile.status == "active").update(
         {"status": "replaced", "updated_at": datetime.utcnow()}
@@ -1843,7 +1871,7 @@ async def upload_my_voice_profile(
         source="user_upload",
         consent_text=VOICE_CONSENT_TEXT,
         prompt_text=VOICE_CONSENT_TEXT,
-        prompt_audio_path=str(stored_path),
+        prompt_audio_path=str(prompt_path),
         prompt_audio_filename=original_name,
     )
     db.add(profile)

@@ -1,19 +1,18 @@
 # Project Status
 
-更新时间：2026-05-31 07:57:03
+更新时间：2026-05-31 08:04:44
 
 ## 当前目标
 
-Voice asset service now supports direct microphone recording on the profile page
+Fix microphone recording voice generation by normalizing browser audio to wav before CosyVoice calls
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`8d114aa`
+- 最新提交：`2bac371`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M frontend/app.js`
-- `M frontend/styles.css`
+- `M backend/app/main.py`
 
 ## 数据状态
 
@@ -47,13 +46,12 @@ Voice asset service now supports direct microphone recording on the profile page
 
 ## 本次变更摘要
 
-- Added browser-side microphone recording controls to the profile voice asset card, with start/stop, local preview, clear, and upload recorded sample flow.
-- Kept file upload as a fallback and reused the existing voice profile upload endpoint, so recorded webm audio and uploaded files share the same backend path.
+- Added backend ffmpeg normalization for uploaded voice samples, so browser webm/opus recordings are converted to wav before being stored as active voice profiles.
+- Added generation-time fallback normalization for old non-wav voice profiles, fixing existing recorded samples without requiring users to re-upload.
 
 ## 下一步建议
 
-- On the next product pass, confirm whether voice upload should trigger batch pre-generation for fixed Beiwang EP1 remix lines.
-- For public mobile deployment, ensure the voice capture page runs under HTTPS because browser microphone permission requires a secure context.
+- Keep voice prompt normalization on the server path for mobile deployment; mobile clients can upload native recordings without knowing CosyVoice audio format requirements.
 
 ## 安全提醒
 
