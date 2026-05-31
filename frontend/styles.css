@@ -7316,3 +7316,416 @@ body[data-view="profile"] .ghost-button:active,
     inset: 360px 0 0;
   }
 }
+
+/* Final cascade: premium watch overlays and in-player controls. */
+body[data-view="watch"] .topbar {
+  background:
+    linear-gradient(180deg, rgba(25, 28, 34, 0.94), rgba(12, 14, 18, 0.8)),
+    rgba(18, 18, 20, 0.84);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
+}
+
+body[data-view="watch"] .tabs {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px) saturate(155%);
+}
+
+body[data-view="watch"] .tab {
+  min-height: 36px;
+  color: rgba(245, 245, 247, 0.72);
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+body[data-view="watch"] .tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+body[data-view="watch"] .tab.active {
+  color: #071018;
+  background: linear-gradient(135deg, #f8fbff, #dfeaf7 62%, #f3edf8);
+  box-shadow: 0 12px 28px rgba(0, 113, 227, 0.18);
+}
+
+body[data-view="watch"] .ghost-button,
+body[data-view="watch"] .primary-button,
+.watch-view .mode-button,
+.watch-view .theme-icon-button,
+.watch-view .interaction-options button,
+.watch-view .ending-remix-entry-actions button,
+.watch-view .remix-footer button,
+.watch-view .danmaku-actions button,
+.watch-view .danmaku-reply-form button,
+.watch-view .remix-image-controls button {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+body[data-view="watch"] .primary-button,
+.watch-view .interaction-options button,
+.watch-view .ending-remix-entry-actions .primary-button,
+.watch-view .remix-footer .primary-button,
+.watch-view .danmaku-actions button,
+.watch-view .danmaku-reply-form button,
+.watch-view .remix-image-controls .primary-button {
+  border: 0;
+  color: #081016;
+  background:
+    linear-gradient(135deg, var(--type-accent, var(--player-accent, #32d2ff)), var(--type-soft, var(--player-soft, #ffd166))),
+    #32d2ff;
+  box-shadow:
+    0 14px 30px color-mix(in srgb, var(--type-accent, var(--player-accent, #32d2ff)) 24%, transparent),
+    inset 0 1px rgba(255, 255, 255, 0.28);
+  font-weight: 900;
+}
+
+body[data-view="watch"] .ghost-button,
+.watch-view .mode-button,
+.watch-view .ending-remix-entry-actions .ghost-button,
+.watch-view .remix-footer .ghost-button,
+.watch-view .remix-image-controls .ghost-button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f5f5f7;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.055)),
+    rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12), 0 12px 26px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(14px) saturate(145%);
+}
+
+body[data-view="watch"] .primary-button:hover,
+body[data-view="watch"] .ghost-button:hover,
+.watch-view .mode-button:hover,
+.watch-view .theme-icon-button:hover,
+.watch-view .interaction-options button:hover,
+.watch-view .ending-remix-entry-actions button:hover,
+.watch-view .remix-footer button:hover,
+.watch-view .danmaku-actions button:hover,
+.watch-view .danmaku-reply-form button:hover,
+.watch-view .remix-image-controls button:hover {
+  filter: brightness(1.04);
+  transform: translateY(-2px);
+}
+
+body[data-view="watch"] .primary-button:active,
+body[data-view="watch"] .ghost-button:active,
+.watch-view .mode-button:active,
+.watch-view .theme-icon-button:active,
+.watch-view .interaction-options button:active,
+.watch-view .ending-remix-entry-actions button:active,
+.watch-view .remix-footer button:active,
+.watch-view .danmaku-actions button:active,
+.watch-view .danmaku-reply-form button:active,
+.watch-view .remix-image-controls button:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.watch-stage-head,
+.watch-view .player-card,
+.watch-view .mode-switch,
+.watch-view .co-watch-card,
+.watch-view .reward-panel,
+.watch-view .room-feed-item,
+.watch-view .danmaku-settings,
+.watch-view .danmaku-form,
+.watch-view .danmaku-feedback,
+.watch-view .timeline-item {
+  border-color: color-mix(in srgb, var(--player-accent, #32d2ff) 28%, rgba(255, 255, 255, 0.14));
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+    color-mix(in srgb, var(--player-accent, #32d2ff) 8%, rgba(10, 13, 18, 0.78));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12), 0 20px 56px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+
+.watch-view .mode-switch {
+  border-radius: 999px;
+  padding: 5px;
+}
+
+.watch-view .mode-button.active {
+  color: #081016;
+  background: linear-gradient(135deg, var(--player-accent, #32d2ff), var(--player-soft, #ffd166));
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--player-accent, #32d2ff) 24%, transparent);
+}
+
+.watch-view .co-watch-actions input,
+.watch-view .danmaku-reply-form input {
+  border-color: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: #f5f5f7;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.045)),
+    rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.watch-view .interaction-panel,
+.watch-view .ending-remix-entry,
+.watch-view .ending-remix-panel,
+.watch-view .danmaku-action-popover {
+  border: 1px solid color-mix(in srgb, var(--type-accent, var(--player-accent, #32d2ff)) 30%, rgba(255, 255, 255, 0.18));
+  border-radius: 24px;
+  color: #f5f5f7;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.055)),
+    linear-gradient(235deg, color-mix(in srgb, var(--type-soft, var(--player-soft, #ffd166)) 13%, transparent), transparent 42%),
+    rgba(9, 12, 18, 0.86);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.16),
+    0 28px 78px rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(26px) saturate(165%);
+}
+
+.watch-view .interaction-panel::before,
+.watch-view .ending-remix-entry::before,
+.watch-view .ending-remix-panel::after,
+.watch-view .danmaku-action-popover::before {
+  background:
+    linear-gradient(115deg, transparent 8%, rgba(255, 255, 255, 0.2), transparent 30%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 38px);
+  opacity: 0.28;
+}
+
+.watch-view .interaction-panel {
+  max-width: 620px;
+  padding: 18px;
+}
+
+.watch-view .vehicle-choice-panel {
+  max-width: 720px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.055)),
+    linear-gradient(240deg, color-mix(in srgb, var(--type-accent) 16%, transparent), transparent 42%),
+    rgba(9, 12, 18, 0.9);
+}
+
+.watch-view .interaction-meta {
+  flex-wrap: wrap;
+  padding-right: 34px;
+}
+
+.watch-view .interaction-meta b,
+.watch-view .quiz-banner b,
+.watch-view .impact-pad strong,
+.watch-view .remix-choice-card b,
+.watch-view .remix-result-title b {
+  color: #081016;
+  background:
+    linear-gradient(135deg, var(--type-accent, var(--player-accent, #32d2ff)), var(--type-soft, var(--player-soft, #ffd166))),
+    #32d2ff;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--type-accent, var(--player-accent, #32d2ff)) 30%, transparent);
+}
+
+.watch-view .interaction-copy h3,
+.watch-view .ending-remix-entry strong,
+.watch-view .ending-remix-panel h3,
+.watch-view .remix-choice-card strong,
+.watch-view .storyboard-card strong {
+  letter-spacing: 0;
+}
+
+.watch-view .interaction-copy p,
+.watch-view .ending-remix-entry p,
+.watch-view .ending-remix-panel p,
+.watch-view .danmaku-action-popover p,
+.watch-view .remix-choice-card span,
+.watch-view .remix-choice-card em,
+.watch-view .remix-choice-card small {
+  color: rgba(245, 245, 247, 0.72);
+}
+
+.watch-view .quiz-banner,
+.watch-view .reward-outcome,
+.watch-view .scene-captions span,
+.watch-view .impact-pad,
+.watch-view .remix-choice-card,
+.watch-view .storyboard-card,
+.watch-view .featured-remix-strip,
+.watch-view .remix-video-plan,
+.watch-view .remix-image-plan,
+.watch-view .remix-variant-strip {
+  border-color: color-mix(in srgb, var(--type-accent, var(--player-accent, #32d2ff)) 26%, rgba(255, 255, 255, 0.13));
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.045)),
+    rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.watch-view .impact-pad {
+  min-height: 58px;
+  border-style: solid;
+}
+
+.watch-view .impact-pad:hover {
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.14),
+    0 18px 36px color-mix(in srgb, var(--type-accent) 20%, transparent);
+}
+
+.watch-view .interaction-meter {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.watch-view .interaction-meter i,
+.watch-view .bar i {
+  background: linear-gradient(90deg, var(--type-accent, var(--player-accent, #32d2ff)), var(--type-soft, var(--player-soft, #ffd166)));
+}
+
+.watch-view .result-row {
+  border-radius: 14px;
+  padding: 7px 8px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.watch-view .ending-remix-layer {
+  background:
+    linear-gradient(180deg, rgba(5, 7, 10, 0.04), rgba(5, 7, 10, 0.82)),
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--player-accent, #32d2ff) 24%, transparent), transparent 34%),
+    radial-gradient(circle at 86% 24%, color-mix(in srgb, var(--player-soft, #ffd166) 18%, transparent), transparent 34%);
+}
+
+.watch-view .ending-remix-entry {
+  grid-template-columns: minmax(0, 1fr) auto;
+  max-width: 720px;
+  padding: 14px;
+}
+
+.watch-view .ending-remix-entry span,
+.watch-view .remix-head span,
+.watch-view .featured-remix-strip > strong {
+  color: var(--player-accent, #32d2ff);
+  letter-spacing: 0;
+}
+
+.watch-view .ending-remix-panel {
+  width: min(100%, 860px);
+  max-height: calc(100% - 20px);
+  padding: 18px;
+}
+
+.watch-view .remix-choice-card {
+  min-height: 128px;
+  padding: 14px;
+}
+
+.watch-view .remix-choice-card:hover {
+  border-color: color-mix(in srgb, var(--player-accent, #32d2ff) 58%, rgba(255, 255, 255, 0.18));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--player-accent, #32d2ff) 12%, rgba(255, 255, 255, 0.09)), rgba(255, 255, 255, 0.07)),
+    rgba(255, 255, 255, 0.07);
+  transform: translateY(-2px);
+}
+
+.watch-view .featured-remix-strip article,
+.watch-view .video-shot-list article {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.watch-view .storyboard-card {
+  padding: 13px;
+}
+
+.watch-view .remix-image-stage {
+  border-radius: 20px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12), 0 18px 44px rgba(0, 0, 0, 0.26);
+}
+
+.watch-view .remix-image-frame {
+  border-radius: 20px;
+}
+
+.watch-view .remix-image-frame figcaption {
+  border-radius: 18px;
+  background: rgba(8, 12, 18, 0.74);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px) saturate(150%);
+}
+
+.watch-view .remix-image-controls {
+  border-radius: 18px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.watch-view .danmaku-action-popover {
+  width: min(282px, calc(100% - 20px));
+  padding: 14px;
+}
+
+.watch-view .danmaku-action-popover strong {
+  color: var(--player-accent, #32d2ff);
+  font-size: 13px;
+}
+
+.watch-view .danmaku-actions {
+  gap: 8px;
+}
+
+.watch-view .danmaku-actions button,
+.watch-view .danmaku-reply-form button {
+  min-height: 36px;
+  padding: 8px 10px;
+}
+
+.close-button,
+.watch-view .close-button,
+.watch-view .remix-close-button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f5f5f7;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06)),
+    rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.14), 0 12px 28px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px) saturate(150%);
+}
+
+.close-button:hover,
+.watch-view .close-button:hover,
+.watch-view .remix-close-button:hover {
+  border-color: color-mix(in srgb, var(--player-accent, #32d2ff) 42%, rgba(255, 255, 255, 0.2));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--player-accent, #32d2ff) 24%, rgba(255, 255, 255, 0.16)), rgba(255, 255, 255, 0.1)),
+    rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 720px) {
+  .watch-view .interaction-panel {
+    max-width: 100%;
+    border-radius: 22px;
+    padding: 16px;
+  }
+
+  .watch-view .ending-remix-entry {
+    grid-template-columns: 1fr;
+    border-radius: 22px;
+  }
+
+  .watch-view .ending-remix-entry-actions {
+    justify-content: flex-start;
+  }
+
+  .watch-view .remix-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .watch-view .danmaku-action-popover {
+    width: min(300px, calc(100% - 18px));
+  }
+
+  .watch-view .danmaku-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
