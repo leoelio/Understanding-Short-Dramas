@@ -218,6 +218,9 @@ const state = {
   roomLastEventId: 0,
   roomFeed: [],
   roomApplyingRemote: false,
+  demoRoomActive: false,
+  demoRoomSerial: 900000,
+  demoRoomTimers: [],
   rewardProfile: null,
   voiceProfile: null,
   voiceStatus: "",
@@ -1869,12 +1872,15 @@ function renderEpisodePanel() {
 }
 
 function renderWatchRoom() {
-  const room = state.watchRoom;
+  const rawRoom = state.watchRoom;
+  const room = displayWatchRoom(rawRoom);
   if (!roomStatus) return;
-  $("#leaveRoomButton").hidden = !room;
-  $("#createRoomButton").textContent = room ? "新开房" : "开房";
-  roomCodeInput.value = room?.code || roomCodeInput.value;
-  if (!room) {
+  $("#leaveRoomButton").hidden = !rawRoom;
+  $("#createRoomButton").textContent = rawRoom ? "新开房" : "开房";
+  const demoButton = $("#demoRoomButton");
+  if (demoButton) demoButton.textContent = state.demoRoomActive ? "刷新演示" : "演示同看";
+  roomCodeInput.value = rawRoom?.code || roomCodeInput.value;
+  if (!rawRoom) {
     roomStatus.textContent = "未开房";
     roomStatus.classList.remove("live");
     if (roomMemberList) roomMemberList.innerHTML = "";
@@ -1885,6 +1891,54 @@ function renderWatchRoom() {
   roomStatus.textContent = `房间 ${room.code} · ${room.member_count}/2 · ${guest} · ${stateLabel}`;
   roomStatus.classList.add("live");
   renderRoomMembers(room);
+}
+
+function demoRoomFriend() {
+  const dramaTitle = state.currentEpisode?.drama?.title || "";
+  if (/冬至/.test(dramaTitle)) {
+    return {
+      display_name: "冬至心动搭子",
+      growth_title: "心动预判师",
+      points: 128,
+      badge_count: 6,
+      latest_badges: [
+        { title: "冬至预言家", description: "猜中关键情感选择", points: 24 },
+        { title: "心动观察员", description: "捕捉甜蜜高光", points: 18 },
+      ],
+    };
+  }
+  if (/北派|寻宝/.test(dramaTitle)) {
+    return {
+      display_name: "寻宝搭子小北",
+      growth_title: "机关预判王",
+      points: 116,
+      badge_count: 5,
+      latest_badges: [
+        { title: "北派护宝人", description: "命中机关线索竞猜", points: 18 },
+        { title: "线索雷达", description: "连续发现高光线索", points: 16 },
+      ],
+    };
+  }
+  return {
+    display_name: "同看演示好友",
+    growth_title: "高光读心者",
+    points: 96,
+    badge_count: 4,
+    latest_badges: [
+      { title: "高光收藏家", description: "完成演示互动", points: 20 },
+      { title: "弹幕气氛组", description: "参与同看互动", points: 12 },
+    ],
+  };
+}
+
+function displayWatchRoom(room) {
+  if (!room) return null;
+  if (!state.demoRoomActive || room.guest) return room;
+  return {
+    ...room,
+    guest: { ...demoRoomFriend(), id: "demo-friend", is_demo: true },
+    member_count: 2,
+  };
 }
 
 function roomMemberBadgeTitle(member) {
@@ -1931,8 +1985,10 @@ function renderRoomMembers(room) {
         }
         const isSelf = member.id === state.currentUser?.id;
         return `
-          <button class="room-member-card ${isSelf ? "self" : ""} slot-${key}" type="button" data-user-id="${member.id}">
-            ${badgeArtHTML(roomMemberBadgeTitle(member), false, "mini")}
+        <button class="room-member-card ${isSelf ? "self" : ""} ${member.is_demo ? "demo" : ""} slot-${key}" type="button" ${
+          member.is_demo ? 'data-demo-member="1"' : `data-user-id="${member.id}"`
+        }>
+          ${badgeArtHTML(roomMemberBadgeTitle(member), false, "mini")}
             <div class="room-member-main">
               <span class="room-role-chip">${escapeHTML(label)}${isSelf ? " · 我" : ""}</span>
               <strong>${escapeHTML(member.display_name || "同看用户")}</strong>
@@ -2095,6 +2151,116 @@ function showRoomEventToast(event) {
   `;
   wrap.appendChild(toast);
   window.setTimeout(() => toast.remove(), 5200);
+}
+
+function clearDemoRoomTimers() {
+  state.demoRoomTimers.forEach((timer) => window.clearTimeout(timer));
+  state.demoRoomTimers = [];
+}
+
+function demoRoomEvent(eventType, payload = {}) {
+  state.demoRoomSerial += 1;
+  return {
+    id: state.demoRoomSerial,
+    event_type: eventType,
+    payload,
+    user: { ...demoRoomFriend(), id: "demo-friend", is_demo: true },
+    created_at: new Date(Date.now() + state.demoRoomSerial).toISOString(),
+  };
+}
+
+function buildDemoRoomEvents() {
+  const highlights = state.currentEpisode?.highlights || [];
+  const firstHighlight = highlights[0] || {};
+  const secondHighlight = highlights[1] || firstHighlight;
+  const firstOption = firstHighlight.options?.[0] || { key: "guard", label: "护住主角" };
+  const secondOption = secondHighlight.options?.[1] || secondHighlight.options?.[0] || { key: "shock", label: "太离谱了" };
+  const badgeTitle = firstHighlight.reward_hint?.title || (/北派|寻宝/.test(state.currentEpisode?.drama?.title || "") ? "北派护宝人" : "高光预判王");
+  const points = Number(firstHighlight.reward_hint?.points || 18);
+  return [
+    demoRoomEvent("danmaku", {
+      episode_id: state.currentEpisode?.id,
+      time_sec: Math.max(0, player.currentTime || firstHighlight.start_time_sec || 0),
+      text: "这里适合一起看，线索和反转都很密。",
+    }),
+    demoRoomEvent("interaction", {
+      episode_id: state.currentEpisode?.id,
+      highlight_id: firstHighlight.id,
+      highlight_title: firstHighlight.title || "关键高光竞猜",
+      option_key: firstOption.key,
+      option_label: firstOption.label,
+      reward_correct: true,
+      reward_message: `命中答案，+${points} 分`,
+      reward_title: badgeTitle,
+      reward_points: points,
+      reward_badge: { title: badgeTitle, description: "演示模式自动注入的同看竞猜徽章", points },
+    }),
+    demoRoomEvent("danmaku_reply", {
+      text: "这里适合一起看，线索和反转都很密。",
+      reply: "我也觉得，这个点答辩展示很直观。",
+    }),
+    demoRoomEvent("danmaku_like", {
+      text: "竞猜命中这一下很有社交感",
+    }),
+    demoRoomEvent("interaction", {
+      episode_id: state.currentEpisode?.id,
+      highlight_id: secondHighlight.id,
+      highlight_title: secondHighlight.title || "第二个情绪高光",
+      option_key: secondOption.key,
+      option_label: secondOption.label,
+      reward_correct: false,
+      reward_message: "好友选择已同步",
+      reward_points: 0,
+    }),
+  ];
+}
+
+function emitDemoRoomEvent(event, index) {
+  pushRoomFeed(event);
+  showRoomEventToast(event);
+  const payload = event.payload || {};
+  if (event.event_type === "danmaku") {
+    emitDanmaku({
+      id: `demo-danmaku-${event.id}`,
+      episode_id: payload.episode_id,
+      time_sec: payload.time_sec || player.currentTime || 0,
+      text: payload.text,
+      mode: "carnival",
+      user_name: event.user.display_name,
+      className: "room-danmaku",
+    });
+  }
+  if (event.event_type === "interaction") {
+    emitDanmaku({
+      id: `demo-choice-${event.id}`,
+      text: payload.reward_correct
+        ? `${event.user.display_name}答对了，解锁${payload.reward_badge?.title || "徽章"}`
+        : `${event.user.display_name}选择了${payload.option_label || "高光反应"}`,
+      time_sec: player.currentTime || 0,
+      className: "danmaku-impact room-danmaku",
+    });
+  }
+  if (index === 0) setDanmakuFeedback("演示同看已启动：模拟好友正在参与互动");
+}
+
+async function enableDemoWatchRoom() {
+  if (!state.currentEpisode) {
+    setDanmakuFeedback("请先打开一集短剧", true);
+    return;
+  }
+  if (!state.watchRoom) {
+    const room = await createWatchRoom({ silent: true });
+    if (!room) return;
+  }
+  clearDemoRoomTimers();
+  state.demoRoomActive = true;
+  state.roomFeed = [];
+  renderWatchRoom();
+  renderRoomFeed();
+  buildDemoRoomEvents().forEach((event, index) => {
+    const timer = window.setTimeout(() => emitDemoRoomEvent(event, index), index * 620);
+    state.demoRoomTimers.push(timer);
+  });
 }
 
 async function postRoomEvent(eventType, payload) {
@@ -2560,6 +2726,28 @@ function renderPublicProfile(payload) {
   `;
 }
 
+function openDemoPublicProfile() {
+  if (!publicProfileModal || !publicProfileContent) return;
+  const friend = demoRoomFriend();
+  const badges = friend.latest_badges || [];
+  publicProfileModal.classList.remove("hidden");
+  renderPublicProfile({
+    user: { display_name: friend.display_name, growth_title: friend.growth_title },
+    title: friend.growth_title,
+    points: friend.points,
+    completion_percent: 88,
+    collection_unlocked: badges.length,
+    collection_total: Math.max(4, badges.length),
+    badges,
+    collection: badges.map((badge, index) => ({
+      ...badge,
+      unlocked: true,
+      drama_title: state.currentEpisode?.drama?.title || "演示短剧",
+      highlight_title: index === 0 ? "演示竞猜命中" : "演示弹幕互动",
+    })),
+  });
+}
+
 async function openPublicProfile(userId) {
   if (!userId || !publicProfileModal || !publicProfileContent) return;
   publicProfileModal.classList.remove("hidden");
@@ -2735,11 +2923,13 @@ async function generateVoicePreview() {
 
 function leaveWatchRoom() {
   window.clearInterval(state.roomPollTimer);
+  clearDemoRoomTimers();
   state.roomPollTimer = null;
   state.watchRoom = null;
   state.roomLastSyncAt = 0;
   state.roomLastEventId = 0;
   state.roomFeed = [];
+  state.demoRoomActive = false;
   renderWatchRoom();
   renderRoomFeed();
 }
@@ -2806,11 +2996,12 @@ async function syncRoomState(immediate = false) {
   }
 }
 
-async function createWatchRoom() {
+async function createWatchRoom(options = {}) {
   if (!state.currentEpisode) {
     setDanmakuFeedback("请先打开一集短剧", true);
-    return;
+    return null;
   }
+  const silent = options && options.silent === true;
   try {
     state.watchRoom = await fetchJSON("/api/watch-rooms", {
       method: "POST",
@@ -2825,9 +3016,11 @@ async function createWatchRoom() {
     renderWatchRoom();
     renderRoomFeed();
     startRoomPolling();
-    setDanmakuFeedback(`同看房间已创建：${state.watchRoom.code}`);
+    if (!silent) setDanmakuFeedback(`同看房间已创建：${state.watchRoom.code}`);
+    return state.watchRoom;
   } catch (error) {
     setDanmakuFeedback(errorMessage(error), true);
+    return null;
   }
 }
 
@@ -5562,7 +5755,12 @@ endingRemixLayer?.addEventListener("click", (event) => {
 });
 roomMemberList?.addEventListener("click", (event) => {
   const card = event.target.closest(".room-member-card");
-  if (card) openPublicProfile(Number(card.dataset.userId));
+  if (!card || card.disabled) return;
+  if (card.dataset.demoMember) {
+    openDemoPublicProfile();
+    return;
+  }
+  openPublicProfile(Number(card.dataset.userId));
 });
 $("#closePublicProfile").addEventListener("click", closePublicProfile);
 publicProfileModal?.addEventListener("click", (event) => {
@@ -5683,6 +5881,7 @@ $("#danmakuSettingsToggle").addEventListener("click", () => {
 });
 $("#createRoomButton").addEventListener("click", createWatchRoom);
 $("#joinRoomButton").addEventListener("click", joinWatchRoom);
+$("#demoRoomButton").addEventListener("click", enableDemoWatchRoom);
 $("#leaveRoomButton").addEventListener("click", () => {
   leaveWatchRoom();
   setDanmakuFeedback("已离开同看房间");

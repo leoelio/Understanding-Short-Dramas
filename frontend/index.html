@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260601-cowatch-social-polish" />
+    <link rel="stylesheet" href="/styles.css?v=20260603-demo-room-login-polish-2" />
   </head>
   <body>
     <div class="app-shell">
@@ -48,10 +48,23 @@
                 <div class="auth-product-stage" aria-hidden="true">
                   <div class="auth-device">
                     <div class="auth-device-bar"></div>
+                    <div class="auth-device-title">
+                      <span>今晚热推</span>
+                      <strong>北派寻宝</strong>
+                      <em>机关线索 · 同看战报 · 竞猜徽章</em>
+                    </div>
                     <div class="auth-video-glass">
                       <span></span>
                       <strong>高潮点已触发</strong>
                       <em>68% 选择震惊</em>
+                    </div>
+                    <div class="auth-device-room">
+                      <b>同看战报</b>
+                      <span>小北答对机关竞猜，解锁「北派护宝人」</span>
+                    </div>
+                    <div class="auth-device-danmaku">
+                      <i></i>
+                      <span>弹幕：这波线索埋得太狠了</span>
                     </div>
                     <div class="auth-device-controls">
                       <i></i>
@@ -59,6 +72,10 @@
                       <i></i>
                     </div>
                   </div>
+                </div>
+                <div class="auth-slogan-strip" aria-label="产品口号">
+                  <strong>看剧不用打字，情绪自动到场。</strong>
+                  <span>高光识别 · 一键互动 · 同看社交 · AI 片尾二创</span>
                 </div>
                 <div class="auth-feature-rail" aria-label="账号能力">
                   <article>
@@ -215,6 +232,7 @@
                 <button id="createRoomButton" class="primary-button" type="button">开房</button>
                 <input id="roomCodeInput" maxlength="12" placeholder="输入房间码" />
                 <button id="joinRoomButton" class="ghost-button" type="button">加入</button>
+                <button id="demoRoomButton" class="ghost-button demo-room-button" type="button">演示同看</button>
                 <button id="leaveRoomButton" class="ghost-button" type="button" hidden>离开</button>
               </div>
               <div id="roomMemberList" class="room-member-list"></div>
@@ -367,6 +385,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=20260601-cowatch-social-polish"></script>
+    <script type="module" src="/app.js?v=20260603-demo-room-login-polish-2"></script>
   </body>
 </html>
