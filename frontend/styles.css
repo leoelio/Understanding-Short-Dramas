@@ -8270,3 +8270,98 @@ body[data-view="watch"] .watch-view .demo-room-button {
     border-radius: 18px;
   }
 }
+
+/* Final cascade: auth responsive polish. */
+@media (max-width: 980px) {
+  .auth-product-stage {
+    min-height: 0;
+  }
+
+  .auth-device {
+    height: clamp(284px, 52vw, 336px);
+    aspect-ratio: auto;
+    border-radius: 30px;
+  }
+
+  .auth-device-title {
+    left: 24px;
+    top: 52px;
+    width: min(252px, 52%);
+  }
+
+  .auth-device-room {
+    left: 24px;
+    top: 158px;
+    bottom: auto;
+    width: min(292px, 58%);
+  }
+
+  .auth-device-danmaku {
+    left: 24px;
+    top: auto;
+    bottom: 86px;
+    max-width: min(272px, 52%);
+  }
+
+  .auth-video-glass {
+    right: 24px;
+    bottom: 26px;
+  }
+
+  .auth-device-controls {
+    left: 28px;
+    bottom: 28px;
+  }
+
+  .auth-feature-rail {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+    max-width: 100%;
+    padding-bottom: 0;
+  }
+
+  .auth-feature-rail article {
+    flex: initial;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .auth-device {
+    height: 314px;
+  }
+
+  .auth-device-title,
+  .auth-device-room {
+    left: 20px;
+    width: calc(100% - 40px);
+  }
+
+  .auth-device-title {
+    top: 52px;
+  }
+
+  .auth-device-room {
+    top: 146px;
+  }
+
+  .auth-device-danmaku {
+    display: none;
+  }
+
+  .auth-video-glass {
+    right: 20px;
+    bottom: 22px;
+    min-width: 156px;
+  }
+
+  .auth-device-controls {
+    left: 22px;
+    bottom: 26px;
+  }
+
+  .auth-feature-rail {
+    grid-template-columns: 1fr;
+  }
+}
