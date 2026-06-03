@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260604-social-hub" />
+    <link rel="stylesheet" href="/styles.css?v=20260604-friend-social-polish" />
   </head>
   <body>
     <div class="app-shell">
@@ -179,6 +179,7 @@
             </div>
             <button id="markInboxRead" class="ghost-button" type="button">全部已读</button>
           </div>
+          <div id="friendHubPanel" class="friend-hub-panel"></div>
           <div id="chatInboxStatus" class="social-status"></div>
           <div id="chatInboxList" class="social-list"></div>
         </section>
@@ -203,24 +204,33 @@
                 <span>Share</span>
                 <strong>发布一条 AI 内容动态</strong>
               </div>
-              <select id="socialVisibility" class="episode-select" aria-label="选择动态可见范围">
-                <option value="public">所有人可见</option>
-                <option value="friends">仅好友可见</option>
-                <option value="private">仅自己可见</option>
-              </select>
             </div>
             <div class="social-compose-grid">
-              <select id="socialSourceType" class="episode-select" aria-label="选择分享类型">
-                <option value="voice">AI 声音</option>
-                <option value="image">AI 图片</option>
-                <option value="story">AI 剧情卡</option>
-                <option value="thought">文字感受</option>
-              </select>
-              <select id="socialTopic" class="episode-select" aria-label="选择动态专题">
-                <option value="beiwang_voice">北往 AI 声音专题</option>
-                <option value="winter_voice_match">冬天男主模仿赛</option>
-                <option value="story_bottle">剧情漂流瓶</option>
-              </select>
+              <label class="social-select-card">
+                <span>可见范围</span>
+                <select id="socialVisibility" class="episode-select social-select" aria-label="选择动态可见范围">
+                  <option value="public">所有人可见</option>
+                  <option value="friends">仅好友可见</option>
+                  <option value="private">仅自己可见</option>
+                </select>
+              </label>
+              <label class="social-select-card">
+                <span>分享内容</span>
+                <select id="socialSourceType" class="episode-select social-select" aria-label="选择分享类型">
+                  <option value="voice">AI 声音</option>
+                  <option value="image">AI 图片</option>
+                  <option value="story">AI 剧情卡</option>
+                  <option value="thought">文字感受</option>
+                </select>
+              </label>
+              <label class="social-select-card wide">
+                <span>动态专题</span>
+                <select id="socialTopic" class="episode-select social-select" aria-label="选择动态专题">
+                  <option value="beiwang_voice">北往 AI 声音专题</option>
+                  <option value="winter_voice_match">冬天男主模仿赛</option>
+                  <option value="story_bottle">剧情漂流瓶</option>
+                </select>
+              </label>
             </div>
             <input id="socialPostTitle" class="social-input" maxlength="120" placeholder="给这条动态起个标题" />
             <textarea id="socialPostText" class="social-input" maxlength="500" rows="4" placeholder="写下你的想法。禁止发送淫秽低俗内容。"></textarea>
@@ -456,6 +466,6 @@
       </div>
     </div>
 
-    <script defer src="/app.js?v=20260604-social-hub"></script>
+    <script defer src="/app.js?v=20260604-friend-social-polish"></script>
   </body>
 </html>

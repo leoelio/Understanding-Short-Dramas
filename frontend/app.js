@@ -263,6 +263,8 @@ const state = {
   roomInvitations: { received: [], sent: [] },
   roomSocialStatus: "",
   roomSocialStatusError: false,
+  friendHubStatus: "",
+  friendHubStatusError: false,
   socialInbox: { unread_count: 0, room_invitations: [], notifications: [] },
   socialFeed: { scope: "all", topics: [], posts: [] },
   socialStatus: "",
@@ -472,6 +474,8 @@ function clearAuth() {
   state.roomInvitations = { received: [], sent: [] };
   state.roomSocialStatus = "";
   state.roomSocialStatusError = false;
+  state.friendHubStatus = "";
+  state.friendHubStatusError = false;
   state.socialInbox = { unread_count: 0, room_invitations: [], notifications: [] };
   state.socialFeed = { scope: "all", topics: [], posts: [] };
   state.socialStatus = "";
@@ -490,6 +494,7 @@ function clearAuth() {
   renderRewardProfile();
   renderProfileGallery();
   renderChatBadge();
+  renderFriendHub();
   renderChatInbox();
   renderDiscoverView();
 }
@@ -677,6 +682,7 @@ function setView(name) {
     loadVoiceProfile();
   }
   if (name === "chat") {
+    loadRoomSocialData();
     loadSocialInbox();
   }
   if (name === "discover") {
@@ -2123,6 +2129,7 @@ function roomSocialMessage(message, isError = false) {
   state.roomSocialStatus = message;
   state.roomSocialStatusError = isError;
   renderRoomInvitePanel();
+  renderFriendHub();
 }
 
 function inviteRoomLabel(invitation) {
@@ -3003,11 +3010,18 @@ async function loadRoomSocialData() {
     ]);
     state.friendData = friends;
     state.roomInvitations = invitations;
+    if (state.friendHubStatusError) {
+      state.friendHubStatus = "";
+      state.friendHubStatusError = false;
+    }
   } catch (error) {
     state.roomSocialStatus = errorMessage(error);
     state.roomSocialStatusError = true;
+    state.friendHubStatus = state.roomSocialStatus;
+    state.friendHubStatusError = true;
   }
   renderRoomInvitePanel();
+  renderFriendHub();
 }
 
 async function addFriend(userId) {
@@ -3016,9 +3030,15 @@ async function addFriend(userId) {
       method: "POST",
       body: JSON.stringify({ user_id: Number(userId) }),
     });
+    state.friendHubStatus = "好友已添加，可以在聊聊里发起同看邀请。";
+    state.friendHubStatusError = false;
     roomSocialMessage("好友已添加，可以发起同看邀请。");
+    renderFriendHub();
   } catch (error) {
+    state.friendHubStatus = errorMessage(error);
+    state.friendHubStatusError = true;
     roomSocialMessage(errorMessage(error), true);
+    renderFriendHub();
   }
 }
 
@@ -3034,9 +3054,15 @@ async function inviteFriendToRoom(userId) {
     });
     state.roomInvitations = await fetchJSON("/api/watch-rooms/invitations");
     await loadSocialInbox();
+    state.friendHubStatus = "同看邀请已发出，对方会在聊聊里收到红点。";
+    state.friendHubStatusError = false;
     roomSocialMessage("同看邀请已发出。");
+    renderFriendHub();
   } catch (error) {
+    state.friendHubStatus = errorMessage(error);
+    state.friendHubStatusError = true;
     roomSocialMessage(errorMessage(error), true);
+    renderFriendHub();
   }
 }
 
@@ -3192,6 +3218,101 @@ function renderRoomInvitePanel() {
           : ""
       }
     </section>
+  `;
+}
+
+function renderFriendHubUserCard(user, mode) {
+  const isFriend = mode === "friend";
+  const title = user.growth_title || "剧情新人";
+  const points = Number(user.points || 0);
+  return `
+    <article class="friend-card ${isFriend ? "friend" : "candidate"}">
+      <div class="friend-card-main">
+        ${avatarHTML(user, "friend-card-avatar")}
+        <div>
+          <span>${isFriend ? "已互相关注" : "推荐添加"}</span>
+          <strong>${escapeHTML(user.display_name || "用户")}</strong>
+          <p>${escapeHTML(title)} · ${points} 分</p>
+        </div>
+      </div>
+      <div class="friend-card-actions">
+        ${
+          isFriend
+            ? `<button class="primary-button" type="button" data-friendhub-invite-id="${user.id}">邀请同看</button>`
+            : `<button class="primary-button" type="button" data-friendhub-add-id="${user.id}">加好友</button>`
+        }
+        <button class="ghost-button" type="button" data-friendhub-profile-id="${user.id}">展馆</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderFriendHub() {
+  const panel = $("#friendHubPanel");
+  if (!panel) return;
+  if (!state.currentUser) {
+    panel.innerHTML = "";
+    return;
+  }
+  const friends = (state.friendData?.friends || []).map(roomSocialUserFromFriend);
+  const candidates = state.friendData?.candidates || [];
+  const received = state.roomInvitations?.received || [];
+  const sent = state.roomInvitations?.sent || [];
+  const visibleFriends = friends.slice(0, 4);
+  const visibleCandidates = candidates.slice(0, 4);
+  const hiddenFriendCount = Math.max(0, friends.length - visibleFriends.length);
+  const pendingText = received.length
+    ? `${received.length} 条待处理同看邀请`
+    : sent.length
+      ? `最近邀请 ${sent[0].to_user?.display_name || "好友"}：${sent[0].status || "pending"}`
+      : "暂无待处理邀请";
+  panel.innerHTML = `
+    <div class="friend-hub-head">
+      <div>
+        <span>Friends</span>
+        <strong>好友系统</strong>
+        <p>好友关系写入数据库；同看邀请、仅好友可见动态、后续 AI 资产权限都会复用这里的关系。</p>
+      </div>
+      <div class="friend-hub-stats">
+        <em>${friends.length} 位好友</em>
+        <em>${candidates.length} 位可添加</em>
+        <em>${escapeHTML(pendingText)}</em>
+      </div>
+    </div>
+    ${
+      state.friendHubStatus
+        ? `<div class="friend-hub-status ${state.friendHubStatusError ? "error" : ""}">${escapeHTML(state.friendHubStatus)}</div>`
+        : ""
+    }
+    <div class="friend-hub-body">
+      <section class="friend-hub-section">
+        <div class="friend-hub-section-head">
+          <strong>优先邀请</strong>
+          <span>${hiddenFriendCount ? `另有 ${hiddenFriendCount} 位好友已收起` : "展示最适合发起同看的联系人"}</span>
+        </div>
+        <div class="friend-hub-grid">
+          ${
+            visibleFriends.length
+              ? visibleFriends.map((user) => renderFriendHubUserCard(user, "friend")).join("")
+              : `<div class="friend-hub-empty">还没有好友。先从右侧推荐添加一个演示账号，再发起同看邀请。</div>`
+          }
+        </div>
+      </section>
+      <section class="friend-hub-section">
+        <div class="friend-hub-section-head">
+          <strong>推荐添加</strong>
+          <span>只显示少量候选，避免聊聊页变成完整通讯录</span>
+        </div>
+        <div class="friend-hub-grid">
+          ${
+            visibleCandidates.length
+              ? visibleCandidates.map((user) => renderFriendHubUserCard(user, "candidate")).join("")
+              : `<div class="friend-hub-empty">暂无可添加用户。真实用户注册后会自动进入候选池。</div>`
+          }
+        </div>
+      </section>
+    </div>
+    <p class="friend-hub-note">AI 声音、AI 图片、AI 剧情卡的真实资产分配暂不开放；等单集 AI 生成和人工审核完成后，再接入“选择资产发布”。</p>
   `;
 }
 
@@ -6541,6 +6662,22 @@ roomInvitePanel?.addEventListener("click", (event) => {
   }
   if (event.target.closest("[data-refresh-room-social]")) {
     loadRoomSocialData();
+  }
+});
+$("#friendHubPanel")?.addEventListener("click", (event) => {
+  const addButton = event.target.closest("[data-friendhub-add-id]");
+  if (addButton) {
+    addFriend(addButton.dataset.friendhubAddId);
+    return;
+  }
+  const inviteButton = event.target.closest("[data-friendhub-invite-id]");
+  if (inviteButton) {
+    inviteFriendToRoom(inviteButton.dataset.friendhubInviteId);
+    return;
+  }
+  const profileButton = event.target.closest("[data-friendhub-profile-id]");
+  if (profileButton) {
+    openPublicProfile(Number(profileButton.dataset.friendhubProfileId));
   }
 });
 $("#closePublicProfile").addEventListener("click", closePublicProfile);
