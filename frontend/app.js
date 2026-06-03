@@ -15,6 +15,13 @@ const VOICE_PREVIEW_TEXTS = {
   user: "片尾拓展已开启，我会用你的声音陪你猜下一段剧情。",
 };
 
+const AVATAR_PRESETS = [
+  { key: "preset:road", label: "返乡", hint: "北往返乡感" },
+  { key: "preset:treasure", label: "寻宝", hint: "机关探索感" },
+  { key: "preset:winter", label: "冬至", hint: "爱情心动感" },
+  { key: "preset:stage", label: "高光", hint: "互动主理人" },
+];
+
 const DANMAKU_MODES = {
   light: { label: "轻聊", enabled: true, density: 0.72, includeModes: ["light"] },
   carnival: { label: "狂欢", enabled: true, density: 1, includeModes: ["light", "curated", "seed", "carnival"] },
@@ -222,6 +229,9 @@ const state = {
   demoRoomSerial: 900000,
   demoRoomTimers: [],
   rewardProfile: null,
+  profileStatus: "",
+  profileStatusError: false,
+  profileDraftAvatar: "",
   voiceProfile: null,
   voiceStatus: "",
   voiceStatusError: false,
@@ -320,6 +330,25 @@ function escapeHTML(value) {
     .replaceAll("'", "&#39;");
 }
 
+function avatarInitials(user = {}) {
+  const name = String(user.display_name || user.username || "用户").trim();
+  return escapeHTML(Array.from(name)[0] || "我");
+}
+
+function avatarPresetName(avatarUrl = "") {
+  return String(avatarUrl || "").startsWith("preset:") ? avatarUrl.split(":")[1] : "stage";
+}
+
+function avatarHTML(user = {}, className = "user-avatar") {
+  const avatarUrl = String(user.avatar_url || "");
+  if (avatarUrl.startsWith("/media/avatars/")) {
+    return `<span class="${className} uploaded"><img src="${escapeHTML(avatarUrl)}" alt="${escapeHTML(
+      user.display_name || "用户头像"
+    )}" /></span>`;
+  }
+  return `<span class="${className} preset avatar-${escapeHTML(avatarPresetName(avatarUrl))}">${avatarInitials(user)}</span>`;
+}
+
 function getHighlightUI(type) {
   return HIGHLIGHT_UI[getHighlightKey(type)];
 }
@@ -389,6 +418,9 @@ function clearAuth() {
   state.currentUser = null;
   state.watchHistory = [];
   state.rewardProfile = null;
+  state.profileStatus = "";
+  state.profileStatusError = false;
+  state.profileDraftAvatar = "";
   state.voiceProfile = null;
   state.voiceStatus = "";
   state.voiceStatusError = false;
@@ -1899,6 +1931,7 @@ function demoRoomFriend() {
     return {
       display_name: "冬至心动搭子",
       growth_title: "心动预判师",
+      avatar_url: "preset:winter",
       points: 128,
       badge_count: 6,
       latest_badges: [
@@ -1911,6 +1944,7 @@ function demoRoomFriend() {
     return {
       display_name: "寻宝搭子小北",
       growth_title: "机关预判王",
+      avatar_url: "preset:treasure",
       points: 116,
       badge_count: 5,
       latest_badges: [
@@ -1922,6 +1956,7 @@ function demoRoomFriend() {
   return {
     display_name: "同看演示好友",
     growth_title: "高光读心者",
+    avatar_url: "preset:stage",
     points: 96,
     badge_count: 4,
     latest_badges: [
@@ -1988,7 +2023,7 @@ function renderRoomMembers(room) {
         <button class="room-member-card ${isSelf ? "self" : ""} ${member.is_demo ? "demo" : ""} slot-${key}" type="button" ${
           member.is_demo ? 'data-demo-member="1"' : `data-user-id="${member.id}"`
         }>
-          ${badgeArtHTML(roomMemberBadgeTitle(member), false, "mini")}
+          ${avatarHTML(member, "room-member-avatar")}
             <div class="room-member-main">
               <span class="room-role-chip">${escapeHTML(label)}${isSelf ? " · 我" : ""}</span>
               <strong>${escapeHTML(member.display_name || "同看用户")}</strong>
@@ -2567,6 +2602,106 @@ function renderVoiceProfileSection() {
   `;
 }
 
+function setProfileStatus(message, isError = false) {
+  state.profileStatus = message;
+  state.profileStatusError = isError;
+  renderProfileGallery();
+}
+
+async function saveProfileSettings() {
+  const displayName = $("#profileDisplayName")?.value.trim();
+  if (!displayName) {
+    setProfileStatus("昵称不能为空。", true);
+    return;
+  }
+  try {
+    const payload = await fetchJSON("/api/users/me/profile", {
+      method: "PATCH",
+      body: JSON.stringify({
+        display_name: displayName,
+        avatar_url: state.profileDraftAvatar || state.currentUser.avatar_url || "preset:stage",
+      }),
+    });
+    state.currentUser = payload.user;
+    state.profileDraftAvatar = "";
+    updateAuthUI();
+    setProfileStatus("资料已保存，同看房间和展馆会使用新的身份信息。");
+  } catch (error) {
+    setProfileStatus(errorMessage(error), true);
+  }
+}
+
+async function uploadProfileAvatar() {
+  const input = $("#profileAvatarInput");
+  const file = input?.files?.[0];
+  if (!file) {
+    setProfileStatus("请先选择一张头像图片。", true);
+    return;
+  }
+  const form = new FormData();
+  form.append("avatar", file);
+  try {
+    setProfileStatus("正在上传头像...");
+    const payload = await fetchJSON("/api/users/me/avatar", { method: "POST", body: form });
+    state.currentUser = payload.user;
+    state.profileDraftAvatar = "";
+    updateAuthUI();
+    setProfileStatus("头像已上传并保存。");
+  } catch (error) {
+    setProfileStatus(errorMessage(error), true);
+  }
+}
+
+function selectProfileAvatar(button) {
+  state.profileDraftAvatar = button.dataset.avatarUrl || "preset:stage";
+  setProfileStatus("已选择头像预设，点击保存资料后生效。");
+}
+
+function renderProfileSettingsSection() {
+  const user = state.currentUser || {};
+  const activeAvatar = state.profileDraftAvatar || user.avatar_url || "preset:stage";
+  const previewUser = { ...user, avatar_url: activeAvatar };
+  return `
+    <section class="profile-settings-card">
+      <div class="profile-settings-head">
+        ${avatarHTML(previewUser, "profile-avatar-preview")}
+        <div>
+          <p class="eyebrow">Profile Asset</p>
+          <h3>头像与昵称</h3>
+          <span>这里会影响同看房间、弹幕身份、成长展馆和后续 AI 形象资产。</span>
+        </div>
+      </div>
+      <div class="profile-settings-grid">
+        <label>
+          昵称
+          <input id="profileDisplayName" maxlength="64" value="${escapeHTML(user.display_name || "")}" />
+        </label>
+        <div class="avatar-preset-grid" aria-label="头像预设">
+          ${AVATAR_PRESETS.map(
+            (preset) => `
+              <button class="avatar-preset-button ${activeAvatar === preset.key ? "active" : ""}" type="button" data-avatar-url="${escapeHTML(
+                preset.key
+              )}">
+                ${avatarHTML({ ...user, display_name: preset.label, avatar_url: preset.key }, "avatar-preset-preview")}
+                <span>${escapeHTML(preset.label)}</span>
+                <small>${escapeHTML(preset.hint)}</small>
+              </button>
+            `
+          ).join("")}
+        </div>
+      </div>
+      <div class="profile-upload-row">
+        <input id="profileAvatarInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+        <button id="uploadProfileAvatar" class="ghost-button" type="button">上传头像</button>
+        <button id="saveProfileSettings" class="primary-button" type="button">保存资料</button>
+      </div>
+      <div class="profile-status ${state.profileStatusError ? "error" : ""}">${escapeHTML(
+        state.profileStatus || "建议先用预设头像完成演示，后续再接 AI 动画形象。"
+      )}</div>
+    </section>
+  `;
+}
+
 function renderProfileGallery() {
   const host = $("#profileGallery");
   if (!host) return;
@@ -2586,12 +2721,17 @@ function renderProfileGallery() {
   const nextTarget = locked[0];
   const completion = Number(profile.completion_percent || 0);
   host.innerHTML = `
+    ${renderProfileSettingsSection()}
+
     <section class="profile-hero">
-      <div>
+      <div class="profile-hero-main">
+        ${avatarHTML(state.currentUser, "profile-hero-avatar")}
+        <div>
         <p class="eyebrow">User Growth</p>
         <h3>${escapeHTML(state.currentUser.display_name)}</h3>
         <strong>${escapeHTML(profile.title || "剧情新人")}</strong>
         <span>${Number(profile.points || 0)} 分 · ${unlocked.length}/${collection.length || badges.length} 枚专属徽章</span>
+        </div>
       </div>
       <div class="profile-ring" style="--progress:${Math.min(100, Math.max(0, completion))}%">
         <b>${Math.round(completion)}%</b>
@@ -2697,7 +2837,7 @@ function renderPublicProfile(payload) {
   const visibleBadges = unlocked.length ? unlocked : badges.map((badge) => ({ ...badge, unlocked: true }));
   publicProfileContent.innerHTML = `
     <section class="public-profile-hero">
-      ${badgeArtHTML(payload.title || user.growth_title || "剧情新人", false)}
+      ${avatarHTML(user, "public-profile-avatar")}
       <div>
         <p class="eyebrow">Public Gallery</p>
         <h3>${escapeHTML(user.display_name || "同看用户")}</h3>
@@ -2732,7 +2872,7 @@ function openDemoPublicProfile() {
   const badges = friend.latest_badges || [];
   publicProfileModal.classList.remove("hidden");
   renderPublicProfile({
-    user: { display_name: friend.display_name, growth_title: friend.growth_title },
+    user: { display_name: friend.display_name, avatar_url: friend.avatar_url, growth_title: friend.growth_title },
     title: friend.growth_title,
     points: friend.points,
     completion_percent: 88,
@@ -5675,6 +5815,19 @@ document.querySelectorAll(".demo-accounts button").forEach((button) => {
 $("#backButton").addEventListener("click", () => setView("home"));
 $("#refreshProfile").addEventListener("click", loadRewardProfile);
 $("#profileGallery").addEventListener("click", (event) => {
+  const avatarPresetButton = event.target.closest(".avatar-preset-button");
+  if (avatarPresetButton) {
+    selectProfileAvatar(avatarPresetButton);
+    return;
+  }
+  if (event.target.closest("#saveProfileSettings")) {
+    saveProfileSettings();
+    return;
+  }
+  if (event.target.closest("#uploadProfileAvatar")) {
+    uploadProfileAvatar();
+    return;
+  }
   const button = event.target.closest(".profile-open-episode");
   if (button) {
     openEpisodeFromUrl(Number(button.dataset.episodeId));

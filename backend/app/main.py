@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from .config import APP_NAME, COSYVOICE_BASE_URL, COSYVOICE_TIMEOUT_SECONDS, FRONTEND_DIR, VOICE_ASSET_DIR
+from .config import APP_NAME, COSYVOICE_BASE_URL, COSYVOICE_TIMEOUT_SECONDS, DATA_DIR, FRONTEND_DIR, VOICE_ASSET_DIR
 from .database import SessionLocal, get_db
 from .danmaku_moderation import moderate_danmaku, moderation_rules_payload
 from .migrations import ensure_database_schema
@@ -45,6 +45,7 @@ from .schemas import (
     LoginRequest,
     RegisterRequest,
     UserAdminUpdate,
+    UserProfileUpdate,
     VoiceClipCreate,
     WatchHistoryUpdate,
     WatchRoomCreate,
@@ -84,11 +85,29 @@ VOICE_ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".aac", ".ogg", ".webm"}
 VOICE_MAX_BYTES = 12 * 1024 * 1024
 VOICE_PROMPT_DIR = VOICE_ASSET_DIR / "prompts"
 VOICE_CLIP_DIR = VOICE_ASSET_DIR / "clips"
+AVATAR_ASSET_DIR = DATA_DIR / "avatar_assets"
+AVATAR_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+AVATAR_MAX_BYTES = 4 * 1024 * 1024
 
 
 def ensure_voice_dirs() -> None:
     VOICE_PROMPT_DIR.mkdir(parents=True, exist_ok=True)
     VOICE_CLIP_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def ensure_avatar_dirs() -> None:
+    AVATAR_ASSET_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def normalize_avatar_url(value: str | None) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    if raw.startswith("preset:") and re.fullmatch(r"preset:[a-z0-9_-]{2,48}", raw):
+        return raw
+    if raw.startswith("/media/avatars/") and ".." not in raw and "\\" not in raw:
+        return raw
+    raise HTTPException(status_code=400, detail="头像地址仅支持系统预设或已上传头像")
 
 
 def sha256_text(value: str) -> str:
@@ -626,6 +645,7 @@ def user_brief(user: User | None) -> dict | None:
     return {
         "id": user.id,
         "display_name": user.display_name,
+        "avatar_url": user.avatar_url or "",
         "role": user.role,
         "growth_title": title,
         "points": points,
@@ -1495,6 +1515,51 @@ def me(user: User = Depends(get_current_user)) -> dict:
     return {"user": public_user(user)}
 
 
+@app.patch("/api/users/me/profile")
+def update_my_profile(
+    payload: UserProfileUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if payload.display_name is not None:
+        user.display_name = payload.display_name.strip()
+    if payload.avatar_url is not None:
+        user.avatar_url = normalize_avatar_url(payload.avatar_url)
+    db.commit()
+    db.refresh(user)
+    return {"user": public_user(user)}
+
+
+@app.post("/api/users/me/avatar")
+async def upload_my_avatar(
+    avatar: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    original_name = avatar.filename or "avatar.png"
+    suffix = Path(original_name).suffix.lower() or ".png"
+    if suffix not in AVATAR_ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="头像仅支持 jpg、png、webp 或 gif")
+    data = await avatar.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="头像文件不能为空")
+    if len(data) > AVATAR_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="头像文件不能超过 4MB")
+
+    ensure_avatar_dirs()
+    user_dir = AVATAR_ASSET_DIR / f"user_{user.id}"
+    user_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", original_name)[-120:]
+    stored_name = f"{uuid4().hex}_{safe_name}"
+    stored_path = user_dir / stored_name
+    stored_path.write_bytes(data)
+
+    user.avatar_url = f"/media/avatars/user_{user.id}/{stored_name}"
+    db.commit()
+    db.refresh(user)
+    return {"user": public_user(user)}
+
+
 @app.post("/api/auth/logout")
 def logout(
     user: User = Depends(get_current_user),
@@ -1598,6 +1663,24 @@ def voice_clip_media(filename: str) -> FileResponse:
     if not path.exists():
         raise HTTPException(status_code=404, detail="语音文件不存在")
     return FileResponse(path, media_type="audio/mpeg", filename=filename)
+
+
+@app.get("/media/avatars/{user_folder}/{filename}")
+def avatar_media(user_folder: str, filename: str) -> FileResponse:
+    if not re.fullmatch(r"user_\d+", user_folder):
+        raise HTTPException(status_code=404, detail="头像不存在")
+    safe_name = Path(filename).name
+    path = AVATAR_ASSET_DIR / user_folder / safe_name
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="头像不存在")
+    media_type = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+    }.get(path.suffix.lower(), "application/octet-stream")
+    return FileResponse(path, media_type=media_type, filename=safe_name)
 
 
 @app.post("/api/interactions")
@@ -2067,6 +2150,7 @@ def admin_user_payload(user: User, db: Session) -> dict:
         "id": user.id,
         "username": user.username,
         "display_name": user.display_name,
+        "avatar_url": user.avatar_url or "",
         "role": user.role,
         "is_active": user.is_active,
         "created_at": user.created_at.isoformat() if user.created_at else None,

@@ -44,6 +44,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(64), unique=True, nullable=False, index=True)
     display_name = Column(String(64), nullable=False)
+    avatar_url = Column(Text, default="")
     password_hash = Column(Text, nullable=False)
     role = Column(String(32), default="user", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)

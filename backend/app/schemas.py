@@ -59,6 +59,11 @@ class WatchHistoryUpdate(BaseModel):
     progress_sec: float = Field(default=0, ge=0)
 
 
+class UserProfileUpdate(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=64)
+    avatar_url: str | None = Field(default=None, max_length=500)
+
+
 class WatchRoomCreate(BaseModel):
     episode_id: int | None = None
     progress_sec: float = Field(default=0, ge=0)
