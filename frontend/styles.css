@@ -9482,7 +9482,8 @@ body[data-view="watch"] .watch-view .demo-room-button {
 }
 
 .friend-hub-head span,
-.friend-card span {
+.friend-card span,
+.friend-request-card span {
   display: block;
   color: #0071e3;
   font-size: 12px;
@@ -9543,6 +9544,15 @@ body[data-view="watch"] .watch-view .demo-room-button {
   gap: 12px;
 }
 
+.friend-request-section {
+  border: 1px solid rgba(0, 113, 227, 0.12);
+  border-radius: 22px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(229, 242, 255, 0.44)),
+    linear-gradient(250deg, rgba(255, 241, 235, 0.38), transparent 52%);
+}
+
 .friend-hub-section {
   display: grid;
   gap: 10px;
@@ -9563,7 +9573,14 @@ body[data-view="watch"] .watch-view .demo-room-button {
   gap: 10px;
 }
 
-.friend-card {
+.friend-request-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.friend-card,
+.friend-request-card {
   display: grid;
   gap: 12px;
   border: 1px solid rgba(255, 255, 255, 0.76);
@@ -9573,6 +9590,25 @@ body[data-view="watch"] .watch-view .demo-room-button {
     linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(239, 246, 253, 0.68)),
     rgba(255, 255, 255, 0.52);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.82), 0 14px 32px rgba(29, 38, 55, 0.08);
+}
+
+.friend-request-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.friend-request-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: "";
+  background: linear-gradient(180deg, #0071e3, #59d6ff 48%, #ff7a45);
+}
+
+.friend-request-card.outgoing {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(245, 248, 252, 0.68)),
+    rgba(255, 255, 255, 0.48);
 }
 
 .friend-card.candidate {
@@ -9596,7 +9632,8 @@ body[data-view="watch"] .watch-view .demo-room-button {
   font-size: 16px;
 }
 
-.friend-card strong {
+.friend-card strong,
+.friend-request-card strong {
   display: block;
   overflow: hidden;
   margin: 2px 0;
@@ -9615,6 +9652,19 @@ body[data-view="watch"] .watch-view .demo-room-button {
   min-height: 34px;
   padding: 8px 12px;
   font-size: 12px;
+}
+
+.friend-card-actions .ghost-button:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+
+.social-message-card.friend-request {
+  border-color: rgba(0, 113, 227, 0.24);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(230, 242, 255, 0.74)),
+    linear-gradient(250deg, rgba(255, 236, 226, 0.4), transparent 50%);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.8), 0 22px 54px rgba(0, 113, 227, 0.13);
 }
 
 .friend-hub-empty {
@@ -9648,7 +9698,8 @@ body[data-view="watch"] .watch-view .demo-room-button {
 
   .social-topic-grid,
   .social-compose-grid,
-  .friend-hub-body {
+  .friend-hub-body,
+  .friend-request-grid {
     grid-template-columns: 1fr;
   }
 

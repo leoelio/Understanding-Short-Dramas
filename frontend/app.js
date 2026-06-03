@@ -259,7 +259,7 @@ const state = {
   roomLastSyncAt: 0,
   roomLastEventId: 0,
   roomFeed: [],
-  friendData: { friends: [], candidates: [] },
+  friendData: { friends: [], candidates: [], incoming_requests: [], outgoing_requests: [] },
   roomInvitations: { received: [], sent: [] },
   roomSocialStatus: "",
   roomSocialStatusError: false,
@@ -470,7 +470,7 @@ function clearAuth() {
   state.currentUser = null;
   state.watchHistory = [];
   state.rewardProfile = null;
-  state.friendData = { friends: [], candidates: [] };
+  state.friendData = { friends: [], candidates: [], incoming_requests: [], outgoing_requests: [] };
   state.roomInvitations = { received: [], sent: [] };
   state.roomSocialStatus = "";
   state.roomSocialStatusError = false;
@@ -3030,14 +3030,35 @@ async function addFriend(userId) {
       method: "POST",
       body: JSON.stringify({ user_id: Number(userId) }),
     });
-    state.friendHubStatus = "好友已添加，可以在聊聊里发起同看邀请。";
+    const resultMessages = {
+      sent: "好友申请已发出，对方会在聊聊里收到审核提醒。",
+      already_pending: "好友申请已经发出，正在等待对方通过。",
+      already_friends: "你们已经是好友，可以直接发起同看邀请。",
+      accepted_incoming: "已通过对方的好友申请，现在可以发起同看邀请。",
+    };
+    state.friendHubStatus = resultMessages[state.friendData.request_result] || "好友申请已更新。";
     state.friendHubStatusError = false;
-    roomSocialMessage("好友已添加，可以发起同看邀请。");
+    roomSocialMessage(state.friendHubStatus);
+    await loadSocialInbox();
     renderFriendHub();
   } catch (error) {
     state.friendHubStatus = errorMessage(error);
     state.friendHubStatusError = true;
     roomSocialMessage(errorMessage(error), true);
+    renderFriendHub();
+  }
+}
+
+async function respondFriendRequest(requestId, action) {
+  try {
+    state.friendData = await fetchJSON(`/api/users/me/friend-requests/${requestId}/${action}`, { method: "POST" });
+    state.friendHubStatus = action === "accept" ? "已通过好友申请，可以发起同看邀请。" : "已拒绝好友申请。";
+    state.friendHubStatusError = false;
+    await loadSocialInbox();
+    renderFriendHub();
+  } catch (error) {
+    state.friendHubStatus = errorMessage(error);
+    state.friendHubStatusError = true;
     renderFriendHub();
   }
 }
@@ -3103,7 +3124,7 @@ function renderRoomSocialChip(item, type, canInvite) {
   const user = roomSocialUserFromFriend(item);
   const actionAttr = type === "friend" ? `data-invite-user-id="${user.id}"` : `data-add-friend-id="${user.id}"`;
   const disabled = type === "friend" && !canInvite ? "disabled" : "";
-  const label = type === "friend" ? (canInvite ? "快邀" : "满员") : "加好友";
+  const label = type === "friend" ? (canInvite ? "快邀" : "满员") : "申请";
   return `
     <button class="room-social-chip ${type}" type="button" ${actionAttr} ${disabled} aria-label="${escapeHTML(label)} ${escapeHTML(user.display_name || "同看用户")}">
       ${avatarHTML(user, "room-invite-avatar")}
@@ -3129,14 +3150,14 @@ function renderRoomSocialPrimary(target, canInvite) {
   const isFriend = target.type === "friend";
   const actionAttr = isFriend ? `data-invite-user-id="${user.id}"` : `data-add-friend-id="${user.id}"`;
   const disabled = isFriend && state.watchRoom?.guest ? "disabled" : "";
-  const actionText = isFriend ? (state.watchRoom?.guest ? "房间已满" : state.watchRoom ? "邀请同看" : "开房并邀请") : "加为好友";
+  const actionText = isFriend ? (state.watchRoom?.guest ? "房间已满" : state.watchRoom ? "邀请同看" : "开房并邀请") : "发送申请";
   const hint = isFriend
     ? state.watchRoom
       ? state.watchRoom.guest
         ? "当前房间已有同看好友，需要新开房后再邀请。"
         : "当前房间会直接发送给这位好友。"
       : "一键开房并发送邀请，适合答辩时快速展示同看链路。"
-    : "添加后会进入高频邀请，不在播放页展开完整好友列表。";
+    : "发送申请后会进入聊聊审核流，通过后才能发起同看邀请。";
   return `
     <div class="room-social-primary">
       ${avatarHTML(user, "room-social-primary-avatar")}
@@ -3239,9 +3260,35 @@ function renderFriendHubUserCard(user, mode) {
         ${
           isFriend
             ? `<button class="primary-button" type="button" data-friendhub-invite-id="${user.id}">邀请同看</button>`
-            : `<button class="primary-button" type="button" data-friendhub-add-id="${user.id}">加好友</button>`
+            : `<button class="primary-button" type="button" data-friendhub-add-id="${user.id}">发送申请</button>`
         }
         <button class="ghost-button" type="button" data-friendhub-profile-id="${user.id}">展馆</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderFriendRequestCard(request, mode) {
+  const isIncoming = mode === "incoming";
+  const user = isIncoming ? request.from_user : request.to_user;
+  return `
+    <article class="friend-request-card ${isIncoming ? "incoming" : "outgoing"}">
+      <div class="friend-card-main">
+        ${avatarHTML(user || {}, "friend-card-avatar")}
+        <div>
+          <span>${isIncoming ? "待你审核" : "等待通过"}</span>
+          <strong>${escapeHTML(user?.display_name || "用户")}</strong>
+          <p>${escapeHTML(user?.growth_title || "剧情新人")} · ${isIncoming ? "想和你成为好友" : "申请已送达"}</p>
+        </div>
+      </div>
+      <div class="friend-card-actions">
+        ${
+          isIncoming
+            ? `<button class="primary-button" type="button" data-friendhub-accept-request="${request.id}">接受</button>
+               <button class="ghost-button" type="button" data-friendhub-decline-request="${request.id}">拒绝</button>`
+            : `<button class="ghost-button" type="button" disabled>等待中</button>`
+        }
+        <button class="ghost-button" type="button" data-friendhub-profile-id="${user?.id || 0}">展馆</button>
       </div>
     </article>
   `;
@@ -3256,13 +3303,20 @@ function renderFriendHub() {
   }
   const friends = (state.friendData?.friends || []).map(roomSocialUserFromFriend);
   const candidates = state.friendData?.candidates || [];
+  const incomingRequests = state.friendData?.incoming_requests || [];
+  const outgoingRequests = state.friendData?.outgoing_requests || [];
   const received = state.roomInvitations?.received || [];
   const sent = state.roomInvitations?.sent || [];
   const visibleFriends = friends.slice(0, 4);
   const visibleCandidates = candidates.slice(0, 4);
+  const visibleIncoming = incomingRequests.slice(0, 3);
+  const visibleOutgoing = outgoingRequests.slice(0, 3);
   const hiddenFriendCount = Math.max(0, friends.length - visibleFriends.length);
+  const hiddenRequestCount = Math.max(0, incomingRequests.length + outgoingRequests.length - visibleIncoming.length - visibleOutgoing.length);
   const pendingText = received.length
     ? `${received.length} 条待处理同看邀请`
+    : incomingRequests.length
+      ? `${incomingRequests.length} 条好友申请待审核`
     : sent.length
       ? `最近邀请 ${sent[0].to_user?.display_name || "好友"}：${sent[0].status || "pending"}`
       : "暂无待处理邀请";
@@ -3275,13 +3329,28 @@ function renderFriendHub() {
       </div>
       <div class="friend-hub-stats">
         <em>${friends.length} 位好友</em>
-        <em>${candidates.length} 位可添加</em>
+        <em>${incomingRequests.length} 条待审核</em>
+        <em>${outgoingRequests.length} 条已发出</em>
         <em>${escapeHTML(pendingText)}</em>
       </div>
     </div>
     ${
       state.friendHubStatus
         ? `<div class="friend-hub-status ${state.friendHubStatusError ? "error" : ""}">${escapeHTML(state.friendHubStatus)}</div>`
+        : ""
+    }
+    ${
+      visibleIncoming.length || visibleOutgoing.length
+        ? `<section class="friend-hub-section friend-request-section">
+            <div class="friend-hub-section-head">
+              <strong>好友申请审核</strong>
+              <span>${hiddenRequestCount ? `另有 ${hiddenRequestCount} 条申请已收起` : "接受后才会成为正式好友"}</span>
+            </div>
+            <div class="friend-request-grid">
+              ${visibleIncoming.map((request) => renderFriendRequestCard(request, "incoming")).join("")}
+              ${visibleOutgoing.map((request) => renderFriendRequestCard(request, "outgoing")).join("")}
+            </div>
+          </section>`
         : ""
     }
     <div class="friend-hub-body">
@@ -3294,14 +3363,14 @@ function renderFriendHub() {
           ${
             visibleFriends.length
               ? visibleFriends.map((user) => renderFriendHubUserCard(user, "friend")).join("")
-              : `<div class="friend-hub-empty">还没有好友。先从右侧推荐添加一个演示账号，再发起同看邀请。</div>`
+              : `<div class="friend-hub-empty">还没有正式好友。先发送好友申请，等对方通过后再发起同看邀请。</div>`
           }
         </div>
       </section>
       <section class="friend-hub-section">
         <div class="friend-hub-section-head">
           <strong>推荐添加</strong>
-          <span>只显示少量候选，避免聊聊页变成完整通讯录</span>
+          <span>先发申请，通过后才进入好友列表</span>
         </div>
         <div class="friend-hub-grid">
           ${
@@ -3387,11 +3456,30 @@ function renderChatInbox() {
   const status = $("#chatInboxStatus");
   if (!list || !status) return;
   const inbox = state.socialInbox || {};
+  const friendRequests = inbox.friend_requests || [];
   const invitations = inbox.room_invitations || [];
   const notifications = inbox.notifications || [];
   status.textContent = inbox.unread_count
-    ? `${inbox.unread_count} 条待处理消息，其中 ${inbox.room_invitation_count || 0} 条同看邀请。`
-    : "暂无未读消息。评论、点赞、同看邀请会在这里出现。";
+    ? `${inbox.unread_count} 条待处理消息，其中 ${inbox.friend_request_count || 0} 条好友申请、${inbox.room_invitation_count || 0} 条同看邀请。`
+    : "暂无未读消息。好友申请、评论、点赞、同看邀请会在这里出现。";
+  const friendRequestHTML = friendRequests
+    .map(
+      (item) => `
+        <article class="social-message-card friend-request">
+          ${avatarHTML(item.from_user || {}, "social-avatar")}
+          <div>
+            <span>好友申请</span>
+            <strong>${escapeHTML(item.from_user?.display_name || "用户")} 想加你为好友</strong>
+            <p>${escapeHTML(item.from_user?.growth_title || "剧情新人")} · 接受后可互相邀请同看、查看好友动态。</p>
+          </div>
+          <div class="social-message-actions">
+            <button class="primary-button" type="button" data-chat-accept-friend="${item.id}">接受</button>
+            <button class="ghost-button" type="button" data-chat-decline-friend="${item.id}">拒绝</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
   const invitationHTML = invitations
     .map(
       (item) => `
@@ -3412,22 +3500,33 @@ function renderChatInbox() {
     .join("");
   const notificationHTML = notifications
     .map((item) => {
-      const verb = item.event_type === "comment" ? "评论了你的动态" : "赞了你的动态";
+      const verb =
+        item.event_type === "comment"
+          ? "评论了你的动态"
+          : item.event_type === "friend_request"
+            ? "向你发送了好友申请"
+            : item.event_type === "friend_accept"
+              ? "通过了你的好友申请"
+              : "赞了你的动态";
+      const detail =
+        item.event_type === "friend_request" || item.event_type === "friend_accept"
+          ? "好友关系通知"
+          : `${escapeHTML(item.post?.title || "AI 内容动态")}${item.comment?.text ? ` · “${escapeHTML(item.comment.text)}”` : ""}`;
       return `
         <article class="social-message-card ${item.is_read ? "" : "unread"}">
           ${avatarHTML(item.actor || {}, "social-avatar")}
           <div>
             <span>${item.is_read ? "已读" : "未读"}</span>
             <strong>${escapeHTML(item.actor?.display_name || "好友")} ${verb}</strong>
-            <p>${escapeHTML(item.post?.title || "AI 内容动态")}${item.comment?.text ? ` · “${escapeHTML(item.comment.text)}”` : ""}</p>
+            <p>${detail}</p>
           </div>
         </article>
       `;
     })
     .join("");
   list.innerHTML =
-    invitationHTML || notificationHTML
-      ? `${invitationHTML}${notificationHTML}`
+    friendRequestHTML || invitationHTML || notificationHTML
+      ? `${friendRequestHTML}${invitationHTML}${notificationHTML}`
       : `<div class="social-empty">还没有消息。去“逛逛”发一条 AI 内容动态，朋友点赞评论后这里会出现红点。</div>`;
 }
 
@@ -6503,6 +6602,16 @@ $("#markInboxRead")?.addEventListener("click", async () => {
 });
 $("#publishSocialPost")?.addEventListener("click", publishSocialPost);
 $("#chatInboxList")?.addEventListener("click", (event) => {
+  const acceptFriendButton = event.target.closest("[data-chat-accept-friend]");
+  if (acceptFriendButton) {
+    respondFriendRequest(acceptFriendButton.dataset.chatAcceptFriend, "accept");
+    return;
+  }
+  const declineFriendButton = event.target.closest("[data-chat-decline-friend]");
+  if (declineFriendButton) {
+    respondFriendRequest(declineFriendButton.dataset.chatDeclineFriend, "decline");
+    return;
+  }
   const acceptButton = event.target.closest("[data-chat-accept-invite]");
   if (acceptButton) {
     respondRoomInvitation(acceptButton.dataset.chatAcceptInvite, "accept");
@@ -6665,6 +6774,16 @@ roomInvitePanel?.addEventListener("click", (event) => {
   }
 });
 $("#friendHubPanel")?.addEventListener("click", (event) => {
+  const acceptRequestButton = event.target.closest("[data-friendhub-accept-request]");
+  if (acceptRequestButton) {
+    respondFriendRequest(acceptRequestButton.dataset.friendhubAcceptRequest, "accept");
+    return;
+  }
+  const declineRequestButton = event.target.closest("[data-friendhub-decline-request]");
+  if (declineRequestButton) {
+    respondFriendRequest(declineRequestButton.dataset.friendhubDeclineRequest, "decline");
+    return;
+  }
   const addButton = event.target.closest("[data-friendhub-add-id]");
   if (addButton) {
     addFriend(addButton.dataset.friendhubAddId);

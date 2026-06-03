@@ -12,7 +12,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from .config import APP_NAME, COSYVOICE_BASE_URL, COSYVOICE_TIMEOUT_SECONDS, DATA_DIR, FRONTEND_DIR, VOICE_ASSET_DIR
@@ -34,6 +34,7 @@ from .models import (
     SocialReaction,
     User,
     UserFriend,
+    UserFriendRequest,
     UserReward,
     VoiceClipCache,
     VoiceProfile,
@@ -691,6 +692,32 @@ def ensure_friend_edge(db: Session, user_id: int, friend_user_id: int) -> None:
 
 def friend_payload(row: UserFriend) -> dict:
     return {"friendship_id": row.id, "status": row.status, "user": user_brief(row.friend)}
+
+
+def friend_request_payload(row: UserFriendRequest, viewer: User) -> dict:
+    return {
+        "id": row.id,
+        "status": row.status,
+        "direction": "incoming" if row.to_user_id == viewer.id else "outgoing",
+        "from_user": user_brief(row.from_user),
+        "to_user": user_brief(row.to_user),
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "responded_at": row.responded_at.isoformat() if row.responded_at else None,
+    }
+
+
+def latest_friend_request(db: Session, user_id: int, target_user_id: int) -> UserFriendRequest | None:
+    return (
+        db.query(UserFriendRequest)
+        .filter(
+            or_(
+                and_(UserFriendRequest.from_user_id == user_id, UserFriendRequest.to_user_id == target_user_id),
+                and_(UserFriendRequest.from_user_id == target_user_id, UserFriendRequest.to_user_id == user_id),
+            )
+        )
+        .order_by(UserFriendRequest.created_at.desc(), UserFriendRequest.id.desc())
+        .first()
+    )
 
 
 def normalize_room_code(code: str) -> str:
@@ -1741,6 +1768,21 @@ def list_my_friends(user: User = Depends(get_current_user), db: Session = Depend
         .all()
     )
     friend_ids = {row.friend_user_id for row in friend_rows}
+    incoming_requests = (
+        db.query(UserFriendRequest)
+        .filter(UserFriendRequest.to_user_id == user.id, UserFriendRequest.status == "pending")
+        .order_by(UserFriendRequest.created_at.desc(), UserFriendRequest.id.desc())
+        .limit(20)
+        .all()
+    )
+    outgoing_requests = (
+        db.query(UserFriendRequest)
+        .filter(UserFriendRequest.from_user_id == user.id, UserFriendRequest.status == "pending")
+        .order_by(UserFriendRequest.created_at.desc(), UserFriendRequest.id.desc())
+        .limit(20)
+        .all()
+    )
+    pending_user_ids = {row.from_user_id for row in incoming_requests} | {row.to_user_id for row in outgoing_requests}
     candidates = (
         db.query(User)
         .filter(User.id != user.id, User.is_active.is_(True))
@@ -1749,12 +1791,18 @@ def list_my_friends(user: User = Depends(get_current_user), db: Session = Depend
     )
     return {
         "friends": [friend_payload(row) for row in friend_rows],
-        "candidates": [user_brief(candidate) for candidate in candidates if candidate.id not in friend_ids],
+        "incoming_requests": [friend_request_payload(row, user) for row in incoming_requests],
+        "outgoing_requests": [friend_request_payload(row, user) for row in outgoing_requests],
+        "candidates": [
+            user_brief(candidate)
+            for candidate in candidates
+            if candidate.id not in friend_ids and candidate.id not in pending_user_ids
+        ],
     }
 
 
 @app.post("/api/users/me/friends")
-def add_my_friend(
+def request_my_friend(
     payload: FriendCreate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1764,14 +1812,91 @@ def add_my_friend(
         raise HTTPException(status_code=404, detail="好友用户不存在")
     if friend.id == user.id:
         raise HTTPException(status_code=400, detail="不能添加自己为好友")
-    ensure_friend_edge(db, user.id, friend.id)
-    ensure_friend_edge(db, friend.id, user.id)
+    if are_friends(db, user.id, friend.id):
+        response = list_my_friends(user, db)
+        response["request_result"] = "already_friends"
+        return response
+
+    existing = latest_friend_request(db, user.id, friend.id)
+    if existing and existing.status == "pending":
+        if existing.to_user_id == user.id:
+            existing.status = "accepted"
+            existing.responded_at = datetime.utcnow()
+            ensure_friend_edge(db, user.id, friend.id)
+            ensure_friend_edge(db, friend.id, user.id)
+            db.add(SocialNotification(user_id=friend.id, actor_user_id=user.id, event_type="friend_accept"))
+            db.commit()
+            response = list_my_friends(user, db)
+            response["request_result"] = "accepted_incoming"
+            return response
+        response = list_my_friends(user, db)
+        response["request_result"] = "already_pending"
+        return response
+
+    if existing:
+        existing.from_user_id = user.id
+        existing.to_user_id = friend.id
+        existing.status = "pending"
+        existing.created_at = datetime.utcnow()
+        existing.responded_at = None
+    else:
+        db.add(UserFriendRequest(from_user_id=user.id, to_user_id=friend.id))
+    db.add(SocialNotification(user_id=friend.id, actor_user_id=user.id, event_type="friend_request"))
     db.commit()
-    return list_my_friends(user, db)
+    response = list_my_friends(user, db)
+    response["request_result"] = "sent"
+    return response
+
+
+@app.post("/api/users/me/friend-requests/{request_id}/accept")
+def accept_friend_request(
+    request_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    request = db.get(UserFriendRequest, request_id)
+    if not request or request.to_user_id != user.id:
+        raise HTTPException(status_code=404, detail="好友申请不存在")
+    if request.status != "pending":
+        raise HTTPException(status_code=400, detail="好友申请已处理")
+    request.status = "accepted"
+    request.responded_at = datetime.utcnow()
+    ensure_friend_edge(db, user.id, request.from_user_id)
+    ensure_friend_edge(db, request.from_user_id, user.id)
+    db.add(SocialNotification(user_id=request.from_user_id, actor_user_id=user.id, event_type="friend_accept"))
+    db.commit()
+    response = list_my_friends(user, db)
+    response["request_result"] = "accepted"
+    return response
+
+
+@app.post("/api/users/me/friend-requests/{request_id}/decline")
+def decline_friend_request(
+    request_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    request = db.get(UserFriendRequest, request_id)
+    if not request or request.to_user_id != user.id:
+        raise HTTPException(status_code=404, detail="好友申请不存在")
+    if request.status == "pending":
+        request.status = "declined"
+        request.responded_at = datetime.utcnow()
+        db.commit()
+    response = list_my_friends(user, db)
+    response["request_result"] = "declined"
+    return response
 
 
 @app.get("/api/social/inbox")
 def social_inbox(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    friend_requests = (
+        db.query(UserFriendRequest)
+        .filter(UserFriendRequest.to_user_id == user.id, UserFriendRequest.status == "pending")
+        .order_by(UserFriendRequest.created_at.desc(), UserFriendRequest.id.desc())
+        .limit(6)
+        .all()
+    )
     invitations = (
         db.query(WatchRoomInvitation)
         .filter(WatchRoomInvitation.to_user_id == user.id, WatchRoomInvitation.status == "pending")
@@ -1792,9 +1917,11 @@ def social_inbox(user: User = Depends(get_current_user), db: Session = Depends(g
         .count()
     )
     return {
-        "unread_count": unread_social + len(invitations),
+        "unread_count": unread_social + len(invitations) + len(friend_requests),
+        "friend_request_count": len(friend_requests),
         "room_invitation_count": len(invitations),
         "social_unread_count": unread_social,
+        "friend_requests": [friend_request_payload(item, user) for item in friend_requests],
         "room_invitations": [invitation_payload(item, user) for item in invitations],
         "notifications": [social_notification_payload(item) for item in notifications],
     }

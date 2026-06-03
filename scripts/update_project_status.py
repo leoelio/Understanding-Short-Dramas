@@ -45,6 +45,7 @@ def db_snapshot() -> dict:
             "social_posts": 0,
             "social_comments": 0,
             "social_notifications": 0,
+            "friend_requests": 0,
             "reviewed_episodes": 0,
             "pending_episodes": 0,
             "sources": {},
@@ -80,6 +81,7 @@ def db_snapshot() -> dict:
             "social_posts": scalar(connection, "select count(*) from social_posts"),
             "social_comments": scalar(connection, "select count(*) from social_comments where is_deleted = 0"),
             "social_notifications": scalar(connection, "select count(*) from social_notifications"),
+            "friend_requests": scalar(connection, "select count(*) from user_friend_requests"),
             "reviewed_episodes": reviewed,
             "pending_episodes": max(0, episodes - reviewed),
             "sources": dict(sources),
@@ -134,6 +136,7 @@ def render_status(args: argparse.Namespace, snapshot: dict, now: str) -> str:
 - 社交动态：{snapshot["social_posts"]}
 - 社交评论：{snapshot["social_comments"]}
 - 社交通知：{snapshot["social_notifications"]}
+- 好友申请：{snapshot["friend_requests"]}
 
 ## 高光来源
 
@@ -150,7 +153,7 @@ def render_status(args: argparse.Namespace, snapshot: dict, now: str) -> str:
 - 分类型高光动效：冲突站队、反转狂点、爽点连击、甜蜜气泡、虐心共情、悬念线索、搞笑贴纸、危机心跳。
 - 体验配置复核台：服务端存储播放器主题、贴图时间轴、弹幕策略、来源和版本。
 - 片尾 AI 二创保底版：剧情预测选项、文字卡、三格分镜、生成记录和精选管理。
-- 社交 MVP：聊聊消息红点、逛逛动态发布、公开/好友/仅自己权限、点赞评论和基础内容审核。
+- 社交 MVP：聊聊消息红点、逛逛动态发布、公开/好友/仅自己权限、点赞评论、好友申请审核和基础内容审核。
 
 ## 本次变更摘要
 
@@ -175,7 +178,7 @@ def append_run_log(args: argparse.Namespace, snapshot: dict, now: str) -> None:
 
 - 目标：{args.summary}
 - Git：`{run_git(["rev-parse", "--short", "HEAD"])}` / `{run_git(["branch", "--show-current"])}`
-- 数据：{snapshot["dramas"]} 部短剧，{snapshot["episodes"]} 集，{snapshot["highlights"]} 个高光，{snapshot["reviewed_episodes"]} 集已复核，{snapshot["danmaku"]} 条弹幕，{snapshot["experience_configs"]} 条体验配置，{snapshot["ai_remixes"]} 条片尾 AI 二创，{snapshot["social_posts"]} 条社交动态。
+- 数据：{snapshot["dramas"]} 部短剧，{snapshot["episodes"]} 集，{snapshot["highlights"]} 个高光，{snapshot["reviewed_episodes"]} 集已复核，{snapshot["danmaku"]} 条弹幕，{snapshot["experience_configs"]} 条体验配置，{snapshot["ai_remixes"]} 条片尾 AI 二创，{snapshot["social_posts"]} 条社交动态，{snapshot["friend_requests"]} 条好友申请。
 - 变更：
 {change_lines}
 - 下一步：

@@ -182,6 +182,20 @@ class UserFriend(Base):
     friend = relationship("User", foreign_keys=[friend_user_id])
 
 
+class UserFriendRequest(Base):
+    __tablename__ = "user_friend_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    from_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    to_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(String(24), default="pending", nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    responded_at = Column(DateTime, nullable=True)
+
+    from_user = relationship("User", foreign_keys=[from_user_id])
+    to_user = relationship("User", foreign_keys=[to_user_id])
+
+
 class WatchRoomInvitation(Base):
     __tablename__ = "watch_room_invitations"
 
