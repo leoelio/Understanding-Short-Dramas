@@ -6,6 +6,8 @@ const DEFAULT_DANMAKU_SETTINGS = {
   opacity: 82,
 };
 
+document.documentElement.dataset.appBooting = "true";
+
 const MIN_INTERACTION_GAP_SEC = 18;
 const REVIEW_MIN_HIGHLIGHT_GAP_SEC = 20;
 const REVIEW_MAX_HIGHLIGHTS = 5;
@@ -181,10 +183,43 @@ const HIGHLIGHT_UI = {
 
 function loadDanmakuSettings() {
   try {
-    return { ...DEFAULT_DANMAKU_SETTINGS, ...JSON.parse(localStorage.getItem("danmaku_settings") || "{}") };
+    return { ...DEFAULT_DANMAKU_SETTINGS, ...JSON.parse(readStorage("danmaku_settings") || "{}") };
   } catch {
     return { ...DEFAULT_DANMAKU_SETTINGS };
   }
+}
+
+function readStorage(key) {
+  try {
+    return globalThis.localStorage?.getItem(key) || "";
+  } catch {
+    return "";
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    globalThis.localStorage?.setItem(key, value);
+  } catch {
+    // Some embedded browsers block localStorage; the app should still boot.
+  }
+}
+
+function removeStorage(key) {
+  try {
+    globalThis.localStorage?.removeItem(key);
+  } catch {
+    // Some embedded browsers block localStorage; the app should still boot.
+  }
+}
+
+function safeRandomId(prefix = "id") {
+  try {
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  } catch {
+    // Fall back below.
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
 const state = {
@@ -197,7 +232,7 @@ const state = {
   remixOptions: null,
   remixResult: null,
   remixLoading: false,
-  sessionId: localStorage.getItem("session_id") || crypto.randomUUID(),
+  sessionId: readStorage("session_id") || safeRandomId("session"),
   firedHighlights: new Set(),
   firedDanmaku: new Set(),
   activeHighlight: null,
@@ -213,7 +248,7 @@ const state = {
   reviewRemixFilter: "all",
   currentUser: null,
   adminUsers: [],
-  authToken: localStorage.getItem("auth_token") || "",
+  authToken: readStorage("auth_token") || "",
   authMode: "login",
   watchHistory: [],
   watchHistoryTimer: null,
@@ -239,7 +274,7 @@ const state = {
   voiceProfile: null,
   voiceStatus: "",
   voiceStatusError: false,
-  voiceUsageMode: localStorage.getItem("voice_usage_mode") || "original",
+  voiceUsageMode: readStorage("voice_usage_mode") || "original",
   voiceClipLoading: false,
   voiceRecording: false,
   voiceRecorder: null,
@@ -259,7 +294,7 @@ const state = {
   routeTransitionTimer: null,
 };
 
-localStorage.setItem("session_id", state.sessionId);
+writeStorage("session_id", state.sessionId);
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -376,7 +411,7 @@ function getHighlightKey(type) {
 }
 
 function saveDanmakuSettings() {
-  localStorage.setItem("danmaku_settings", JSON.stringify(state.danmakuSettings));
+  writeStorage("danmaku_settings", JSON.stringify(state.danmakuSettings));
 }
 
 async function fetchJSON(url, options = {}) {
@@ -436,7 +471,7 @@ function clearAuth() {
   stopVoiceRecording();
   clearRecordedVoice();
   leaveWatchRoom();
-  localStorage.removeItem("auth_token");
+  removeStorage("auth_token");
   updateAuthUI();
   renderRewardProfile();
   renderProfileGallery();
@@ -529,7 +564,7 @@ async function submitAuth(event) {
     });
     state.authToken = payload.token;
     state.currentUser = payload.user;
-    localStorage.setItem("auth_token", payload.token);
+    writeStorage("auth_token", payload.token);
     setAuthStatus(`已登录：${payload.user.display_name}`);
     await afterAuth({ forceHome: true });
   } catch (error) {
@@ -782,14 +817,14 @@ function danmakuKey(comment) {
 
 function danmakuStats(comment) {
   try {
-    return JSON.parse(localStorage.getItem(danmakuKey(comment)) || "{}");
+    return JSON.parse(readStorage(danmakuKey(comment)) || "{}");
   } catch {
     return {};
   }
 }
 
 function saveDanmakuStats(comment, stats) {
-  localStorage.setItem(danmakuKey(comment), JSON.stringify(stats));
+  writeStorage(danmakuKey(comment), JSON.stringify(stats));
 }
 
 function danmakuUser(comment) {
@@ -2066,116 +2101,6 @@ function inviteRoomLabel(invitation) {
   return `${host} 邀你进入房间 ${room.code || ""}`;
 }
 
-function renderInviteItem(invitation, mode = "received") {
-  const user = mode === "sent" ? invitation.to_user : invitation.from_user;
-  const room = invitation.room || {};
-  const actions =
-    mode === "received"
-      ? `<div class="room-invite-actions">
-          <button class="primary-button" type="button" data-accept-invite-id="${invitation.id}">接受进入</button>
-          <button class="ghost-button" type="button" data-decline-invite-id="${invitation.id}">暂不加入</button>
-        </div>`
-      : `<small>${escapeHTML(invitation.status || "pending")}</small>`;
-  return `
-    <article class="room-invite-item">
-      ${avatarHTML(user || {}, "room-invite-avatar")}
-      <div>
-        <strong>${escapeHTML(mode === "sent" ? `已邀请 ${user?.display_name || "好友"}` : inviteRoomLabel(invitation))}</strong>
-        <span>${escapeHTML(user?.growth_title || "同看好友")} · ${escapeHTML(room.playback_state === "playing" ? "播放中" : "等待中")}</span>
-      </div>
-      ${actions}
-    </article>
-  `;
-}
-
-function renderFriendItem(friend, canInvite) {
-  const user = friend.user || friend;
-  return `
-    <article class="room-friend-item">
-      ${avatarHTML(user, "room-invite-avatar")}
-      <div>
-        <strong>${escapeHTML(user.display_name || "同看好友")}</strong>
-        <span>${escapeHTML(user.growth_title || "剧情新人")} · ${Number(user.points || 0)} 分</span>
-      </div>
-      <button class="ghost-button" type="button" data-invite-user-id="${user.id}" ${canInvite ? "" : "disabled"}>邀请</button>
-    </article>
-  `;
-}
-
-function renderCandidateItem(user) {
-  return `
-    <article class="room-friend-item candidate">
-      ${avatarHTML(user, "room-invite-avatar")}
-      <div>
-        <strong>${escapeHTML(user.display_name || "用户")}</strong>
-        <span>${escapeHTML(user.growth_title || "可添加为好友")}</span>
-      </div>
-      <button class="ghost-button" type="button" data-add-friend-id="${user.id}">加好友</button>
-    </article>
-  `;
-}
-
-function renderRoomInvitePanel() {
-  if (!roomInvitePanel) return;
-  if (!state.currentUser) {
-    roomInvitePanel.innerHTML = "";
-    return;
-  }
-  const friends = state.friendData?.friends || [];
-  const candidates = state.friendData?.candidates || [];
-  const received = state.roomInvitations?.received || [];
-  const sent = state.roomInvitations?.sent || [];
-  const canInvite = Boolean(state.watchRoom && !state.watchRoom.guest);
-  roomInvitePanel.innerHTML = `
-    <section class="room-social-panel">
-      <div class="room-social-head">
-        <div>
-          <span>Friends Invite</span>
-          <strong>好友同看入口</strong>
-        </div>
-        <button class="ghost-button" type="button" data-refresh-room-social>刷新</button>
-      </div>
-      ${
-        state.roomSocialStatus
-          ? `<div class="room-social-status ${state.roomSocialStatusError ? "error" : ""}">${escapeHTML(state.roomSocialStatus)}</div>`
-          : ""
-      }
-      ${
-        received.length
-          ? `<div class="room-social-block">
-              <h4>收到的邀请</h4>
-              ${received.map((item) => renderInviteItem(item, "received")).join("")}
-            </div>`
-          : ""
-      }
-      <div class="room-social-block">
-        <h4>${canInvite ? "选择好友发起邀请" : state.watchRoom ? "好友列表" : "先开房，再邀请好友"}</h4>
-        ${
-          friends.length
-            ? friends.map((item) => renderFriendItem(item, canInvite)).join("")
-            : `<div class="room-social-empty">还没有好友。先从下面添加一个演示账号，马上可以发起同看邀请。</div>`
-        }
-      </div>
-      ${
-        candidates.length
-          ? `<div class="room-social-block">
-              <h4>可添加用户</h4>
-              ${candidates.slice(0, 4).map(renderCandidateItem).join("")}
-            </div>`
-          : ""
-      }
-      ${
-        sent.length
-          ? `<div class="room-social-block compact">
-              <h4>我发出的邀请</h4>
-              ${sent.slice(0, 4).map((item) => renderInviteItem(item, "sent")).join("")}
-            </div>`
-          : ""
-      }
-    </section>
-  `;
-}
-
 function roomEventSummary(event) {
   const user = event.user?.display_name || "同看好友";
   const payload = event.payload || {};
@@ -3069,8 +2994,8 @@ async function addFriend(userId) {
 
 async function inviteFriendToRoom(userId) {
   if (!state.watchRoom) {
-    roomSocialMessage("请先开房，再邀请好友。", true);
-    return;
+    const room = await createWatchRoom({ silent: true });
+    if (!room) return;
   }
   try {
     await fetchJSON(`/api/watch-rooms/${state.watchRoom.code}/invite`, {
@@ -3103,6 +3028,138 @@ async function respondRoomInvitation(invitationId, action) {
   } catch (error) {
     roomSocialMessage(errorMessage(error), true);
   }
+}
+
+function roomSocialUserFromFriend(friend) {
+  return friend?.user || friend || {};
+}
+
+function roomSocialPrimaryTarget(friends, candidates) {
+  if (friends.length) return { type: "friend", user: roomSocialUserFromFriend(friends[0]) };
+  if (candidates.length) return { type: "candidate", user: candidates[0] };
+  return null;
+}
+
+function renderRoomSocialChip(item, type, canInvite) {
+  const user = roomSocialUserFromFriend(item);
+  const actionAttr = type === "friend" ? `data-invite-user-id="${user.id}"` : `data-add-friend-id="${user.id}"`;
+  const disabled = type === "friend" && !canInvite ? "disabled" : "";
+  const label = type === "friend" ? (canInvite ? "快邀" : "满员") : "加好友";
+  return `
+    <button class="room-social-chip ${type}" type="button" ${actionAttr} ${disabled} aria-label="${escapeHTML(label)} ${escapeHTML(user.display_name || "同看用户")}">
+      ${avatarHTML(user, "room-invite-avatar")}
+      <span>${escapeHTML(user.display_name || "同看用户")}</span>
+      <em>${label}</em>
+    </button>
+  `;
+}
+
+function renderRoomSocialPrimary(target, canInvite) {
+  if (!target) {
+    return `
+      <div class="room-social-primary empty">
+        <div>
+          <span>Ready</span>
+          <strong>还没有可邀请对象</strong>
+          <p>先注册或切换另一个演示账号，再回到这里添加好友。</p>
+        </div>
+      </div>
+    `;
+  }
+  const user = target.user;
+  const isFriend = target.type === "friend";
+  const actionAttr = isFriend ? `data-invite-user-id="${user.id}"` : `data-add-friend-id="${user.id}"`;
+  const disabled = isFriend && state.watchRoom?.guest ? "disabled" : "";
+  const actionText = isFriend ? (state.watchRoom?.guest ? "房间已满" : state.watchRoom ? "邀请同看" : "开房并邀请") : "加为好友";
+  const hint = isFriend
+    ? state.watchRoom
+      ? state.watchRoom.guest
+        ? "当前房间已有同看好友，需要新开房后再邀请。"
+        : "当前房间会直接发送给这位好友。"
+      : "一键开房并发送邀请，适合答辩时快速展示同看链路。"
+    : "添加后会进入高频邀请，不在播放页展开完整好友列表。";
+  return `
+    <div class="room-social-primary">
+      ${avatarHTML(user, "room-social-primary-avatar")}
+      <div>
+        <span>${isFriend ? "Quick Invite" : "Suggested Friend"}</span>
+        <strong>${escapeHTML(user.display_name || "同看好友")}</strong>
+        <p>${escapeHTML(user.growth_title || "剧情新人")} · ${Number(user.points || 0)} 分 · ${hint}</p>
+      </div>
+      <button class="primary-button" type="button" ${actionAttr} ${disabled}>${actionText}</button>
+    </div>
+  `;
+}
+
+function renderRoomSocialReceived(invitation) {
+  if (!invitation) return "";
+  const extra = Math.max(0, (state.roomInvitations?.received || []).length - 1);
+  return `
+    <div class="room-social-incoming">
+      ${avatarHTML(invitation.from_user || {}, "room-invite-avatar")}
+      <div>
+        <span>Incoming</span>
+        <strong>${escapeHTML(inviteRoomLabel(invitation))}</strong>
+        <p>${extra ? `另有 ${extra} 条待处理邀请` : "接受后会自动进入同看房间。"}</p>
+      </div>
+      <div class="room-invite-actions">
+        <button class="primary-button" type="button" data-accept-invite-id="${invitation.id}">进入</button>
+        <button class="ghost-button" type="button" data-decline-invite-id="${invitation.id}">忽略</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderRoomInvitePanel() {
+  if (!roomInvitePanel) return;
+  if (!state.currentUser) {
+    roomInvitePanel.innerHTML = "";
+    return;
+  }
+  const friends = state.friendData?.friends || [];
+  const candidates = state.friendData?.candidates || [];
+  const received = state.roomInvitations?.received || [];
+  const sent = state.roomInvitations?.sent || [];
+  const canInvite = !state.watchRoom?.guest;
+  const primaryTarget = roomSocialPrimaryTarget(friends, candidates);
+  const primaryUserId = primaryTarget?.user?.id;
+  const secondaryFriends = friends.filter((item) => roomSocialUserFromFriend(item).id !== primaryUserId).slice(0, 3);
+  const secondaryCandidates = candidates.filter((item) => item.id !== primaryUserId).slice(0, Math.max(0, 3 - secondaryFriends.length));
+  const hiddenSocialCount = Math.max(0, friends.length + candidates.length - (primaryTarget ? 1 : 0) - secondaryFriends.length - secondaryCandidates.length);
+  const friendChips = secondaryFriends.map((item) => renderRoomSocialChip(item, "friend", canInvite)).join("");
+  const candidateChips = secondaryCandidates.map((item) =>
+    renderRoomSocialChip(item, "candidate", canInvite)
+  ).join("");
+  const lastSent = sent[0];
+  roomInvitePanel.innerHTML = `
+    <section class="room-social-panel compact">
+      <div class="room-social-head">
+        <div>
+          <span>SharePlay Room</span>
+          <strong>和好友一起看</strong>
+        </div>
+        <button class="ghost-button" type="button" data-refresh-room-social>同步</button>
+      </div>
+      ${state.roomSocialStatus ? `<div class="room-social-status ${state.roomSocialStatusError ? "error" : ""}">${escapeHTML(state.roomSocialStatus)}</div>` : ""}
+      ${renderRoomSocialReceived(received[0])}
+      ${renderRoomSocialPrimary(primaryTarget, canInvite)}
+      ${
+        friendChips || candidateChips
+          ? `<div class="room-social-rail">${friendChips}${candidateChips}</div>`
+          : ""
+      }
+      ${hiddenSocialCount ? `<p class="room-social-note">另有 ${hiddenSocialCount} 位联系人已收进好友体系，播放页只保留最高频入口。</p>` : ""}
+      ${
+        lastSent
+          ? `<div class="room-social-sent">
+              <span>最近邀请</span>
+              <strong>${escapeHTML(lastSent.to_user?.display_name || "好友")}</strong>
+              <em>${escapeHTML(lastSent.status || "pending")}</em>
+            </div>`
+          : ""
+      }
+    </section>
+  `;
 }
 
 function setVoiceStatus(message, isError = false) {
@@ -3204,7 +3261,7 @@ async function uploadVoiceProfile() {
   try {
     state.voiceProfile = await fetchJSON("/api/users/me/voice-profile", { method: "POST", body: form });
     state.voiceUsageMode = "user";
-    localStorage.setItem("voice_usage_mode", state.voiceUsageMode);
+    writeStorage("voice_usage_mode", state.voiceUsageMode);
     clearRecordedVoice();
     setVoiceStatus("声音样本已保存，后续可生成用户声音带入版音频。");
   } catch (error) {
@@ -6042,7 +6099,7 @@ $("#profileGallery").addEventListener("click", (event) => {
   const modeButton = event.target.closest("[data-voice-mode]");
   if (modeButton && !modeButton.disabled) {
     state.voiceUsageMode = modeButton.dataset.voiceMode;
-    localStorage.setItem("voice_usage_mode", state.voiceUsageMode);
+    writeStorage("voice_usage_mode", state.voiceUsageMode);
     setVoiceStatus(state.voiceUsageMode === "user" ? "已切换为用户声音带入版。" : "已切换为原版音频。");
     return;
   }
