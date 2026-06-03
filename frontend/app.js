@@ -224,6 +224,10 @@ const state = {
   roomLastSyncAt: 0,
   roomLastEventId: 0,
   roomFeed: [],
+  friendData: { friends: [], candidates: [] },
+  roomInvitations: { received: [], sent: [] },
+  roomSocialStatus: "",
+  roomSocialStatusError: false,
   roomApplyingRemote: false,
   demoRoomActive: false,
   demoRoomSerial: 900000,
@@ -286,6 +290,7 @@ const playerStatus = $("#playerStatus");
 const roomStatus = $("#roomStatus");
 const roomCodeInput = $("#roomCodeInput");
 const roomMemberList = $("#roomMemberList");
+const roomInvitePanel = $("#roomInvitePanel");
 const roomFeed = $("#roomFeed");
 const rewardPanel = $("#rewardPanel");
 const routeTransition = $("#routeTransition");
@@ -418,6 +423,10 @@ function clearAuth() {
   state.currentUser = null;
   state.watchHistory = [];
   state.rewardProfile = null;
+  state.friendData = { friends: [], candidates: [] };
+  state.roomInvitations = { received: [], sent: [] };
+  state.roomSocialStatus = "";
+  state.roomSocialStatusError = false;
   state.profileStatus = "";
   state.profileStatusError = false;
   state.profileDraftAvatar = "";
@@ -477,6 +486,7 @@ async function afterAuth(options = {}) {
   await loadWatchHistory();
   await loadRewardProfile();
   await loadVoiceProfile();
+  await loadRoomSocialData();
   if (options.forceHome) {
     syncHomeUrl();
     setView("home");
@@ -598,6 +608,7 @@ function setView(name) {
     window.clearTimeout(state.ambientStickerTimer);
   } else {
     scheduleAmbientStickers();
+    loadRoomSocialData();
   }
   if (name === "admin") {
     loadStats();
@@ -1916,6 +1927,7 @@ function renderWatchRoom() {
     roomStatus.textContent = "未开房";
     roomStatus.classList.remove("live");
     if (roomMemberList) roomMemberList.innerHTML = "";
+    renderRoomInvitePanel();
     return;
   }
   const guest = room.guest?.display_name || "等待好友";
@@ -1923,6 +1935,7 @@ function renderWatchRoom() {
   roomStatus.textContent = `房间 ${room.code} · ${room.member_count}/2 · ${guest} · ${stateLabel}`;
   roomStatus.classList.add("live");
   renderRoomMembers(room);
+  renderRoomInvitePanel();
 }
 
 function demoRoomFriend() {
@@ -2038,6 +2051,128 @@ function renderRoomMembers(room) {
         `;
       })
       .join("")}
+  `;
+}
+
+function roomSocialMessage(message, isError = false) {
+  state.roomSocialStatus = message;
+  state.roomSocialStatusError = isError;
+  renderRoomInvitePanel();
+}
+
+function inviteRoomLabel(invitation) {
+  const room = invitation.room || {};
+  const host = room.host?.display_name || invitation.from_user?.display_name || "好友";
+  return `${host} 邀你进入房间 ${room.code || ""}`;
+}
+
+function renderInviteItem(invitation, mode = "received") {
+  const user = mode === "sent" ? invitation.to_user : invitation.from_user;
+  const room = invitation.room || {};
+  const actions =
+    mode === "received"
+      ? `<div class="room-invite-actions">
+          <button class="primary-button" type="button" data-accept-invite-id="${invitation.id}">接受进入</button>
+          <button class="ghost-button" type="button" data-decline-invite-id="${invitation.id}">暂不加入</button>
+        </div>`
+      : `<small>${escapeHTML(invitation.status || "pending")}</small>`;
+  return `
+    <article class="room-invite-item">
+      ${avatarHTML(user || {}, "room-invite-avatar")}
+      <div>
+        <strong>${escapeHTML(mode === "sent" ? `已邀请 ${user?.display_name || "好友"}` : inviteRoomLabel(invitation))}</strong>
+        <span>${escapeHTML(user?.growth_title || "同看好友")} · ${escapeHTML(room.playback_state === "playing" ? "播放中" : "等待中")}</span>
+      </div>
+      ${actions}
+    </article>
+  `;
+}
+
+function renderFriendItem(friend, canInvite) {
+  const user = friend.user || friend;
+  return `
+    <article class="room-friend-item">
+      ${avatarHTML(user, "room-invite-avatar")}
+      <div>
+        <strong>${escapeHTML(user.display_name || "同看好友")}</strong>
+        <span>${escapeHTML(user.growth_title || "剧情新人")} · ${Number(user.points || 0)} 分</span>
+      </div>
+      <button class="ghost-button" type="button" data-invite-user-id="${user.id}" ${canInvite ? "" : "disabled"}>邀请</button>
+    </article>
+  `;
+}
+
+function renderCandidateItem(user) {
+  return `
+    <article class="room-friend-item candidate">
+      ${avatarHTML(user, "room-invite-avatar")}
+      <div>
+        <strong>${escapeHTML(user.display_name || "用户")}</strong>
+        <span>${escapeHTML(user.growth_title || "可添加为好友")}</span>
+      </div>
+      <button class="ghost-button" type="button" data-add-friend-id="${user.id}">加好友</button>
+    </article>
+  `;
+}
+
+function renderRoomInvitePanel() {
+  if (!roomInvitePanel) return;
+  if (!state.currentUser) {
+    roomInvitePanel.innerHTML = "";
+    return;
+  }
+  const friends = state.friendData?.friends || [];
+  const candidates = state.friendData?.candidates || [];
+  const received = state.roomInvitations?.received || [];
+  const sent = state.roomInvitations?.sent || [];
+  const canInvite = Boolean(state.watchRoom && !state.watchRoom.guest);
+  roomInvitePanel.innerHTML = `
+    <section class="room-social-panel">
+      <div class="room-social-head">
+        <div>
+          <span>Friends Invite</span>
+          <strong>好友同看入口</strong>
+        </div>
+        <button class="ghost-button" type="button" data-refresh-room-social>刷新</button>
+      </div>
+      ${
+        state.roomSocialStatus
+          ? `<div class="room-social-status ${state.roomSocialStatusError ? "error" : ""}">${escapeHTML(state.roomSocialStatus)}</div>`
+          : ""
+      }
+      ${
+        received.length
+          ? `<div class="room-social-block">
+              <h4>收到的邀请</h4>
+              ${received.map((item) => renderInviteItem(item, "received")).join("")}
+            </div>`
+          : ""
+      }
+      <div class="room-social-block">
+        <h4>${canInvite ? "选择好友发起邀请" : state.watchRoom ? "好友列表" : "先开房，再邀请好友"}</h4>
+        ${
+          friends.length
+            ? friends.map((item) => renderFriendItem(item, canInvite)).join("")
+            : `<div class="room-social-empty">还没有好友。先从下面添加一个演示账号，马上可以发起同看邀请。</div>`
+        }
+      </div>
+      ${
+        candidates.length
+          ? `<div class="room-social-block">
+              <h4>可添加用户</h4>
+              ${candidates.slice(0, 4).map(renderCandidateItem).join("")}
+            </div>`
+          : ""
+      }
+      ${
+        sent.length
+          ? `<div class="room-social-block compact">
+              <h4>我发出的邀请</h4>
+              ${sent.slice(0, 4).map((item) => renderInviteItem(item, "sent")).join("")}
+            </div>`
+          : ""
+      }
+    </section>
   `;
 }
 
@@ -2904,6 +3039,72 @@ function closePublicProfile() {
   if (publicProfileContent) publicProfileContent.innerHTML = "";
 }
 
+async function loadRoomSocialData() {
+  if (!state.currentUser) return;
+  try {
+    const [friends, invitations] = await Promise.all([
+      fetchJSON("/api/users/me/friends"),
+      fetchJSON("/api/watch-rooms/invitations"),
+    ]);
+    state.friendData = friends;
+    state.roomInvitations = invitations;
+  } catch (error) {
+    state.roomSocialStatus = errorMessage(error);
+    state.roomSocialStatusError = true;
+  }
+  renderRoomInvitePanel();
+}
+
+async function addFriend(userId) {
+  try {
+    state.friendData = await fetchJSON("/api/users/me/friends", {
+      method: "POST",
+      body: JSON.stringify({ user_id: Number(userId) }),
+    });
+    roomSocialMessage("好友已添加，可以发起同看邀请。");
+  } catch (error) {
+    roomSocialMessage(errorMessage(error), true);
+  }
+}
+
+async function inviteFriendToRoom(userId) {
+  if (!state.watchRoom) {
+    roomSocialMessage("请先开房，再邀请好友。", true);
+    return;
+  }
+  try {
+    await fetchJSON(`/api/watch-rooms/${state.watchRoom.code}/invite`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: Number(userId) }),
+    });
+    state.roomInvitations = await fetchJSON("/api/watch-rooms/invitations");
+    roomSocialMessage("同看邀请已发出。");
+  } catch (error) {
+    roomSocialMessage(errorMessage(error), true);
+  }
+}
+
+async function respondRoomInvitation(invitationId, action) {
+  try {
+    const payload = await fetchJSON(`/api/watch-rooms/invitations/${invitationId}/${action}`, { method: "POST" });
+    if (action === "accept" && payload.room) {
+      state.watchRoom = payload.room;
+      state.roomLastEventId = 0;
+      state.roomFeed = [];
+      await applyRoomState(payload.room);
+      startRoomPolling();
+      await fetchRoomEvents();
+      state.roomInvitations = await fetchJSON("/api/watch-rooms/invitations");
+      roomSocialMessage(`已进入好友房间：${payload.room.code}`);
+      return;
+    }
+    state.roomInvitations = await fetchJSON("/api/watch-rooms/invitations");
+    roomSocialMessage("已处理同看邀请。");
+  } catch (error) {
+    roomSocialMessage(errorMessage(error), true);
+  }
+}
+
 function setVoiceStatus(message, isError = false) {
   state.voiceStatus = message;
   state.voiceStatusError = isError;
@@ -3072,6 +3273,7 @@ function leaveWatchRoom() {
   state.demoRoomActive = false;
   renderWatchRoom();
   renderRoomFeed();
+  renderRoomInvitePanel();
 }
 
 function startRoomPolling() {
@@ -3086,6 +3288,8 @@ async function fetchRoomState() {
     const room = await fetchJSON(`/api/watch-rooms/${state.watchRoom.code}`);
     await applyRoomState(room);
     await fetchRoomEvents();
+    state.roomInvitations = await fetchJSON("/api/watch-rooms/invitations");
+    renderRoomInvitePanel();
   } catch (error) {
     setDanmakuFeedback(errorMessage(error), true);
     leaveWatchRoom();
@@ -3156,6 +3360,7 @@ async function createWatchRoom(options = {}) {
     renderWatchRoom();
     renderRoomFeed();
     startRoomPolling();
+    loadRoomSocialData();
     if (!silent) setDanmakuFeedback(`同看房间已创建：${state.watchRoom.code}`);
     return state.watchRoom;
   } catch (error) {
@@ -3180,6 +3385,7 @@ async function joinWatchRoom() {
     await applyRoomState(room);
     startRoomPolling();
     await fetchRoomEvents();
+    await loadRoomSocialData();
     setDanmakuFeedback(`已加入同看房间：${room.code}`);
   } catch (error) {
     setDanmakuFeedback(errorMessage(error), true);
@@ -5914,6 +6120,31 @@ roomMemberList?.addEventListener("click", (event) => {
     return;
   }
   openPublicProfile(Number(card.dataset.userId));
+});
+roomInvitePanel?.addEventListener("click", (event) => {
+  const addFriendButton = event.target.closest("[data-add-friend-id]");
+  if (addFriendButton) {
+    addFriend(addFriendButton.dataset.addFriendId);
+    return;
+  }
+  const inviteButton = event.target.closest("[data-invite-user-id]");
+  if (inviteButton && !inviteButton.disabled) {
+    inviteFriendToRoom(inviteButton.dataset.inviteUserId);
+    return;
+  }
+  const acceptButton = event.target.closest("[data-accept-invite-id]");
+  if (acceptButton) {
+    respondRoomInvitation(acceptButton.dataset.acceptInviteId, "accept");
+    return;
+  }
+  const declineButton = event.target.closest("[data-decline-invite-id]");
+  if (declineButton) {
+    respondRoomInvitation(declineButton.dataset.declineInviteId, "decline");
+    return;
+  }
+  if (event.target.closest("[data-refresh-room-social]")) {
+    loadRoomSocialData();
+  }
 });
 $("#closePublicProfile").addEventListener("click", closePublicProfile);
 publicProfileModal?.addEventListener("click", (event) => {

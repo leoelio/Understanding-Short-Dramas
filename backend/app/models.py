@@ -169,6 +169,35 @@ class WatchRoomEvent(Base):
     user = relationship("User")
 
 
+class UserFriend(Base):
+    __tablename__ = "user_friends"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    friend_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(String(24), default="accepted", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", foreign_keys=[user_id])
+    friend = relationship("User", foreign_keys=[friend_user_id])
+
+
+class WatchRoomInvitation(Base):
+    __tablename__ = "watch_room_invitations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("watch_rooms.id"), nullable=False, index=True)
+    from_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    to_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(String(24), default="pending", nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    responded_at = Column(DateTime, nullable=True)
+
+    room = relationship("WatchRoom")
+    from_user = relationship("User", foreign_keys=[from_user_id])
+    to_user = relationship("User", foreign_keys=[to_user_id])
+
+
 class UserReward(Base):
     __tablename__ = "user_rewards"
 

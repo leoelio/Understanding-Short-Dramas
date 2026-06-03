@@ -1,26 +1,23 @@
 # Project Status
 
-更新时间：2026-06-03 23:13:54
+更新时间：2026-06-03 23:35:35
 
 ## 当前目标
 
-完成用户头像与昵称管理基础版
+完成好友关系与同看邀请入口 MVP
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`a3d784a`
+- 最新提交：`723ded9`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M backend/app/auth.py`
 - `M backend/app/main.py`
-- `M backend/app/migrations.py`
 - `M backend/app/models.py`
 - `M backend/app/schemas.py`
 - `M frontend/app.js`
 - `M frontend/index.html`
 - `M frontend/styles.css`
-- `?? data/avatar_assets/`
 
 ## 数据状态
 
@@ -54,14 +51,14 @@
 
 ## 本次变更摘要
 
-- 后端 users 表新增 avatar_url 字段，新增个人资料更新接口和头像上传/媒体读取接口。
-- 我的页新增头像与昵称资料卡，支持四个预设头像、昵称保存和本地图片上传。
-- 同看房间成员卡、个人成长展馆、公开展馆接入用户头像，演示好友也具备独立头像预设。
-- 完成接口验证、浏览器 UI 验证和上传头像媒体读取验证。
+- 后端新增 UserFriend 和 WatchRoomInvitation 表，支持好友列表、添加好友、发出同看邀请、接受/拒绝邀请。
+- 播放页双人同看卡新增好友同看入口，展示好友、可添加用户、收到的邀请和发出的邀请。
+- 接受邀请后可直接进入好友房间，房间成员卡复用头像昵称体系。
+- 完成双账号接口验证和浏览器验证：管理员发邀请，普通用户接受后加入房间。
 
 ## 下一步建议
 
-- 下一步建议整理 2-3 分钟答辩稳定演示脚本，或继续做好友关系/邀请入口，让同看房间从演示模式进一步产品化。
+- 下一步建议制作 2-3 分钟答辩演示脚本，或继续做好友申请审核/通知提示，让社交链路更接近真实产品。
 
 ## 安全提醒
 

@@ -29,18 +29,21 @@ from .models import (
     Highlight,
     Interaction,
     User,
+    UserFriend,
     UserReward,
     VoiceClipCache,
     VoiceProfile,
     WatchHistory,
     WatchRoom,
     WatchRoomEvent,
+    WatchRoomInvitation,
 )
 from .schemas import (
     DanmakuCreate,
     EpisodeRemixCreate,
     EpisodeRemixReviewUpdate,
     ExperienceConfigUpdate,
+    FriendCreate,
     InteractionCreate,
     LoginRequest,
     RegisterRequest,
@@ -50,6 +53,7 @@ from .schemas import (
     WatchHistoryUpdate,
     WatchRoomCreate,
     WatchRoomEventCreate,
+    WatchRoomInvitationCreate,
     WatchRoomJoin,
     WatchRoomSync,
 )
@@ -654,6 +658,35 @@ def user_brief(user: User | None) -> dict | None:
     }
 
 
+def are_friends(db: Session, user_id: int, friend_user_id: int) -> bool:
+    return (
+        db.query(UserFriend)
+        .filter(
+            UserFriend.user_id == user_id,
+            UserFriend.friend_user_id == friend_user_id,
+            UserFriend.status == "accepted",
+        )
+        .first()
+        is not None
+    )
+
+
+def ensure_friend_edge(db: Session, user_id: int, friend_user_id: int) -> None:
+    existing = (
+        db.query(UserFriend)
+        .filter(UserFriend.user_id == user_id, UserFriend.friend_user_id == friend_user_id)
+        .first()
+    )
+    if existing:
+        existing.status = "accepted"
+        return
+    db.add(UserFriend(user_id=user_id, friend_user_id=friend_user_id, status="accepted"))
+
+
+def friend_payload(row: UserFriend) -> dict:
+    return {"friendship_id": row.id, "status": row.status, "user": user_brief(row.friend)}
+
+
 def normalize_room_code(code: str) -> str:
     return "".join(code.strip().upper().split())
 
@@ -689,6 +722,18 @@ def room_payload(room: WatchRoom, current_user: User) -> dict:
         "updated_by": user_brief(room.updated_by),
         "updated_at": room.updated_at.isoformat() if room.updated_at else None,
         "created_at": room.created_at.isoformat() if room.created_at else None,
+    }
+
+
+def invitation_payload(invitation: WatchRoomInvitation, viewer: User) -> dict:
+    return {
+        "id": invitation.id,
+        "status": invitation.status,
+        "room": room_payload(invitation.room, viewer),
+        "from_user": user_brief(invitation.from_user),
+        "to_user": user_brief(invitation.to_user),
+        "created_at": invitation.created_at.isoformat() if invitation.created_at else None,
+        "responded_at": invitation.responded_at.isoformat() if invitation.responded_at else None,
     }
 
 
@@ -1560,6 +1605,44 @@ async def upload_my_avatar(
     return {"user": public_user(user)}
 
 
+@app.get("/api/users/me/friends")
+def list_my_friends(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    friend_rows = (
+        db.query(UserFriend)
+        .filter(UserFriend.user_id == user.id, UserFriend.status == "accepted")
+        .order_by(UserFriend.created_at.desc(), UserFriend.id.desc())
+        .all()
+    )
+    friend_ids = {row.friend_user_id for row in friend_rows}
+    candidates = (
+        db.query(User)
+        .filter(User.id != user.id, User.is_active.is_(True))
+        .order_by(User.id.asc())
+        .all()
+    )
+    return {
+        "friends": [friend_payload(row) for row in friend_rows],
+        "candidates": [user_brief(candidate) for candidate in candidates if candidate.id not in friend_ids],
+    }
+
+
+@app.post("/api/users/me/friends")
+def add_my_friend(
+    payload: FriendCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    friend = db.get(User, payload.user_id)
+    if not friend or not friend.is_active:
+        raise HTTPException(status_code=404, detail="好友用户不存在")
+    if friend.id == user.id:
+        raise HTTPException(status_code=400, detail="不能添加自己为好友")
+    ensure_friend_edge(db, user.id, friend.id)
+    ensure_friend_edge(db, friend.id, user.id)
+    db.commit()
+    return list_my_friends(user, db)
+
+
 @app.post("/api/auth/logout")
 def logout(
     user: User = Depends(get_current_user),
@@ -2025,6 +2108,117 @@ def join_watch_room(
         db.commit()
         db.refresh(room)
     return room_payload(room, user)
+
+
+@app.get("/api/watch-rooms/invitations")
+def list_watch_room_invitations(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    received = (
+        db.query(WatchRoomInvitation)
+        .filter(WatchRoomInvitation.to_user_id == user.id, WatchRoomInvitation.status == "pending")
+        .order_by(WatchRoomInvitation.created_at.desc(), WatchRoomInvitation.id.desc())
+        .limit(20)
+        .all()
+    )
+    sent = (
+        db.query(WatchRoomInvitation)
+        .filter(WatchRoomInvitation.from_user_id == user.id)
+        .order_by(WatchRoomInvitation.created_at.desc(), WatchRoomInvitation.id.desc())
+        .limit(20)
+        .all()
+    )
+    return {
+        "received": [invitation_payload(item, user) for item in received],
+        "sent": [invitation_payload(item, user) for item in sent],
+    }
+
+
+@app.post("/api/watch-rooms/{code}/invite")
+def invite_watch_room_friend(
+    code: str,
+    payload: WatchRoomInvitationCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    room = get_watch_room(code, db)
+    ensure_room_member(room, user)
+    friend = db.get(User, payload.user_id)
+    if not friend or not friend.is_active:
+        raise HTTPException(status_code=404, detail="邀请用户不存在")
+    if friend.id == user.id:
+        raise HTTPException(status_code=400, detail="不能邀请自己")
+    if not are_friends(db, user.id, friend.id):
+        raise HTTPException(status_code=400, detail="请先添加为好友，再发起同看邀请")
+    if friend.id in {room.host_user_id, room.guest_user_id}:
+        raise HTTPException(status_code=400, detail="好友已经在房间内")
+    if room.guest_user_id is not None:
+        raise HTTPException(status_code=409, detail="房间已满，暂时只支持双人同看")
+
+    invitation = (
+        db.query(WatchRoomInvitation)
+        .filter(
+            WatchRoomInvitation.room_id == room.id,
+            WatchRoomInvitation.to_user_id == friend.id,
+            WatchRoomInvitation.status == "pending",
+        )
+        .first()
+    )
+    if invitation:
+        invitation.from_user_id = user.id
+        invitation.created_at = datetime.utcnow()
+    else:
+        invitation = WatchRoomInvitation(room_id=room.id, from_user_id=user.id, to_user_id=friend.id)
+        db.add(invitation)
+    db.commit()
+    db.refresh(invitation)
+    return invitation_payload(invitation, user)
+
+
+@app.post("/api/watch-rooms/invitations/{invitation_id}/accept")
+def accept_watch_room_invitation(
+    invitation_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    invitation = db.get(WatchRoomInvitation, invitation_id)
+    if not invitation or invitation.to_user_id != user.id:
+        raise HTTPException(status_code=404, detail="邀请不存在")
+    room = invitation.room
+    if invitation.status not in {"pending", "accepted"}:
+        raise HTTPException(status_code=400, detail="邀请已处理")
+    if user.id != room.host_user_id and room.guest_user_id not in {None, user.id}:
+        invitation.status = "declined"
+        invitation.responded_at = datetime.utcnow()
+        db.commit()
+        raise HTTPException(status_code=409, detail="房间已满")
+    if user.id != room.host_user_id and room.guest_user_id is None:
+        room.guest_user_id = user.id
+    invitation.status = "accepted"
+    invitation.responded_at = datetime.utcnow()
+    room.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(invitation)
+    db.refresh(room)
+    return {"invitation": invitation_payload(invitation, user), "room": room_payload(room, user)}
+
+
+@app.post("/api/watch-rooms/invitations/{invitation_id}/decline")
+def decline_watch_room_invitation(
+    invitation_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    invitation = db.get(WatchRoomInvitation, invitation_id)
+    if not invitation or invitation.to_user_id != user.id:
+        raise HTTPException(status_code=404, detail="邀请不存在")
+    if invitation.status == "pending":
+        invitation.status = "declined"
+        invitation.responded_at = datetime.utcnow()
+        db.commit()
+        db.refresh(invitation)
+    return {"invitation": invitation_payload(invitation, user)}
 
 
 @app.get("/api/watch-rooms/{code}")

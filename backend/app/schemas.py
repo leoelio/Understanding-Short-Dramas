@@ -64,6 +64,10 @@ class UserProfileUpdate(BaseModel):
     avatar_url: str | None = Field(default=None, max_length=500)
 
 
+class FriendCreate(BaseModel):
+    user_id: int
+
+
 class WatchRoomCreate(BaseModel):
     episode_id: int | None = None
     progress_sec: float = Field(default=0, ge=0)
@@ -83,6 +87,10 @@ class WatchRoomSync(BaseModel):
 class WatchRoomEventCreate(BaseModel):
     event_type: str = Field(min_length=1, max_length=32)
     payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class WatchRoomInvitationCreate(BaseModel):
+    user_id: int
 
 
 class UserAdminUpdate(BaseModel):
