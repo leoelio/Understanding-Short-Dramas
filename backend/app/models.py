@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -196,6 +196,73 @@ class WatchRoomInvitation(Base):
     room = relationship("WatchRoom")
     from_user = relationship("User", foreign_keys=[from_user_id])
     to_user = relationship("User", foreign_keys=[to_user_id])
+
+
+class SocialPost(Base):
+    __tablename__ = "social_posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    visibility = Column(String(24), default="public", nullable=False, index=True)
+    source_type = Column(String(32), default="thought", nullable=False, index=True)
+    title = Column(String(120), nullable=False)
+    text = Column(Text, default="")
+    asset_kind = Column(String(32), default="text", nullable=False)
+    asset_url = Column(Text, default="")
+    asset_payload_json = Column(Text, default="{}")
+    topic = Column(String(64), default="", index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")
+    comments = relationship("SocialComment", back_populates="post", cascade="all, delete-orphan")
+    reactions = relationship("SocialReaction", back_populates="post", cascade="all, delete-orphan")
+
+
+class SocialComment(Base):
+    __tablename__ = "social_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    post_id = Column(Integer, ForeignKey("social_posts.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    text = Column(String(240), nullable=False)
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    post = relationship("SocialPost", back_populates="comments")
+    user = relationship("User")
+
+
+class SocialReaction(Base):
+    __tablename__ = "social_reactions"
+    __table_args__ = (UniqueConstraint("post_id", "user_id", "reaction_type", name="uq_social_reaction_user"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    post_id = Column(Integer, ForeignKey("social_posts.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    reaction_type = Column(String(24), default="like", nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    post = relationship("SocialPost", back_populates="reactions")
+    user = relationship("User")
+
+
+class SocialNotification(Base):
+    __tablename__ = "social_notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    actor_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    event_type = Column(String(32), nullable=False, index=True)
+    post_id = Column(Integer, ForeignKey("social_posts.id"), nullable=True, index=True)
+    comment_id = Column(Integer, ForeignKey("social_comments.id"), nullable=True, index=True)
+    is_read = Column(Boolean, default=False, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    actor = relationship("User", foreign_keys=[actor_user_id])
+    post = relationship("SocialPost")
+    comment = relationship("SocialComment")
 
 
 class UserReward(Base):

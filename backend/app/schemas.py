@@ -93,6 +93,21 @@ class WatchRoomInvitationCreate(BaseModel):
     user_id: int
 
 
+class SocialPostCreate(BaseModel):
+    visibility: str = Field(default="public", max_length=24)
+    source_type: str = Field(default="thought", max_length=32)
+    title: str = Field(min_length=1, max_length=120)
+    text: str = Field(default="", max_length=500)
+    asset_kind: str = Field(default="text", max_length=32)
+    asset_url: str = Field(default="", max_length=500)
+    asset_payload: dict[str, Any] = Field(default_factory=dict)
+    topic: str = Field(default="", max_length=64)
+
+
+class SocialCommentCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=240)
+
+
 class UserAdminUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=64)
     role: str | None = Field(default=None, max_length=32)

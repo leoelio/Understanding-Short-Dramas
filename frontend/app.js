@@ -263,6 +263,10 @@ const state = {
   roomInvitations: { received: [], sent: [] },
   roomSocialStatus: "",
   roomSocialStatusError: false,
+  socialInbox: { unread_count: 0, room_invitations: [], notifications: [] },
+  socialFeed: { scope: "all", topics: [], posts: [] },
+  socialStatus: "",
+  socialStatusError: false,
   roomApplyingRemote: false,
   demoRoomActive: false,
   demoRoomSerial: 900000,
@@ -301,6 +305,8 @@ const $ = (selector) => document.querySelector(selector);
 const views = {
   auth: $("#authView"),
   home: $("#homeView"),
+  chat: $("#chatView"),
+  discover: $("#discoverView"),
   profile: $("#profileView"),
   watch: $("#watchView"),
   admin: $("#adminView"),
@@ -308,6 +314,8 @@ const views = {
 };
 
 const homeTab = $("#homeTab");
+const chatTab = $("#chatTab");
+const discoverTab = $("#discoverTab");
 const profileTab = $("#profileTab");
 const adminTab = $("#adminTab");
 const reviewTab = $("#reviewTab");
@@ -448,6 +456,8 @@ function updateAuthUI() {
     $("#currentUserLabel").textContent = `${state.currentUser.display_name} · ${roleLabel(state.currentUser.role)}`;
   }
   homeTab.hidden = !signedIn;
+  chatTab.hidden = !signedIn;
+  discoverTab.hidden = !signedIn;
   profileTab.hidden = !signedIn;
   adminTab.hidden = !signedIn || !canManage();
   reviewTab.hidden = !signedIn || !canManage();
@@ -462,6 +472,10 @@ function clearAuth() {
   state.roomInvitations = { received: [], sent: [] };
   state.roomSocialStatus = "";
   state.roomSocialStatusError = false;
+  state.socialInbox = { unread_count: 0, room_invitations: [], notifications: [] };
+  state.socialFeed = { scope: "all", topics: [], posts: [] };
+  state.socialStatus = "";
+  state.socialStatusError = false;
   state.profileStatus = "";
   state.profileStatusError = false;
   state.profileDraftAvatar = "";
@@ -475,6 +489,9 @@ function clearAuth() {
   updateAuthUI();
   renderRewardProfile();
   renderProfileGallery();
+  renderChatBadge();
+  renderChatInbox();
+  renderDiscoverView();
 }
 
 function setAuthStatus(message, isError = false) {
@@ -522,6 +539,7 @@ async function afterAuth(options = {}) {
   await loadRewardProfile();
   await loadVoiceProfile();
   await loadRoomSocialData();
+  await loadSocialInbox();
   if (options.forceHome) {
     syncHomeUrl();
     setView("home");
@@ -536,6 +554,10 @@ async function routeAfterAuth() {
     setView("admin");
   } else if (location.hash === "#review") {
     setView("review");
+  } else if (location.hash === "#chat") {
+    setView("chat");
+  } else if (location.hash === "#discover") {
+    setView("discover");
   } else if (location.hash === "#profile") {
     setView("profile");
   } else if (Number.isFinite(episodeId) && episodeId > 0) {
@@ -636,6 +658,8 @@ function setView(name) {
   Object.entries(views).forEach(([key, element]) => element.classList.toggle("active", key === name));
   document.body.dataset.view = name;
   homeTab.classList.toggle("active", name === "home");
+  chatTab.classList.toggle("active", name === "chat");
+  discoverTab.classList.toggle("active", name === "discover");
   profileTab.classList.toggle("active", name === "profile");
   adminTab.classList.toggle("active", name === "admin");
   reviewTab.classList.toggle("active", name === "review");
@@ -651,6 +675,12 @@ function setView(name) {
   if (name === "profile") {
     loadRewardProfile();
     loadVoiceProfile();
+  }
+  if (name === "chat") {
+    loadSocialInbox();
+  }
+  if (name === "discover") {
+    loadSocialFeed(state.socialFeed.scope || "all");
   }
   if (name === "review") {
     loadReviewEpisodes();
@@ -3003,6 +3033,7 @@ async function inviteFriendToRoom(userId) {
       body: JSON.stringify({ user_id: Number(userId) }),
     });
     state.roomInvitations = await fetchJSON("/api/watch-rooms/invitations");
+    await loadSocialInbox();
     roomSocialMessage("同看邀请已发出。");
   } catch (error) {
     roomSocialMessage(errorMessage(error), true);
@@ -3020,10 +3051,12 @@ async function respondRoomInvitation(invitationId, action) {
       startRoomPolling();
       await fetchRoomEvents();
       state.roomInvitations = await fetchJSON("/api/watch-rooms/invitations");
+      await loadSocialInbox();
       roomSocialMessage(`已进入好友房间：${payload.room.code}`);
       return;
     }
     state.roomInvitations = await fetchJSON("/api/watch-rooms/invitations");
+    await loadSocialInbox();
     roomSocialMessage("已处理同看邀请。");
   } catch (error) {
     roomSocialMessage(errorMessage(error), true);
@@ -3160,6 +3193,270 @@ function renderRoomInvitePanel() {
       }
     </section>
   `;
+}
+
+function socialSourceLabel(value) {
+  return {
+    voice: "AI 声音",
+    image: "AI 图片",
+    story: "AI 剧情卡",
+    thought: "文字感受",
+  }[value] || "AI 内容";
+}
+
+function socialVisibilityLabel(value) {
+  return {
+    public: "所有人可见",
+    friends: "仅好友可见",
+    private: "仅自己可见",
+  }[value] || "所有人可见";
+}
+
+function socialTopicLabel(value) {
+  return {
+    beiwang_voice: "北往 AI 声音专题",
+    winter_voice_match: "冬天男主模仿赛",
+    story_bottle: "剧情漂流瓶",
+  }[value] || "日常分享";
+}
+
+function setSocialStatus(message, isError = false) {
+  state.socialStatus = message;
+  state.socialStatusError = isError;
+  const status = $("#socialComposerStatus");
+  if (status) {
+    status.textContent = message || "";
+    status.classList.toggle("error", isError);
+  }
+}
+
+function renderChatBadge() {
+  const badge = $("#chatUnreadBadge");
+  if (!badge) return;
+  const count = Number(state.socialInbox?.unread_count || 0);
+  badge.hidden = count <= 0;
+  badge.textContent = count > 99 ? "99+" : String(count);
+}
+
+async function loadSocialInbox() {
+  if (!state.currentUser) return;
+  try {
+    state.socialInbox = await fetchJSON("/api/social/inbox");
+  } catch {
+    state.socialInbox = { unread_count: 0, room_invitations: [], notifications: [] };
+  }
+  renderChatBadge();
+  renderChatInbox();
+}
+
+async function loadSocialFeed(scope = "all") {
+  if (!state.currentUser) return;
+  state.socialFeed.scope = scope;
+  try {
+    state.socialFeed = await fetchJSON(`/api/social/feed?scope=${encodeURIComponent(scope)}`);
+  } catch (error) {
+    state.socialFeed = { scope, topics: [], posts: [] };
+    setSocialStatus(errorMessage(error), true);
+  }
+  renderDiscoverView();
+}
+
+function renderChatInbox() {
+  const list = $("#chatInboxList");
+  const status = $("#chatInboxStatus");
+  if (!list || !status) return;
+  const inbox = state.socialInbox || {};
+  const invitations = inbox.room_invitations || [];
+  const notifications = inbox.notifications || [];
+  status.textContent = inbox.unread_count
+    ? `${inbox.unread_count} 条待处理消息，其中 ${inbox.room_invitation_count || 0} 条同看邀请。`
+    : "暂无未读消息。评论、点赞、同看邀请会在这里出现。";
+  const invitationHTML = invitations
+    .map(
+      (item) => `
+        <article class="social-message-card invitation">
+          ${avatarHTML(item.from_user || {}, "social-avatar")}
+          <div>
+            <span>同看邀请</span>
+            <strong>${escapeHTML(inviteRoomLabel(item))}</strong>
+            <p>${escapeHTML(item.from_user?.growth_title || "好友")} 邀你一起看剧。</p>
+          </div>
+          <div class="social-message-actions">
+            <button class="primary-button" type="button" data-chat-accept-invite="${item.id}">进入</button>
+            <button class="ghost-button" type="button" data-chat-decline-invite="${item.id}">忽略</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+  const notificationHTML = notifications
+    .map((item) => {
+      const verb = item.event_type === "comment" ? "评论了你的动态" : "赞了你的动态";
+      return `
+        <article class="social-message-card ${item.is_read ? "" : "unread"}">
+          ${avatarHTML(item.actor || {}, "social-avatar")}
+          <div>
+            <span>${item.is_read ? "已读" : "未读"}</span>
+            <strong>${escapeHTML(item.actor?.display_name || "好友")} ${verb}</strong>
+            <p>${escapeHTML(item.post?.title || "AI 内容动态")}${item.comment?.text ? ` · “${escapeHTML(item.comment.text)}”` : ""}</p>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+  list.innerHTML =
+    invitationHTML || notificationHTML
+      ? `${invitationHTML}${notificationHTML}`
+      : `<div class="social-empty">还没有消息。去“逛逛”发一条 AI 内容动态，朋友点赞评论后这里会出现红点。</div>`;
+}
+
+function renderSocialAsset(post) {
+  if (post.asset_kind === "voice") {
+    return `
+      <div class="social-asset voice">
+        <b>VOICE</b>
+        <span>${post.asset_url ? "可播放声音资产" : "AI 声音占位，可绑定已生成 mp3"}</span>
+      </div>
+    `;
+  }
+  if (post.asset_kind === "image") {
+    return post.asset_url
+      ? `<figure class="social-asset image"><img src="${escapeHTML(post.asset_url)}" alt="${escapeHTML(post.title)}" /></figure>`
+      : `<div class="social-asset image empty"><b>IMAGE</b><span>AI 图片占位</span></div>`;
+  }
+  if (post.asset_kind === "story") {
+    return `<div class="social-asset story"><b>STORY</b><span>剧情分镜卡 · 点击后续可扩展为详情页</span></div>`;
+  }
+  return `<div class="social-asset thought"><b>TEXT</b><span>文字感受</span></div>`;
+}
+
+function renderSocialPost(post) {
+  const comments = (post.comments || [])
+    .map(
+      (comment) => `
+        <div class="social-comment">
+          ${avatarHTML(comment.user || {}, "social-comment-avatar")}
+          <span><b>${escapeHTML(comment.user?.display_name || "用户")}</b>${escapeHTML(comment.text || "评论已删除")}</span>
+          ${post.can_delete_comments || comment.user?.id === state.currentUser?.id ? `<button type="button" data-delete-comment-id="${comment.id}">删除</button>` : ""}
+        </div>
+      `
+    )
+    .join("");
+  return `
+    <article class="social-post-card" data-social-post-id="${post.id}">
+      <div class="social-post-head">
+        ${avatarHTML(post.user || {}, "social-avatar")}
+        <div>
+          <strong>${escapeHTML(post.user?.display_name || "用户")}</strong>
+          <span>${escapeHTML(post.user?.growth_title || "剧情新人")} · ${escapeHTML(socialVisibilityLabel(post.visibility))}</span>
+        </div>
+        <em>${escapeHTML(socialSourceLabel(post.source_type))}</em>
+      </div>
+      ${renderSocialAsset(post)}
+      <div class="social-post-copy">
+        <span>${escapeHTML(socialTopicLabel(post.topic))}</span>
+        <h3>${escapeHTML(post.title)}</h3>
+        <p>${escapeHTML(post.text || "分享了一条 AI 内容。")}</p>
+      </div>
+      <div class="social-post-actions">
+        <button class="${post.liked_by_me ? "active" : ""}" type="button" data-like-post-id="${post.id}">赞 ${post.like_count || 0}</button>
+        <button type="button" data-focus-comment-id="${post.id}">评论 ${post.comment_count || 0}</button>
+        <button type="button" disabled>转发 · 预留</button>
+      </div>
+      <div class="social-comments">${comments || `<span class="social-comment-empty">暂无评论，公开动态也可以被陌生人评论。</span>`}</div>
+      <div class="social-comment-form">
+        <input maxlength="240" placeholder="写评论，禁止低俗内容" data-comment-input="${post.id}" />
+        <button class="ghost-button" type="button" data-comment-post-id="${post.id}">发送</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderDiscoverView() {
+  const topics = $("#discoverTopics");
+  const feed = $("#socialFeedList");
+  if (!topics || !feed) return;
+  topics.innerHTML = (state.socialFeed.topics || [])
+    .map(
+      (item) => `
+        <article class="social-topic-card tone-${escapeHTML(item.tone || "story")}">
+          <span>Topic</span>
+          <strong>${escapeHTML(item.title)}</strong>
+          <p>${escapeHTML(item.subtitle)}</p>
+        </article>
+      `
+    )
+    .join("");
+  document.querySelectorAll("[data-social-scope]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.socialScope === state.socialFeed.scope);
+  });
+  const posts = state.socialFeed.posts || [];
+  feed.innerHTML = posts.length
+    ? posts.map(renderSocialPost).join("")
+    : `<div class="social-empty">还没有动态。先发布一条 AI 声音、AI 图片或 AI 剧情卡，逛逛页就会形成第一条展示内容。</div>`;
+  setSocialStatus(state.socialStatus, state.socialStatusError);
+}
+
+function socialAssetKindFromSource(sourceType) {
+  return { voice: "voice", image: "image", story: "story", thought: "text" }[sourceType] || "text";
+}
+
+async function publishSocialPost() {
+  const sourceType = $("#socialSourceType").value;
+  const title = $("#socialPostTitle").value.trim();
+  const text = $("#socialPostText").value.trim();
+  if (!title) {
+    setSocialStatus("请先填写动态标题。", true);
+    return;
+  }
+  try {
+    await fetchJSON("/api/social/posts", {
+      method: "POST",
+      body: JSON.stringify({
+        visibility: $("#socialVisibility").value,
+        source_type: sourceType,
+        title,
+        text,
+        asset_kind: socialAssetKindFromSource(sourceType),
+        topic: $("#socialTopic").value,
+        asset_payload: { source_hint: "client_mvp" },
+      }),
+    });
+    $("#socialPostTitle").value = "";
+    $("#socialPostText").value = "";
+    setSocialStatus("已发布到逛逛动态。");
+    await loadSocialFeed(state.socialFeed.scope || "all");
+  } catch (error) {
+    setSocialStatus(errorMessage(error), true);
+  }
+}
+
+async function toggleSocialLike(postId) {
+  await fetchJSON(`/api/social/posts/${postId}/like`, { method: "POST" });
+  await loadSocialFeed(state.socialFeed.scope || "all");
+  await loadSocialInbox();
+}
+
+async function submitSocialComment(postId) {
+  const input = document.querySelector(`[data-comment-input="${postId}"]`);
+  const text = input?.value.trim() || "";
+  if (!text) return;
+  try {
+    await fetchJSON(`/api/social/posts/${postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
+    input.value = "";
+    await loadSocialFeed(state.socialFeed.scope || "all");
+    await loadSocialInbox();
+  } catch (error) {
+    setSocialStatus(errorMessage(error), true);
+  }
+}
+
+async function deleteSocialComment(commentId) {
+  await fetchJSON(`/api/social/comments/${commentId}`, { method: "DELETE" });
+  await loadSocialFeed(state.socialFeed.scope || "all");
 }
 
 function setVoiceStatus(message, isError = false) {
@@ -6056,6 +6353,8 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("pagehide", stopPlaybackForExit);
 
 homeTab.addEventListener("click", () => setView("home"));
+chatTab.addEventListener("click", () => setView("chat"));
+discoverTab.addEventListener("click", () => setView("discover"));
 profileTab.addEventListener("click", () => setView("profile"));
 adminTab.addEventListener("click", () => setView("admin"));
 reviewTab.addEventListener("click", () => setView("review"));
@@ -6076,6 +6375,47 @@ document.querySelectorAll(".demo-accounts button").forEach((button) => {
   });
 });
 $("#backButton").addEventListener("click", () => setView("home"));
+$("#markInboxRead")?.addEventListener("click", async () => {
+  state.socialInbox = await fetchJSON("/api/social/inbox/read", { method: "POST" });
+  renderChatBadge();
+  renderChatInbox();
+});
+$("#publishSocialPost")?.addEventListener("click", publishSocialPost);
+$("#chatInboxList")?.addEventListener("click", (event) => {
+  const acceptButton = event.target.closest("[data-chat-accept-invite]");
+  if (acceptButton) {
+    respondRoomInvitation(acceptButton.dataset.chatAcceptInvite, "accept");
+    return;
+  }
+  const declineButton = event.target.closest("[data-chat-decline-invite]");
+  if (declineButton) {
+    respondRoomInvitation(declineButton.dataset.chatDeclineInvite, "decline");
+  }
+});
+document.querySelectorAll("[data-social-scope]").forEach((button) => {
+  button.addEventListener("click", () => loadSocialFeed(button.dataset.socialScope));
+});
+$("#socialFeedList")?.addEventListener("click", (event) => {
+  const likeButton = event.target.closest("[data-like-post-id]");
+  if (likeButton) {
+    toggleSocialLike(likeButton.dataset.likePostId);
+    return;
+  }
+  const commentButton = event.target.closest("[data-comment-post-id]");
+  if (commentButton) {
+    submitSocialComment(commentButton.dataset.commentPostId);
+    return;
+  }
+  const focusButton = event.target.closest("[data-focus-comment-id]");
+  if (focusButton) {
+    document.querySelector(`[data-comment-input="${focusButton.dataset.focusCommentId}"]`)?.focus();
+    return;
+  }
+  const deleteButton = event.target.closest("[data-delete-comment-id]");
+  if (deleteButton) {
+    deleteSocialComment(deleteButton.dataset.deleteCommentId);
+  }
+});
 $("#refreshProfile").addEventListener("click", loadRewardProfile);
 $("#profileGallery").addEventListener("click", (event) => {
   const avatarPresetButton = event.target.closest(".avatar-preset-button");

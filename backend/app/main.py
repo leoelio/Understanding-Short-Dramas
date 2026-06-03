@@ -28,6 +28,10 @@ from .models import (
     EpisodeExperienceConfig,
     Highlight,
     Interaction,
+    SocialComment,
+    SocialNotification,
+    SocialPost,
+    SocialReaction,
     User,
     UserFriend,
     UserReward,
@@ -56,6 +60,8 @@ from .schemas import (
     WatchRoomInvitationCreate,
     WatchRoomJoin,
     WatchRoomSync,
+    SocialCommentCreate,
+    SocialPostCreate,
 )
 from .seed import seed_from_video_library
 from .annotation_schema import validate_annotation_payload
@@ -737,6 +743,137 @@ def invitation_payload(invitation: WatchRoomInvitation, viewer: User) -> dict:
     }
 
 
+SOCIAL_VISIBILITIES = {"public", "friends", "private"}
+SOCIAL_SOURCE_TYPES = {"voice", "image", "story", "thought"}
+SOCIAL_ASSET_KINDS = {"voice", "image", "story", "text"}
+SOCIAL_FORBIDDEN_TERMS = ["淫秽", "低俗", "色情", "裸聊", "约炮", "做爱", "黄片", "成人视频"]
+
+
+def assert_social_text_safe(text: str) -> None:
+    compact = re.sub(r"\s+", "", text or "").lower()
+    for term in SOCIAL_FORBIDDEN_TERMS:
+        if term.lower() in compact:
+            raise HTTPException(status_code=400, detail="内容包含低俗或不适合公开交流的文字，请修改后再发布")
+
+
+def social_topic_cards() -> list[dict]:
+    return [
+        {
+            "key": "beiwang_voice",
+            "title": "北往 AI 声音专题",
+            "subtitle": "用自己的声音讲返乡路上的下一幕",
+            "tone": "road",
+        },
+        {
+            "key": "winter_voice_match",
+            "title": "冬天男主模仿赛",
+            "subtitle": "发一段心动台词，看看谁最像男主",
+            "tone": "winter",
+        },
+        {
+            "key": "story_bottle",
+            "title": "剧情漂流瓶",
+            "subtitle": "公开扔出一张 AI 剧情卡，等陌生人接住评论",
+            "tone": "story",
+        },
+    ]
+
+
+def load_json_field(value: str | None, fallback):
+    try:
+        return json.loads(value or "")
+    except (TypeError, json.JSONDecodeError):
+        return fallback
+
+
+def can_view_social_post(post: SocialPost, user: User, db: Session) -> bool:
+    if post.user_id == user.id or post.visibility == "public":
+        return True
+    if post.visibility == "friends":
+        return are_friends(db, user.id, post.user_id)
+    return False
+
+
+def ensure_social_post_visible(post: SocialPost, user: User, db: Session) -> None:
+    if not can_view_social_post(post, user, db):
+        raise HTTPException(status_code=404, detail="动态不存在或无权查看")
+
+
+def social_comment_payload(comment: SocialComment) -> dict:
+    return {
+        "id": comment.id,
+        "user": user_brief(comment.user),
+        "text": "" if comment.is_deleted else comment.text,
+        "is_deleted": comment.is_deleted,
+        "created_at": comment.created_at.isoformat() if comment.created_at else None,
+    }
+
+
+def social_post_payload(post: SocialPost, viewer: User, db: Session, include_comments: bool = True) -> dict:
+    comments_query = db.query(SocialComment).filter(SocialComment.post_id == post.id, SocialComment.is_deleted.is_(False))
+    comments = comments_query.order_by(SocialComment.created_at.desc(), SocialComment.id.desc()).limit(3).all()
+    liked_by_me = (
+        db.query(SocialReaction)
+        .filter(
+            SocialReaction.post_id == post.id,
+            SocialReaction.user_id == viewer.id,
+            SocialReaction.reaction_type == "like",
+        )
+        .first()
+        is not None
+    )
+    return {
+        "id": post.id,
+        "user": user_brief(post.user),
+        "visibility": post.visibility,
+        "source_type": post.source_type,
+        "title": post.title,
+        "text": post.text,
+        "asset_kind": post.asset_kind,
+        "asset_url": post.asset_url,
+        "asset_payload": load_json_field(post.asset_payload_json, {}),
+        "topic": post.topic,
+        "like_count": db.query(SocialReaction).filter(SocialReaction.post_id == post.id).count(),
+        "comment_count": comments_query.count(),
+        "liked_by_me": liked_by_me,
+        "can_delete_comments": post.user_id == viewer.id,
+        "comments": [social_comment_payload(comment) for comment in reversed(comments)] if include_comments else [],
+        "created_at": post.created_at.isoformat() if post.created_at else None,
+    }
+
+
+def notify_social_owner(db: Session, post: SocialPost, actor: User, event_type: str, comment_id: int | None = None) -> None:
+    if post.user_id == actor.id:
+        return
+    db.add(
+        SocialNotification(
+            user_id=post.user_id,
+            actor_user_id=actor.id,
+            event_type=event_type,
+            post_id=post.id,
+            comment_id=comment_id,
+        )
+    )
+
+
+def social_notification_payload(notification: SocialNotification) -> dict:
+    return {
+        "id": notification.id,
+        "event_type": notification.event_type,
+        "is_read": notification.is_read,
+        "actor": user_brief(notification.actor),
+        "post": {
+            "id": notification.post.id,
+            "title": notification.post.title,
+            "source_type": notification.post.source_type,
+        }
+        if notification.post
+        else None,
+        "comment": social_comment_payload(notification.comment) if notification.comment else None,
+        "created_at": notification.created_at.isoformat() if notification.created_at else None,
+    }
+
+
 ROOM_EVENT_TYPES = {"danmaku", "danmaku_like", "danmaku_reply", "interaction"}
 
 
@@ -1408,16 +1545,6 @@ def call_remix_llm(context: dict, choice: dict, variant: dict | None = None) -> 
         data = json.loads(response.read().decode("utf-8"))
     return extract_llm_json(data["choices"][0]["message"]["content"])
 
-
-def load_json_field(value: str | None, fallback):
-    if not value:
-        return fallback
-    try:
-        return json.loads(value)
-    except json.JSONDecodeError:
-        return fallback
-
-
 def remix_record_payload(record: EpisodeAIRemix) -> dict:
     prompt_trace = load_json_field(record.prompt_trace_json, {})
     return {
@@ -1641,6 +1768,161 @@ def add_my_friend(
     ensure_friend_edge(db, friend.id, user.id)
     db.commit()
     return list_my_friends(user, db)
+
+
+@app.get("/api/social/inbox")
+def social_inbox(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    invitations = (
+        db.query(WatchRoomInvitation)
+        .filter(WatchRoomInvitation.to_user_id == user.id, WatchRoomInvitation.status == "pending")
+        .order_by(WatchRoomInvitation.created_at.desc(), WatchRoomInvitation.id.desc())
+        .limit(6)
+        .all()
+    )
+    notifications = (
+        db.query(SocialNotification)
+        .filter(SocialNotification.user_id == user.id)
+        .order_by(SocialNotification.created_at.desc(), SocialNotification.id.desc())
+        .limit(12)
+        .all()
+    )
+    unread_social = (
+        db.query(SocialNotification)
+        .filter(SocialNotification.user_id == user.id, SocialNotification.is_read.is_(False))
+        .count()
+    )
+    return {
+        "unread_count": unread_social + len(invitations),
+        "room_invitation_count": len(invitations),
+        "social_unread_count": unread_social,
+        "room_invitations": [invitation_payload(item, user) for item in invitations],
+        "notifications": [social_notification_payload(item) for item in notifications],
+    }
+
+
+@app.post("/api/social/inbox/read")
+def mark_social_inbox_read(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    db.query(SocialNotification).filter(SocialNotification.user_id == user.id).update({"is_read": True})
+    db.commit()
+    return social_inbox(user, db)
+
+
+@app.get("/api/social/feed")
+def social_feed(
+    scope: str = "all",
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    rows = db.query(SocialPost).order_by(SocialPost.created_at.desc(), SocialPost.id.desc()).limit(80).all()
+    visible_rows = []
+    for post in rows:
+        if scope == "mine" and post.user_id != user.id:
+            continue
+        if scope == "friends" and post.user_id != user.id and not are_friends(db, user.id, post.user_id):
+            continue
+        if can_view_social_post(post, user, db):
+            visible_rows.append(post)
+        if len(visible_rows) >= 30:
+            break
+    return {
+        "scope": scope,
+        "topics": social_topic_cards(),
+        "posts": [social_post_payload(post, user, db) for post in visible_rows],
+    }
+
+
+@app.post("/api/social/posts")
+def create_social_post(
+    payload: SocialPostCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    visibility = payload.visibility if payload.visibility in SOCIAL_VISIBILITIES else "public"
+    source_type = payload.source_type if payload.source_type in SOCIAL_SOURCE_TYPES else "thought"
+    asset_kind = payload.asset_kind if payload.asset_kind in SOCIAL_ASSET_KINDS else "text"
+    assert_social_text_safe(payload.title)
+    assert_social_text_safe(payload.text)
+    post = SocialPost(
+        user_id=user.id,
+        visibility=visibility,
+        source_type=source_type,
+        title=payload.title.strip(),
+        text=payload.text.strip(),
+        asset_kind=asset_kind,
+        asset_url=payload.asset_url.strip(),
+        asset_payload_json=json.dumps(payload.asset_payload, ensure_ascii=False),
+        topic=payload.topic.strip(),
+    )
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+    return {"post": social_post_payload(post, user, db)}
+
+
+@app.post("/api/social/posts/{post_id}/like")
+def toggle_social_like(
+    post_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    post = db.get(SocialPost, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="动态不存在")
+    ensure_social_post_visible(post, user, db)
+    existing = (
+        db.query(SocialReaction)
+        .filter(SocialReaction.post_id == post.id, SocialReaction.user_id == user.id, SocialReaction.reaction_type == "like")
+        .first()
+    )
+    if existing:
+        db.delete(existing)
+        liked = False
+    else:
+        db.add(SocialReaction(post_id=post.id, user_id=user.id, reaction_type="like"))
+        notify_social_owner(db, post, user, "like")
+        liked = True
+    db.commit()
+    db.refresh(post)
+    return {"liked": liked, "post": social_post_payload(post, user, db)}
+
+
+@app.post("/api/social/posts/{post_id}/comments")
+def create_social_comment(
+    post_id: int,
+    payload: SocialCommentCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    post = db.get(SocialPost, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="动态不存在")
+    ensure_social_post_visible(post, user, db)
+    assert_social_text_safe(payload.text)
+    comment = SocialComment(post_id=post.id, user_id=user.id, text=payload.text.strip())
+    db.add(comment)
+    db.flush()
+    notify_social_owner(db, post, user, "comment", comment.id)
+    db.commit()
+    db.refresh(post)
+    return {"comment": social_comment_payload(comment), "post": social_post_payload(post, user, db)}
+
+
+@app.delete("/api/social/comments/{comment_id}")
+def delete_social_comment(
+    comment_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    comment = db.get(SocialComment, comment_id)
+    if not comment or comment.is_deleted:
+        raise HTTPException(status_code=404, detail="评论不存在")
+    post = comment.post
+    if comment.user_id != user.id and post.user_id != user.id:
+        raise HTTPException(status_code=403, detail="只有评论作者或动态发布者可以删除评论")
+    comment.is_deleted = True
+    db.commit()
+    db.refresh(post)
+    return {"ok": True, "post": social_post_payload(post, user, db)}
 
 
 @app.post("/api/auth/logout")

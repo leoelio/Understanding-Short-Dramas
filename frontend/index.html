@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260603-co-watch-polish4" />
+    <link rel="stylesheet" href="/styles.css?v=20260604-social-hub" />
   </head>
   <body>
     <div class="app-shell">
@@ -15,6 +15,8 @@
         </div>
         <nav class="tabs">
           <button id="homeTab" class="tab active" type="button">短剧</button>
+          <button id="chatTab" class="tab social-tab" type="button">聊聊<span id="chatUnreadBadge" class="nav-badge" hidden>0</span></button>
+          <button id="discoverTab" class="tab" type="button">逛逛</button>
           <button id="profileTab" class="tab" type="button">我的</button>
           <button id="adminTab" class="tab" type="button">统计</button>
           <button id="reviewTab" class="tab" type="button">复核</button>
@@ -166,6 +168,74 @@
             <small>选择一部短剧进入移动端播放互动体验。</small>
           </div>
           <div id="dramaGrid" class="drama-grid"></div>
+        </section>
+
+        <section id="chatView" class="view social-view chat-view">
+          <div class="social-hero compact">
+            <div>
+              <span>Talk Hub</span>
+              <h2>聊聊</h2>
+              <p>同看邀请、好友互动、评论点赞都会沉淀到这里，形成真实社交消息入口。</p>
+            </div>
+            <button id="markInboxRead" class="ghost-button" type="button">全部已读</button>
+          </div>
+          <div id="chatInboxStatus" class="social-status"></div>
+          <div id="chatInboxList" class="social-list"></div>
+        </section>
+
+        <section id="discoverView" class="view social-view discover-view">
+          <div class="social-hero">
+            <div>
+              <span>Social Gallery</span>
+              <h2>逛逛</h2>
+              <p>把 AI 声音、AI 图片、AI 剧情卡和自己的想法变成可评论、可点赞、可转发的动态。</p>
+            </div>
+            <div class="social-hero-metrics">
+              <em>公开广场</em>
+              <em>好友动态</em>
+              <em>剧情漂流瓶</em>
+            </div>
+          </div>
+          <div id="discoverTopics" class="social-topic-grid"></div>
+          <section class="social-composer">
+            <div class="social-composer-head">
+              <div>
+                <span>Share</span>
+                <strong>发布一条 AI 内容动态</strong>
+              </div>
+              <select id="socialVisibility" class="episode-select" aria-label="选择动态可见范围">
+                <option value="public">所有人可见</option>
+                <option value="friends">仅好友可见</option>
+                <option value="private">仅自己可见</option>
+              </select>
+            </div>
+            <div class="social-compose-grid">
+              <select id="socialSourceType" class="episode-select" aria-label="选择分享类型">
+                <option value="voice">AI 声音</option>
+                <option value="image">AI 图片</option>
+                <option value="story">AI 剧情卡</option>
+                <option value="thought">文字感受</option>
+              </select>
+              <select id="socialTopic" class="episode-select" aria-label="选择动态专题">
+                <option value="beiwang_voice">北往 AI 声音专题</option>
+                <option value="winter_voice_match">冬天男主模仿赛</option>
+                <option value="story_bottle">剧情漂流瓶</option>
+              </select>
+            </div>
+            <input id="socialPostTitle" class="social-input" maxlength="120" placeholder="给这条动态起个标题" />
+            <textarea id="socialPostText" class="social-input" maxlength="500" rows="4" placeholder="写下你的想法。禁止发送淫秽低俗内容。"></textarea>
+            <div class="social-compose-actions">
+              <button class="ghost-button" type="button" disabled>上传照片/视频 · 预留</button>
+              <button id="publishSocialPost" class="primary-button" type="button">发布动态</button>
+            </div>
+            <div id="socialComposerStatus" class="social-status"></div>
+          </section>
+          <div class="social-feed-toolbar">
+            <button class="active" type="button" data-social-scope="all">广场</button>
+            <button type="button" data-social-scope="friends">好友</button>
+            <button type="button" data-social-scope="mine">我的</button>
+          </div>
+          <div id="socialFeedList" class="social-feed-list"></div>
         </section>
 
         <section id="profileView" class="view profile-view">
@@ -386,6 +456,6 @@
       </div>
     </div>
 
-    <script defer src="/app.js?v=20260603-co-watch-polish4"></script>
+    <script defer src="/app.js?v=20260604-social-hub"></script>
   </body>
 </html>
