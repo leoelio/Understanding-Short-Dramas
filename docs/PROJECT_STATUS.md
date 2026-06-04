@@ -1,24 +1,21 @@
 # Project Status
 
-更新时间：2026-06-04 11:13:16
+更新时间：2026-06-04 12:04:06
 
 ## 当前目标
 
-将聊聊升级为好友会话中心，并完善申请撤回与历史详情
+接入头像池并随机替换现有用户头像
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`5a2b895`
+- 最新提交：`cab4bae`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M backend/app/main.py`
-- `M backend/app/models.py`
-- `M backend/app/schemas.py`
 - `M frontend/app.js`
-- `M frontend/index.html`
-- `M frontend/styles.css`
-- `M scripts/update_project_status.py`
+- `?? avatars/`
+- `?? scripts/randomize_user_avatars.py`
 
 ## 数据状态
 
@@ -28,15 +25,15 @@
 - 高光点：65
 - 已复核剧集：4
 - 待复核剧集：16
-- 互动记录：57
+- 互动记录：59
 - 弹幕记录：221
 - 体验配置：4
 - 片尾 AI 二创：29
 - 社交动态：2
 - 社交评论：1
-- 社交通知：13
-- 好友申请：7
-- 聊天消息：7
+- 社交通知：28
+- 好友申请：22
+- 聊天消息：11
 
 ## 高光来源
 
@@ -58,16 +55,14 @@
 
 ## 本次变更摘要
 
-- 新增 chat_messages 聊天消息表和会话接口，支持好友会话列表、消息线程、文字消息、表情消息和同看链接消息。
-- 聊聊页重构为会话工作区：左侧好友会话，右侧聊天线程、快捷表情、文字输入和同看链接发送。
-- 好友申请新增撤回接口，好友系统新增历史申请详情，展示 pending、accepted、declined、withdrawn 状态。
-- 聊天未读消息纳入聊聊红点；读取会话会标记该好友消息为已读。
-- 浏览器验证：会话中心可见，快捷表情点击后消息追加，同看链接按钮可见，申请历史可见，无横向溢出和控制台错误。
+- 新增 avatars 头像池资源，共 157 张图片，用于替代旧的渐变占位头像。
+- 后端新增 /api/avatar-pool 和 /media/avatar-pool/{filename}，新注册用户默认分配头像池图片。
+- 执行 scripts/randomize_user_avatars.py，将本地 17 个已有用户随机更新为头像池头像。
+- 前端统一 avatarHTML 图片渲染，聊天、同看房间、动态、个人页会显示真实头像；个人页提供 36 个头像池选项。
 
 ## 下一步建议
 
-- 把聊天输入升级为表情包/贴纸选择器，接入已经审核的 AI 贴图资产。
-- 后续可加 WebSocket 或短轮询，让同看邀请和聊天消息自动刷新。
+- 后续可继续做头像分类、搜索、裁剪上传和 AI 形象资产生成。
 
 ## 安全提醒
 

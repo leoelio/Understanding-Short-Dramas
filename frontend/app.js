@@ -274,6 +274,7 @@ const state = {
   socialFeed: { scope: "all", topics: [], posts: [] },
   socialStatus: "",
   socialStatusError: false,
+  avatarPool: [],
   roomApplyingRemote: false,
   demoRoomActive: false,
   demoRoomSerial: 900000,
@@ -396,7 +397,7 @@ function avatarPresetName(avatarUrl = "") {
 
 function avatarHTML(user = {}, className = "user-avatar") {
   const avatarUrl = String(user.avatar_url || "");
-  if (avatarUrl.startsWith("/media/avatars/")) {
+  if (avatarUrl.startsWith("/media/avatars/") || avatarUrl.startsWith("/media/avatar-pool/")) {
     return `<span class="${className} uploaded"><img src="${escapeHTML(avatarUrl)}" alt="${escapeHTML(
       user.display_name || "用户头像"
     )}" /></span>`;
@@ -448,6 +449,15 @@ async function fetchJSON(url, options = {}) {
   return response.json();
 }
 
+async function loadAvatarPool() {
+  try {
+    const payload = await fetchJSON("/api/avatar-pool");
+    state.avatarPool = payload.avatars || [];
+  } catch {
+    state.avatarPool = [];
+  }
+}
+
 function roleLabel(role) {
   return { admin: "管理员", reviewer: "复核员", user: "普通用户" }[role] || role || "用户";
 }
@@ -490,6 +500,7 @@ function clearAuth() {
   state.socialFeed = { scope: "all", topics: [], posts: [] };
   state.socialStatus = "";
   state.socialStatusError = false;
+  state.avatarPool = [];
   state.profileStatus = "";
   state.profileStatusError = false;
   state.profileDraftAvatar = "";
@@ -550,6 +561,7 @@ function syncHomeUrl() {
 
 async function afterAuth(options = {}) {
   updateAuthUI();
+  await loadAvatarPool();
   await loadDramas();
   await loadWatchHistory();
   await loadRewardProfile();
@@ -2770,6 +2782,13 @@ function renderProfileSettingsSection() {
   const user = state.currentUser || {};
   const activeAvatar = state.profileDraftAvatar || user.avatar_url || "preset:stage";
   const previewUser = { ...user, avatar_url: activeAvatar };
+  const avatarChoices = state.avatarPool.length
+    ? state.avatarPool.slice(0, 36).map((avatar, index) => ({
+        key: avatar.url,
+        label: `头像 ${String(index + 1).padStart(2, "0")}`,
+        hint: "头像池",
+      }))
+    : AVATAR_PRESETS;
   return `
     <section class="profile-settings-card">
       <div class="profile-settings-head">
@@ -2786,7 +2805,7 @@ function renderProfileSettingsSection() {
           <input id="profileDisplayName" maxlength="64" value="${escapeHTML(user.display_name || "")}" />
         </label>
         <div class="avatar-preset-grid" aria-label="头像预设">
-          ${AVATAR_PRESETS.map(
+          ${avatarChoices.map(
             (preset) => `
               <button class="avatar-preset-button ${activeAvatar === preset.key ? "active" : ""}" type="button" data-avatar-url="${escapeHTML(
                 preset.key
@@ -7221,6 +7240,7 @@ async function bootstrap() {
     setView("auth");
     return;
   }
+  await loadAvatarPool();
   await loadDramas();
   await loadWatchHistory();
   await loadRewardProfile();

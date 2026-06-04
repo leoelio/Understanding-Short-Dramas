@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
-from .config import APP_NAME, COSYVOICE_BASE_URL, COSYVOICE_TIMEOUT_SECONDS, DATA_DIR, FRONTEND_DIR, VOICE_ASSET_DIR
+from .config import APP_NAME, COSYVOICE_BASE_URL, COSYVOICE_TIMEOUT_SECONDS, DATA_DIR, FRONTEND_DIR, ROOT_DIR, VOICE_ASSET_DIR
 from .database import SessionLocal, get_db
 from .danmaku_moderation import moderate_danmaku, moderation_rules_payload
 from .migrations import ensure_database_schema
@@ -99,6 +99,7 @@ VOICE_MAX_BYTES = 12 * 1024 * 1024
 VOICE_PROMPT_DIR = VOICE_ASSET_DIR / "prompts"
 VOICE_CLIP_DIR = VOICE_ASSET_DIR / "clips"
 AVATAR_ASSET_DIR = DATA_DIR / "avatar_assets"
+AVATAR_POOL_DIR = ROOT_DIR / "avatars"
 AVATAR_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 AVATAR_MAX_BYTES = 4 * 1024 * 1024
 
@@ -112,6 +113,25 @@ def ensure_avatar_dirs() -> None:
     AVATAR_ASSET_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def avatar_pool_files() -> list[Path]:
+    if not AVATAR_POOL_DIR.exists():
+        return []
+    return sorted(
+        path
+        for path in AVATAR_POOL_DIR.iterdir()
+        if path.is_file() and path.suffix.lower() in AVATAR_ALLOWED_EXTENSIONS
+    )
+
+
+def avatar_pool_url_for_seed(seed: str) -> str:
+    files = avatar_pool_files()
+    if not files:
+        return "preset:stage"
+    digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()
+    index = int(digest[:8], 16) % len(files)
+    return f"/media/avatar-pool/{files[index].name}"
+
+
 def normalize_avatar_url(value: str | None) -> str:
     raw = (value or "").strip()
     if not raw:
@@ -120,6 +140,10 @@ def normalize_avatar_url(value: str | None) -> str:
         return raw
     if raw.startswith("/media/avatars/") and ".." not in raw and "\\" not in raw:
         return raw
+    if raw.startswith("/media/avatar-pool/") and ".." not in raw and "\\" not in raw:
+        filename = raw.removeprefix("/media/avatar-pool/")
+        if filename and Path(filename).name == filename and (AVATAR_POOL_DIR / filename).is_file():
+            return raw
     raise HTTPException(status_code=400, detail="头像地址仅支持系统预设或已上传头像")
 
 
@@ -1738,6 +1762,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
         username=username,
         display_name=payload.display_name.strip(),
         password_hash=hash_password(payload.password),
+        avatar_url=avatar_pool_url_for_seed(username),
         role="user",
     )
     db.add(user)
@@ -1807,6 +1832,16 @@ async def upload_my_avatar(
     db.commit()
     db.refresh(user)
     return {"user": public_user(user)}
+
+
+@app.get("/api/avatar-pool")
+def list_avatar_pool() -> dict:
+    return {
+        "avatars": [
+            {"url": f"/media/avatar-pool/{path.name}", "name": path.stem}
+            for path in avatar_pool_files()
+        ]
+    }
 
 
 @app.get("/api/users/me/friends")
@@ -2329,6 +2364,24 @@ def avatar_media(user_folder: str, filename: str) -> FileResponse:
     path = AVATAR_ASSET_DIR / user_folder / safe_name
     if not path.exists() or not path.is_file():
         raise HTTPException(status_code=404, detail="头像不存在")
+    media_type = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+    }.get(path.suffix.lower(), "application/octet-stream")
+    return FileResponse(path, media_type=media_type, filename=safe_name)
+
+
+@app.get("/media/avatar-pool/{filename}")
+def avatar_pool_media(filename: str) -> FileResponse:
+    safe_name = Path(filename).name
+    if safe_name != filename:
+        raise HTTPException(status_code=404, detail="Avatar not found")
+    path = AVATAR_POOL_DIR / safe_name
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Avatar not found")
     media_type = {
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
