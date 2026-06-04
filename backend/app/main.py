@@ -21,6 +21,7 @@ from .danmaku_moderation import moderate_danmaku, moderation_rules_payload
 from .migrations import ensure_database_schema
 from .models import (
     AuthSession,
+    ChatMessage,
     DanmakuComment,
     Drama,
     EpisodeAIRemix,
@@ -44,6 +45,7 @@ from .models import (
     WatchRoomInvitation,
 )
 from .schemas import (
+    ChatMessageCreate,
     DanmakuCreate,
     EpisodeRemixCreate,
     EpisodeRemixReviewUpdate,
@@ -718,6 +720,54 @@ def latest_friend_request(db: Session, user_id: int, target_user_id: int) -> Use
         .order_by(UserFriendRequest.created_at.desc(), UserFriendRequest.id.desc())
         .first()
     )
+
+
+CHAT_MESSAGE_TYPES = {"text", "emoji", "watch_link"}
+
+
+def chat_message_payload(message: ChatMessage, viewer: User) -> dict:
+    return {
+        "id": message.id,
+        "from_user": user_brief(message.from_user),
+        "to_user": user_brief(message.to_user),
+        "direction": "outgoing" if message.from_user_id == viewer.id else "incoming",
+        "message_type": message.message_type,
+        "text": message.text,
+        "payload": load_json_field(message.payload_json, {}),
+        "is_read": bool(message.read_at),
+        "created_at": message.created_at.isoformat() if message.created_at else None,
+    }
+
+
+def latest_chat_message(db: Session, user_id: int, friend_user_id: int) -> ChatMessage | None:
+    return (
+        db.query(ChatMessage)
+        .filter(
+            or_(
+                and_(ChatMessage.from_user_id == user_id, ChatMessage.to_user_id == friend_user_id),
+                and_(ChatMessage.from_user_id == friend_user_id, ChatMessage.to_user_id == user_id),
+            )
+        )
+        .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
+        .first()
+    )
+
+
+def unread_chat_count(db: Session, user_id: int, friend_user_id: int | None = None) -> int:
+    query = db.query(ChatMessage).filter(ChatMessage.to_user_id == user_id, ChatMessage.read_at.is_(None))
+    if friend_user_id is not None:
+        query = query.filter(ChatMessage.from_user_id == friend_user_id)
+    return query.count()
+
+
+def chat_conversation_payload(row: UserFriend, viewer: User, db: Session) -> dict:
+    last_message = latest_chat_message(db, viewer.id, row.friend_user_id)
+    return {
+        "friendship_id": row.id,
+        "user": user_brief(row.friend),
+        "unread_count": unread_chat_count(db, viewer.id, row.friend_user_id),
+        "last_message": chat_message_payload(last_message, viewer) if last_message else None,
+    }
 
 
 def normalize_room_code(code: str) -> str:
@@ -1782,6 +1832,13 @@ def list_my_friends(user: User = Depends(get_current_user), db: Session = Depend
         .limit(20)
         .all()
     )
+    request_history = (
+        db.query(UserFriendRequest)
+        .filter(or_(UserFriendRequest.from_user_id == user.id, UserFriendRequest.to_user_id == user.id))
+        .order_by(UserFriendRequest.created_at.desc(), UserFriendRequest.id.desc())
+        .limit(30)
+        .all()
+    )
     pending_user_ids = {row.from_user_id for row in incoming_requests} | {row.to_user_id for row in outgoing_requests}
     candidates = (
         db.query(User)
@@ -1793,6 +1850,7 @@ def list_my_friends(user: User = Depends(get_current_user), db: Session = Depend
         "friends": [friend_payload(row) for row in friend_rows],
         "incoming_requests": [friend_request_payload(row, user) for row in incoming_requests],
         "outgoing_requests": [friend_request_payload(row, user) for row in outgoing_requests],
+        "request_history": [friend_request_payload(row, user) for row in request_history],
         "candidates": [
             user_brief(candidate)
             for candidate in candidates
@@ -1888,6 +1946,110 @@ def decline_friend_request(
     return response
 
 
+@app.post("/api/users/me/friend-requests/{request_id}/withdraw")
+def withdraw_friend_request(
+    request_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    request = db.get(UserFriendRequest, request_id)
+    if not request or request.from_user_id != user.id:
+        raise HTTPException(status_code=404, detail="好友申请不存在")
+    if request.status != "pending":
+        raise HTTPException(status_code=400, detail="好友申请已处理，不能撤回")
+    request.status = "withdrawn"
+    request.responded_at = datetime.utcnow()
+    db.commit()
+    response = list_my_friends(user, db)
+    response["request_result"] = "withdrawn"
+    return response
+
+
+@app.get("/api/chat/conversations")
+def list_chat_conversations(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
+    friend_rows = (
+        db.query(UserFriend)
+        .filter(UserFriend.user_id == user.id, UserFriend.status == "accepted")
+        .order_by(UserFriend.created_at.desc(), UserFriend.id.desc())
+        .all()
+    )
+    conversations = [chat_conversation_payload(row, user, db) for row in friend_rows]
+    conversations.sort(
+        key=lambda item: (
+            item["last_message"]["created_at"] if item.get("last_message") else "",
+            item["unread_count"],
+        ),
+        reverse=True,
+    )
+    return {"conversations": conversations, "unread_count": unread_chat_count(db, user.id)}
+
+
+@app.get("/api/chat/messages/{friend_user_id}")
+def list_chat_messages(
+    friend_user_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    friend = db.get(User, friend_user_id)
+    if not friend or not friend.is_active or not are_friends(db, user.id, friend.id):
+        raise HTTPException(status_code=404, detail="好友会话不存在")
+    unread_rows = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.from_user_id == friend.id, ChatMessage.to_user_id == user.id, ChatMessage.read_at.is_(None))
+        .all()
+    )
+    now = datetime.utcnow()
+    for row in unread_rows:
+        row.read_at = now
+    if unread_rows:
+        db.commit()
+    rows = (
+        db.query(ChatMessage)
+        .filter(
+            or_(
+                and_(ChatMessage.from_user_id == user.id, ChatMessage.to_user_id == friend.id),
+                and_(ChatMessage.from_user_id == friend.id, ChatMessage.to_user_id == user.id),
+            )
+        )
+        .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
+        .limit(80)
+        .all()
+    )
+    messages = [chat_message_payload(row, user) for row in reversed(rows)]
+    return {"friend": user_brief(friend), "messages": messages}
+
+
+@app.post("/api/chat/messages")
+def create_chat_message(
+    payload: ChatMessageCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    friend = db.get(User, payload.to_user_id)
+    if not friend or not friend.is_active or not are_friends(db, user.id, friend.id):
+        raise HTTPException(status_code=404, detail="好友会话不存在")
+    message_type = payload.message_type if payload.message_type in CHAT_MESSAGE_TYPES else "text"
+    text = (payload.text or "").strip()
+    if message_type == "text" and not text:
+        raise HTTPException(status_code=400, detail="消息内容不能为空")
+    if message_type == "emoji" and not text:
+        text = "👍"
+    if message_type == "watch_link" and not text:
+        room_code = str((payload.payload or {}).get("room_code") or "").strip().upper()
+        text = f"同看房间 {room_code}" if room_code else "发起了同看邀请"
+    message = ChatMessage(
+        from_user_id=user.id,
+        to_user_id=friend.id,
+        message_type=message_type,
+        text=text[:500],
+        payload_json=json.dumps(payload.payload or {}, ensure_ascii=False),
+    )
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+    return {"message": chat_message_payload(message, user), "unread_count": unread_chat_count(db, friend.id)}
+
+
 @app.get("/api/social/inbox")
 def social_inbox(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
     friend_requests = (
@@ -1916,8 +2078,10 @@ def social_inbox(user: User = Depends(get_current_user), db: Session = Depends(g
         .filter(SocialNotification.user_id == user.id, SocialNotification.is_read.is_(False))
         .count()
     )
+    chat_unread = unread_chat_count(db, user.id)
     return {
-        "unread_count": unread_social + len(invitations) + len(friend_requests),
+        "unread_count": unread_social + len(invitations) + len(friend_requests) + chat_unread,
+        "chat_unread_count": chat_unread,
         "friend_request_count": len(friend_requests),
         "room_invitation_count": len(invitations),
         "social_unread_count": unread_social,

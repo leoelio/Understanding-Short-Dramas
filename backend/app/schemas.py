@@ -68,6 +68,13 @@ class FriendCreate(BaseModel):
     user_id: int
 
 
+class ChatMessageCreate(BaseModel):
+    to_user_id: int
+    message_type: str = Field(default="text", max_length=32)
+    text: str = Field(default="", max_length=500)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
 class WatchRoomCreate(BaseModel):
     episode_id: int | None = None
     progress_sec: float = Field(default=0, ge=0)

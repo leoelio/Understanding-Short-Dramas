@@ -260,6 +260,11 @@ const state = {
   roomLastEventId: 0,
   roomFeed: [],
   friendData: { friends: [], candidates: [], incoming_requests: [], outgoing_requests: [] },
+  chatData: { conversations: [], unread_count: 0 },
+  activeChatUserId: null,
+  chatThread: { friend: null, messages: [] },
+  chatStatus: "",
+  chatStatusError: false,
   roomInvitations: { received: [], sent: [] },
   roomSocialStatus: "",
   roomSocialStatusError: false,
@@ -471,6 +476,11 @@ function clearAuth() {
   state.watchHistory = [];
   state.rewardProfile = null;
   state.friendData = { friends: [], candidates: [], incoming_requests: [], outgoing_requests: [] };
+  state.chatData = { conversations: [], unread_count: 0 };
+  state.activeChatUserId = null;
+  state.chatThread = { friend: null, messages: [] };
+  state.chatStatus = "";
+  state.chatStatusError = false;
   state.roomInvitations = { received: [], sent: [] };
   state.roomSocialStatus = "";
   state.roomSocialStatusError = false;
@@ -494,6 +504,7 @@ function clearAuth() {
   renderRewardProfile();
   renderProfileGallery();
   renderChatBadge();
+  renderChatWorkspace();
   renderFriendHub();
   renderChatInbox();
   renderDiscoverView();
@@ -684,6 +695,7 @@ function setView(name) {
   if (name === "chat") {
     loadRoomSocialData();
     loadSocialInbox();
+    loadChatConversations();
   }
   if (name === "discover") {
     loadSocialFeed(state.socialFeed.scope || "all");
@@ -3052,9 +3064,15 @@ async function addFriend(userId) {
 async function respondFriendRequest(requestId, action) {
   try {
     state.friendData = await fetchJSON(`/api/users/me/friend-requests/${requestId}/${action}`, { method: "POST" });
-    state.friendHubStatus = action === "accept" ? "已通过好友申请，可以发起同看邀请。" : "已拒绝好友申请。";
+    const actionMessages = {
+      accept: "已通过好友申请，可以发起同看邀请。",
+      decline: "已拒绝好友申请。",
+      withdraw: "已撤回好友申请。",
+    };
+    state.friendHubStatus = actionMessages[action] || "好友申请状态已更新。";
     state.friendHubStatusError = false;
     await loadSocialInbox();
+    await loadChatConversations();
     renderFriendHub();
   } catch (error) {
     state.friendHubStatus = errorMessage(error);
@@ -3286,10 +3304,34 @@ function renderFriendRequestCard(request, mode) {
           isIncoming
             ? `<button class="primary-button" type="button" data-friendhub-accept-request="${request.id}">接受</button>
                <button class="ghost-button" type="button" data-friendhub-decline-request="${request.id}">拒绝</button>`
-            : `<button class="ghost-button" type="button" disabled>等待中</button>`
+            : `<button class="primary-button subtle" type="button" data-friendhub-withdraw-request="${request.id}">撤回</button>`
         }
         <button class="ghost-button" type="button" data-friendhub-profile-id="${user?.id || 0}">展馆</button>
       </div>
+    </article>
+  `;
+}
+
+function friendRequestStatusLabel(status) {
+  return {
+    pending: "待处理",
+    accepted: "已通过",
+    declined: "已拒绝",
+    withdrawn: "已撤回",
+  }[status] || status || "未知";
+}
+
+function renderFriendRequestHistory(request) {
+  const isIncoming = request.direction === "incoming";
+  const user = isIncoming ? request.from_user : request.to_user;
+  return `
+    <article class="friend-history-row">
+      ${avatarHTML(user || {}, "friend-history-avatar")}
+      <div>
+        <strong>${escapeHTML(user?.display_name || "用户")}</strong>
+        <span>${isIncoming ? "对方申请添加你" : "你发出了好友申请"} · ${friendRequestStatusLabel(request.status)}</span>
+      </div>
+      <time>${formatDateTime(request.responded_at || request.created_at)}</time>
     </article>
   `;
 }
@@ -3305,6 +3347,7 @@ function renderFriendHub() {
   const candidates = state.friendData?.candidates || [];
   const incomingRequests = state.friendData?.incoming_requests || [];
   const outgoingRequests = state.friendData?.outgoing_requests || [];
+  const requestHistory = state.friendData?.request_history || [];
   const received = state.roomInvitations?.received || [];
   const sent = state.roomInvitations?.sent || [];
   const visibleFriends = friends.slice(0, 4);
@@ -3382,6 +3425,16 @@ function renderFriendHub() {
       </section>
     </div>
     <p class="friend-hub-note">AI 声音、AI 图片、AI 剧情卡的真实资产分配暂不开放；等单集 AI 生成和人工审核完成后，再接入“选择资产发布”。</p>
+    <details class="friend-history-panel">
+      <summary>历史申请详情 <span>${requestHistory.length} 条</span></summary>
+      <div class="friend-history-list">
+        ${
+          requestHistory.length
+            ? requestHistory.slice(0, 12).map(renderFriendRequestHistory).join("")
+            : `<div class="friend-hub-empty">暂无历史申请。发送、接受、拒绝或撤回后会在这里留痕。</div>`
+        }
+      </div>
+    </details>
   `;
 }
 
@@ -3449,6 +3502,192 @@ async function loadSocialFeed(scope = "all") {
     setSocialStatus(errorMessage(error), true);
   }
   renderDiscoverView();
+}
+
+function setChatStatus(message, isError = false) {
+  state.chatStatus = message || "";
+  state.chatStatusError = isError;
+  const status = $("#chatStatus");
+  if (status) {
+    status.textContent = state.chatStatus;
+    status.classList.toggle("error", isError);
+  }
+}
+
+async function loadChatConversations() {
+  if (!state.currentUser) return;
+  try {
+    state.chatData = await fetchJSON("/api/chat/conversations");
+    if (!state.activeChatUserId && state.chatData.conversations?.length) {
+      state.activeChatUserId = state.chatData.conversations[0].user.id;
+      await loadChatThread(state.activeChatUserId, { silent: true });
+      return;
+    }
+  } catch (error) {
+    setChatStatus(errorMessage(error), true);
+    state.chatData = { conversations: [], unread_count: 0 };
+  }
+  renderChatWorkspace();
+  renderChatBadge();
+}
+
+async function loadChatThread(friendUserId, options = {}) {
+  if (!friendUserId) {
+    state.activeChatUserId = null;
+    state.chatThread = { friend: null, messages: [] };
+    renderChatWorkspace();
+    return;
+  }
+  state.activeChatUserId = Number(friendUserId);
+  try {
+    state.chatThread = await fetchJSON(`/api/chat/messages/${state.activeChatUserId}`);
+    if (!options.silent) setChatStatus("");
+    await loadSocialInbox();
+    const conversations = await fetchJSON("/api/chat/conversations");
+    state.chatData = conversations;
+  } catch (error) {
+    setChatStatus(errorMessage(error), true);
+    state.chatThread = { friend: null, messages: [] };
+  }
+  renderChatWorkspace();
+}
+
+function renderChatMessage(message) {
+  const isOutgoing = message.direction === "outgoing";
+  const payload = message.payload || {};
+  const watchLink =
+    message.message_type === "watch_link" && payload.room_code
+      ? `<button class="chat-watch-link" type="button" data-chat-join-room="${escapeHTML(payload.room_code)}">进入同看 ${escapeHTML(payload.room_code)}</button>`
+      : "";
+  return `
+    <article class="chat-bubble ${isOutgoing ? "outgoing" : "incoming"} ${escapeHTML(message.message_type || "text")}">
+      <div>
+        <p>${escapeHTML(message.text || "")}</p>
+        ${watchLink}
+      </div>
+      <time>${formatDateTime(message.created_at)}</time>
+    </article>
+  `;
+}
+
+function renderChatWorkspace() {
+  const conversationList = $("#chatConversationList");
+  const header = $("#chatThreadHeader");
+  const messageList = $("#chatMessageList");
+  if (!conversationList || !header || !messageList) return;
+  const conversations = state.chatData?.conversations || [];
+  conversationList.innerHTML = conversations.length
+    ? conversations
+        .map((item) => {
+          const user = item.user || {};
+          const last = item.last_message;
+          const lastText = last ? last.text : "还没有聊天，先发一句剧情感受。";
+          return `
+            <button class="chat-conversation-item ${Number(user.id) === Number(state.activeChatUserId) ? "active" : ""}" type="button" data-chat-user-id="${user.id}">
+              ${avatarHTML(user, "chat-avatar")}
+              <span class="chat-conversation-copy">
+                <strong>${escapeHTML(user.display_name || "好友")}</strong>
+                <small>${escapeHTML(lastText)}</small>
+              </span>
+              ${item.unread_count ? `<em>${item.unread_count > 99 ? "99+" : item.unread_count}</em>` : ""}
+            </button>
+          `;
+        })
+        .join("")
+    : `<div class="chat-empty">还没有正式好友会话。通过好友申请后，这里会出现聊天入口。</div>`;
+
+  const friend = state.chatThread?.friend;
+  if (!friend) {
+    header.innerHTML = `<div><span>Chat</span><strong>选择一个好友开始聊天</strong><p>支持文字、表情包和同看链接。</p></div>`;
+    messageList.innerHTML = `<div class="chat-empty">好友通过申请后，可以在这里直接聊天和约同看。</div>`;
+    setChatStatus(state.chatStatus, state.chatStatusError);
+    return;
+  }
+  header.innerHTML = `
+    ${avatarHTML(friend, "chat-header-avatar")}
+    <div>
+      <span>正在聊天</span>
+      <strong>${escapeHTML(friend.display_name || "好友")}</strong>
+      <p>${escapeHTML(friend.growth_title || "剧情新人")} · 可发送剧情感受、表情和同看链接</p>
+    </div>
+  `;
+  const messages = state.chatThread.messages || [];
+  messageList.innerHTML = messages.length
+    ? messages.map(renderChatMessage).join("")
+    : `<div class="chat-empty">还没有消息。发一句“这段太上头了”开始聊天。</div>`;
+  messageList.scrollTop = messageList.scrollHeight;
+  setChatStatus(state.chatStatus, state.chatStatusError);
+}
+
+async function sendChatMessage(type = "text", textOverride = "") {
+  if (!state.activeChatUserId) {
+    setChatStatus("请先选择一个好友会话。", true);
+    return;
+  }
+  const input = $("#chatMessageInput");
+  const text = (textOverride || input?.value || "").trim();
+  if (!text) {
+    setChatStatus("消息内容不能为空。", true);
+    return;
+  }
+  try {
+    await fetchJSON("/api/chat/messages", {
+      method: "POST",
+      body: JSON.stringify({ to_user_id: state.activeChatUserId, message_type: type, text, payload: {} }),
+    });
+    if (input && !textOverride) input.value = "";
+    await loadChatThread(state.activeChatUserId, { silent: true });
+    setChatStatus("已发送。");
+  } catch (error) {
+    setChatStatus(errorMessage(error), true);
+  }
+}
+
+async function sendWatchLinkMessage() {
+  if (!state.activeChatUserId) {
+    setChatStatus("请先选择一个好友会话。", true);
+    return;
+  }
+  const history = state.watchHistory[0];
+  const episodeId = state.currentEpisode?.id || history?.episode_id || null;
+  const progressSec = state.currentEpisode ? player?.currentTime || 0 : history?.progress_sec || 0;
+  try {
+    const room = await fetchJSON("/api/watch-rooms", {
+      method: "POST",
+      body: JSON.stringify({ episode_id: episodeId, progress_sec: progressSec, playback_state: "paused" }),
+    });
+    await fetchJSON("/api/chat/messages", {
+      method: "POST",
+      body: JSON.stringify({
+        to_user_id: state.activeChatUserId,
+        message_type: "watch_link",
+        text: `我发起了同看房间 ${room.code}，一起看这段？`,
+        payload: { room_code: room.code, episode_id: room.episode_id },
+      }),
+    });
+    await loadChatThread(state.activeChatUserId, { silent: true });
+    setChatStatus(`同看链接已发送：${room.code}`);
+  } catch (error) {
+    setChatStatus(errorMessage(error), true);
+  }
+}
+
+async function joinChatWatchRoom(code) {
+  if (!code) return;
+  try {
+    const room = await fetchJSON("/api/watch-rooms/join", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    state.roomLastEventId = 0;
+    state.roomFeed = [];
+    await applyRoomState(room);
+    startRoomPolling();
+    await fetchRoomEvents();
+    setView("watch");
+  } catch (error) {
+    setChatStatus(errorMessage(error), true);
+  }
 }
 
 function renderChatInbox() {
@@ -6600,6 +6839,26 @@ $("#markInboxRead")?.addEventListener("click", async () => {
   renderChatBadge();
   renderChatInbox();
 });
+$("#refreshChatConversations")?.addEventListener("click", loadChatConversations);
+$("#chatConversationList")?.addEventListener("click", (event) => {
+  const item = event.target.closest("[data-chat-user-id]");
+  if (item) loadChatThread(item.dataset.chatUserId);
+});
+$("#sendChatMessage")?.addEventListener("click", () => sendChatMessage());
+$("#chatMessageInput")?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    sendChatMessage();
+  }
+});
+$("#sendWatchLinkMessage")?.addEventListener("click", sendWatchLinkMessage);
+$("#chatMessageList")?.addEventListener("click", (event) => {
+  const joinButton = event.target.closest("[data-chat-join-room]");
+  if (joinButton) joinChatWatchRoom(joinButton.dataset.chatJoinRoom);
+});
+document.querySelectorAll("[data-chat-emoji]").forEach((button) => {
+  button.addEventListener("click", () => sendChatMessage("emoji", button.dataset.chatEmoji));
+});
 $("#publishSocialPost")?.addEventListener("click", publishSocialPost);
 $("#chatInboxList")?.addEventListener("click", (event) => {
   const acceptFriendButton = event.target.closest("[data-chat-accept-friend]");
@@ -6782,6 +7041,11 @@ $("#friendHubPanel")?.addEventListener("click", (event) => {
   const declineRequestButton = event.target.closest("[data-friendhub-decline-request]");
   if (declineRequestButton) {
     respondFriendRequest(declineRequestButton.dataset.friendhubDeclineRequest, "decline");
+    return;
+  }
+  const withdrawRequestButton = event.target.closest("[data-friendhub-withdraw-request]");
+  if (withdrawRequestButton) {
+    respondFriendRequest(withdrawRequestButton.dataset.friendhubWithdrawRequest, "withdraw");
     return;
   }
   const addButton = event.target.closest("[data-friendhub-add-id]");

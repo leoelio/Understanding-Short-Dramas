@@ -196,6 +196,22 @@ class UserFriendRequest(Base):
     to_user = relationship("User", foreign_keys=[to_user_id])
 
 
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    from_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    to_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    message_type = Column(String(32), default="text", nullable=False, index=True)
+    text = Column(String(500), default="", nullable=False)
+    payload_json = Column(Text, default="{}")
+    read_at = Column(DateTime, nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    from_user = relationship("User", foreign_keys=[from_user_id])
+    to_user = relationship("User", foreign_keys=[to_user_id])
+
+
 class WatchRoomInvitation(Base):
     __tablename__ = "watch_room_invitations"
 

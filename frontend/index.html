@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260604-friend-request-flow" />
+    <link rel="stylesheet" href="/styles.css?v=20260604-chat-center" />
   </head>
   <body>
     <div class="app-shell">
@@ -175,9 +175,37 @@
             <div>
               <span>Talk Hub</span>
               <h2>聊聊</h2>
-              <p>同看邀请、好友互动、评论点赞都会沉淀到这里，形成真实社交消息入口。</p>
+              <p>和好友发消息、表情包、同看链接。好友申请和互动通知会收进下方消息中心。</p>
             </div>
             <button id="markInboxRead" class="ghost-button" type="button">全部已读</button>
+          </div>
+          <div id="chatWorkspace" class="chat-workspace">
+            <aside class="chat-conversation-panel">
+              <div class="chat-panel-head">
+                <div>
+                  <span>Messages</span>
+                  <strong>好友会话</strong>
+                </div>
+                <button id="refreshChatConversations" class="ghost-button" type="button">刷新</button>
+              </div>
+              <div id="chatConversationList" class="chat-conversation-list"></div>
+            </aside>
+            <section class="chat-thread-panel">
+              <div id="chatThreadHeader" class="chat-thread-header"></div>
+              <div id="chatMessageList" class="chat-message-list"></div>
+              <div class="chat-emoji-row" aria-label="快捷表情">
+                <button type="button" data-chat-emoji="爽到了">爽到了</button>
+                <button type="button" data-chat-emoji="哈哈哈">哈哈哈</button>
+                <button type="button" data-chat-emoji="磕到了">磕到了</button>
+                <button type="button" data-chat-emoji="心疼">心疼</button>
+              </div>
+              <div class="chat-composer">
+                <input id="chatMessageInput" maxlength="500" placeholder="给好友发消息，聊剧情、发表情、约同看" />
+                <button id="sendWatchLinkMessage" class="ghost-button" type="button">同看链接</button>
+                <button id="sendChatMessage" class="primary-button" type="button">发送</button>
+              </div>
+              <div id="chatStatus" class="social-status"></div>
+            </section>
           </div>
           <div id="friendHubPanel" class="friend-hub-panel"></div>
           <div id="chatInboxStatus" class="social-status"></div>
@@ -466,6 +494,6 @@
       </div>
     </div>
 
-    <script defer src="/app.js?v=20260604-friend-request-flow"></script>
+    <script defer src="/app.js?v=20260604-chat-center"></script>
   </body>
 </html>
