@@ -1989,12 +1989,7 @@ function renderDramas() {
             }
             ${renderDramaPoster(drama, signals)}
             <div class="thumb-shade"></div>
-            <div class="thumb-glass">
-              <strong>${history ? "继续高光" : "开启体验"}</strong>
-              <span>${signals.slice(0, 2).map((signal) => escapeHTML(signal)).join(" / ")}</span>
-            </div>
             <div class="thumb-meta">
-              <span>${escapeHTML(drama.genre)}</span>
               <b>${Number(drama.episode_count || 0)} 集</b>
             </div>
           </div>
@@ -2003,7 +1998,7 @@ function renderDramas() {
               <h3>${escapeHTML(drama.title)}</h3>
               <span>AI</span>
             </div>
-            <p>${drama.episode_count} 集已导入${history ? ` · 上次看到 ${formatTime(history.progress_sec)}` : " · 待开启体验"}</p>
+            <p>${history ? `上次看到 ${formatTime(history.progress_sec)}` : `${drama.episode_count} 集`}</p>
             <div class="drama-card-signals">
               ${signals.map((signal) => `<span>${escapeHTML(signal)}</span>`).join("")}
             </div>
@@ -2066,7 +2061,7 @@ function renderWatchHistory() {
               <span>${escapeHTML(item.drama.genre)} · 进度 ${formatTime(item.progress_sec)}</span>
               <span class="history-progress"><i style="width:${Math.min(100, Math.max(0, Number(item.progress_percent || 0)))}%"></i></span>
             </div>
-            <em>继续</em>
+            <em aria-hidden="true">›</em>
           </button>
         `
       )
