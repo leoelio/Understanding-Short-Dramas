@@ -8506,21 +8506,32 @@ body[data-view="watch"] .watch-view .demo-room-button {
 
 .avatar-preset-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 9px;
 }
 
 .avatar-preset-button {
+  position: relative;
   display: grid;
-  justify-items: center;
-  gap: 6px;
-  min-height: 112px;
+  place-items: center;
+  aspect-ratio: 1;
+  min-height: 0;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 18px;
-  padding: 12px 8px;
+  border-radius: 22px;
+  padding: 7px;
   color: #1d1d1f;
-  background: rgba(255, 255, 255, 0.76);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.54)),
+    rgba(255, 255, 255, 0.76);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
   cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.avatar-preset-button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 113, 227, 0.28);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.1);
 }
 
 .avatar-preset-button.active {
@@ -8531,9 +8542,21 @@ body[data-view="watch"] .watch-view .demo-room-button {
   box-shadow: 0 16px 36px rgba(0, 113, 227, 0.13);
 }
 
+.avatar-preset-button.active::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  background: #0071e3;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9);
+}
+
 .avatar-preset-preview {
-  width: 44px;
-  height: 44px;
+  width: 100%;
+  height: 100%;
   font-size: 15px;
 }
 
@@ -8544,7 +8567,7 @@ body[data-view="watch"] .watch-view .demo-room-button {
 
 .profile-upload-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  justify-items: end;
   align-items: center;
   gap: 10px;
 }
@@ -8555,6 +8578,194 @@ body[data-view="watch"] .watch-view .demo-room-button {
   border-radius: 16px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.78);
+}
+
+.avatar-manager,
+.avatar-upload-card,
+.avatar-crop-card {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 24px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(0, 113, 227, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(246, 248, 253, 0.6));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.08);
+}
+
+.avatar-manager-top,
+.avatar-upload-card,
+.avatar-crop-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.avatar-manager-top strong,
+.avatar-upload-card strong {
+  display: block;
+  color: #1d1d1f;
+  font-size: 15px;
+}
+
+.avatar-manager-top span,
+.avatar-upload-card span {
+  display: block;
+  margin-top: 3px;
+  color: #6e6e73;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ghost-button.compact {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.avatar-filter-row {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.avatar-filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+.avatar-filter-chip {
+  flex: 0 0 auto;
+  min-height: 34px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  padding: 0 13px;
+  color: #424245;
+  background: rgba(255, 255, 255, 0.66);
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.avatar-filter-chip.active {
+  color: #fff;
+  border-color: rgba(0, 113, 227, 0.2);
+  background: linear-gradient(135deg, #0071e3, #6f7cff);
+  box-shadow: 0 12px 24px rgba(0, 113, 227, 0.22);
+}
+
+.avatar-search-field {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+  color: #6e6e73;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.avatar-search-field input {
+  min-height: 42px;
+}
+
+.avatar-empty-state {
+  grid-column: 1 / -1;
+  border-radius: 18px;
+  padding: 18px;
+  color: #6e6e73;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.avatar-file-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border-radius: 999px;
+  padding: 0 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #1d1d1f, #4c5a73);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14);
+}
+
+.avatar-upload-card input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.avatar-crop-card {
+  display: grid;
+  grid-template-columns: 138px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.avatar-crop-preview {
+  position: relative;
+  width: 138px;
+  height: 138px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #111;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4), 0 16px 36px rgba(0, 0, 0, 0.16);
+}
+
+.avatar-crop-preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.84);
+  pointer-events: none;
+}
+
+.avatar-crop-preview img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: translate(-50%, -50%) translate(var(--avatar-x), var(--avatar-y)) scale(var(--avatar-scale));
+  transform-origin: center;
+}
+
+.avatar-crop-controls {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.avatar-crop-controls label {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: #424245;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.avatar-crop-controls input[type="range"] {
+  width: 100%;
+  min-height: auto;
+  padding: 0;
+  accent-color: #0071e3;
+  background: transparent;
+  box-shadow: none;
+}
+
+.avatar-crop-actions {
+  grid-column: 2;
+  justify-content: flex-end;
 }
 
 .profile-status {
@@ -8583,11 +8794,29 @@ body[data-view="watch"] .watch-view .demo-room-button {
 
 @media (max-width: 720px) {
   .avatar-preset-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .profile-upload-row {
+    justify-items: stretch;
+  }
+
+  .avatar-manager-top,
+  .avatar-upload-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .avatar-crop-card {
     grid-template-columns: 1fr;
+  }
+
+  .avatar-crop-preview {
+    justify-self: center;
+  }
+
+  .avatar-crop-actions {
+    grid-column: auto;
   }
 
   .profile-settings-head,

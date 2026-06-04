@@ -24,6 +24,15 @@ const AVATAR_PRESETS = [
   { key: "preset:stage", label: "高光", hint: "互动主理人" },
 ];
 
+const AVATAR_STYLE_FILTERS = [
+  { key: "featured", label: "推荐", tags: ["精选", "常用"] },
+  { key: "fresh", label: "清爽", tags: ["自然", "明亮", "干净"] },
+  { key: "cute", label: "可爱", tags: ["软萌", "亲和", "圆润"] },
+  { key: "cool", label: "酷感", tags: ["冷感", "个性", "利落"] },
+  { key: "warm", label: "温柔", tags: ["柔和", "治愈", "浅色"] },
+  { key: "story", label: "剧情感", tags: ["短剧", "情绪", "角色"] },
+];
+
 const DANMAKU_MODES = {
   light: { label: "轻聊", enabled: true, density: 0.72, includeModes: ["light"] },
   carnival: { label: "狂欢", enabled: true, density: 1, includeModes: ["light", "curated", "seed", "carnival"] },
@@ -275,6 +284,12 @@ const state = {
   socialStatus: "",
   socialStatusError: false,
   avatarPool: [],
+  avatarFilter: "featured",
+  avatarSearch: "",
+  avatarPage: 0,
+  avatarUploadFile: null,
+  avatarCropPreviewUrl: "",
+  avatarCrop: { scale: 1.15, x: 0, y: 0 },
   roomApplyingRemote: false,
   demoRoomActive: false,
   demoRoomSerial: 900000,
@@ -405,6 +420,88 @@ function avatarHTML(user = {}, className = "user-avatar") {
   return `<span class="${className} preset avatar-${escapeHTML(avatarPresetName(avatarUrl))}">${avatarInitials(user)}</span>`;
 }
 
+function avatarHash(value) {
+  return Array.from(String(value || "")).reduce((sum, char) => (sum + char.charCodeAt(0)) % 9973, 0);
+}
+
+function avatarMeta(avatar, index) {
+  const styles = AVATAR_STYLE_FILTERS.slice(1);
+  const style = styles[(avatarHash(avatar.url) + index) % styles.length] || styles[0];
+  return {
+    key: avatar.url,
+    url: avatar.url,
+    styleKey: style.key,
+    styleLabel: style.label,
+    tags: [style.label, ...style.tags],
+    featured: index < 24 || (avatarHash(avatar.url) % 5 === 0),
+  };
+}
+
+function avatarMatchesSearch(choice) {
+  const query = state.avatarSearch.trim().toLowerCase();
+  if (!query) return true;
+  return choice.tags.some((tag) => tag.toLowerCase().includes(query));
+}
+
+function getAvatarChoices() {
+  const allChoices = state.avatarPool.map(avatarMeta);
+  if (!allChoices.length) {
+    return {
+      total: AVATAR_PRESETS.length,
+      choices: AVATAR_PRESETS.map((preset) => ({ ...preset, url: preset.key, tags: [preset.label, preset.hint] })),
+    };
+  }
+
+  let filtered = state.avatarSearch.trim()
+    ? allChoices.filter(avatarMatchesSearch)
+    : allChoices.filter((choice) => (state.avatarFilter === "featured" ? choice.featured : choice.styleKey === state.avatarFilter));
+  const visibleCount = 18;
+  if (filtered.length <= visibleCount) return { total: filtered.length, choices: filtered };
+
+  const offset = (state.avatarPage * visibleCount) % filtered.length;
+  const visible = filtered.slice(offset, offset + visibleCount);
+  if (visible.length < visibleCount) {
+    visible.push(...filtered.slice(0, visibleCount - visible.length));
+  }
+  return { total: filtered.length, choices: visible };
+}
+
+function renderAvatarChoiceButtons(activeAvatar, user) {
+  const { choices } = getAvatarChoices();
+  if (!choices.length) {
+    return `<div class="avatar-empty-state">没有匹配的头像，换个风格词试试。</div>`;
+  }
+  return choices
+    .map(
+      (choice) => `
+        <button
+          class="avatar-preset-button ${activeAvatar === choice.key ? "active" : ""}"
+          type="button"
+          data-avatar-url="${escapeHTML(choice.key)}"
+          aria-label="选择${escapeHTML(choice.styleLabel || choice.label || "头像")}头像"
+          title="${escapeHTML(choice.styleLabel || choice.label || "头像")}"
+        >
+          ${avatarHTML({ ...user, display_name: choice.styleLabel || choice.label || "头像", avatar_url: choice.key }, "avatar-preset-preview")}
+        </button>
+      `
+    )
+    .join("");
+}
+
+function updateAvatarChoiceGrid() {
+  const grid = $("#avatarChoiceGrid");
+  if (!grid) return;
+  const user = state.currentUser || {};
+  const activeAvatar = state.profileDraftAvatar || user.avatar_url || "preset:stage";
+  const { total } = getAvatarChoices();
+  grid.innerHTML = renderAvatarChoiceButtons(activeAvatar, user);
+  const count = $("#avatarChoiceCount");
+  if (count) count.textContent = total ? `当前风格有 ${total} 个可选头像` : "没有匹配头像";
+  document.querySelectorAll(".avatar-filter-chip").forEach((button) => {
+    button.classList.toggle("active", button.dataset.avatarFilter === state.avatarFilter);
+  });
+}
+
 function getHighlightUI(type) {
   return HIGHLIGHT_UI[getHighlightKey(type)];
 }
@@ -501,6 +598,10 @@ function clearAuth() {
   state.socialStatus = "";
   state.socialStatusError = false;
   state.avatarPool = [];
+  state.avatarFilter = "featured";
+  state.avatarSearch = "";
+  state.avatarPage = 0;
+  clearAvatarCrop();
   state.profileStatus = "";
   state.profileStatusError = false;
   state.profileDraftAvatar = "";
@@ -2752,22 +2853,85 @@ async function saveProfileSettings() {
   }
 }
 
-async function uploadProfileAvatar() {
-  const input = $("#profileAvatarInput");
-  const file = input?.files?.[0];
-  if (!file) {
-    setProfileStatus("请先选择一张头像图片。", true);
+function clearAvatarCrop(options = {}) {
+  if (state.avatarCropPreviewUrl) URL.revokeObjectURL(state.avatarCropPreviewUrl);
+  state.avatarUploadFile = null;
+  state.avatarCropPreviewUrl = "";
+  state.avatarCrop = { scale: 1.15, x: 0, y: 0 };
+  if (options.render) renderProfileGallery();
+}
+
+function avatarCropStyle() {
+  return `--avatar-scale:${Number(state.avatarCrop.scale || 1).toFixed(2)};--avatar-x:${Number(
+    state.avatarCrop.x || 0
+  ).toFixed(1)}%;--avatar-y:${Number(state.avatarCrop.y || 0).toFixed(1)}%;`;
+}
+
+function applyAvatarCropStyle() {
+  const image = $("#avatarCropImage");
+  if (image) image.setAttribute("style", avatarCropStyle());
+}
+
+function prepareProfileAvatarCrop(file) {
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    setProfileStatus("请选择图片文件。", true);
     return;
   }
-  const form = new FormData();
-  form.append("avatar", file);
+  clearAvatarCrop();
+  state.avatarUploadFile = file;
+  state.avatarCropPreviewUrl = URL.createObjectURL(file);
+  state.avatarCrop = { scale: 1.15, x: 0, y: 0 };
+  setProfileStatus("已载入图片。调整裁剪范围后，点击“裁剪并上传”。");
+  renderProfileGallery();
+}
+
+function loadAvatarCropImage() {
+  return new Promise((resolve, reject) => {
+    if (!state.avatarCropPreviewUrl) {
+      reject(new Error("请先选择一张图片。"));
+      return;
+    }
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("图片读取失败，请换一张图片。"));
+    image.src = state.avatarCropPreviewUrl;
+  });
+}
+
+async function createCroppedAvatarBlob() {
+  const image = await loadAvatarCropImage();
+  const size = Math.min(image.naturalWidth, image.naturalHeight) / Number(state.avatarCrop.scale || 1);
+  const maxX = Math.max(0, (image.naturalWidth - size) / 2);
+  const maxY = Math.max(0, (image.naturalHeight - size) / 2);
+  const sx = Math.max(0, Math.min(image.naturalWidth - size, (image.naturalWidth - size) / 2 + (state.avatarCrop.x / 100) * maxX));
+  const sy = Math.max(0, Math.min(image.naturalHeight - size, (image.naturalHeight - size) / 2 + (state.avatarCrop.y / 100) * maxY));
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const context = canvas.getContext("2d");
+  context.drawImage(image, sx, sy, size, size, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("裁剪失败，请重新选择图片。"))), "image/jpeg", 0.92);
+  });
+}
+
+async function uploadProfileAvatar() {
+  if (!state.avatarUploadFile || !state.avatarCropPreviewUrl) {
+    setProfileStatus("请先选择一张图片，再进行裁剪上传。", true);
+    return;
+  }
   try {
-    setProfileStatus("正在上传头像...");
+    setProfileStatus("正在裁剪并上传头像...");
+    const croppedBlob = await createCroppedAvatarBlob();
+    const form = new FormData();
+    form.append("avatar", croppedBlob, "avatar_crop.jpg");
     const payload = await fetchJSON("/api/users/me/avatar", { method: "POST", body: form });
     state.currentUser = payload.user;
     state.profileDraftAvatar = "";
+    clearAvatarCrop();
     updateAuthUI();
-    setProfileStatus("头像已上传并保存。");
+    setProfileStatus("头像已裁剪并保存。");
   } catch (error) {
     setProfileStatus(errorMessage(error), true);
   }
@@ -2775,20 +2939,14 @@ async function uploadProfileAvatar() {
 
 function selectProfileAvatar(button) {
   state.profileDraftAvatar = button.dataset.avatarUrl || "preset:stage";
-  setProfileStatus("已选择头像预设，点击保存资料后生效。");
+  setProfileStatus("已选择头像，点击保存资料后生效。");
 }
 
 function renderProfileSettingsSection() {
   const user = state.currentUser || {};
   const activeAvatar = state.profileDraftAvatar || user.avatar_url || "preset:stage";
   const previewUser = { ...user, avatar_url: activeAvatar };
-  const avatarChoices = state.avatarPool.length
-    ? state.avatarPool.slice(0, 36).map((avatar, index) => ({
-        key: avatar.url,
-        label: `头像 ${String(index + 1).padStart(2, "0")}`,
-        hint: "头像池",
-      }))
-    : AVATAR_PRESETS;
+  const { total } = getAvatarChoices();
   return `
     <section class="profile-settings-card">
       <div class="profile-settings-head">
@@ -2804,23 +2962,72 @@ function renderProfileSettingsSection() {
           昵称
           <input id="profileDisplayName" maxlength="64" value="${escapeHTML(user.display_name || "")}" />
         </label>
-        <div class="avatar-preset-grid" aria-label="头像预设">
-          ${avatarChoices.map(
-            (preset) => `
-              <button class="avatar-preset-button ${activeAvatar === preset.key ? "active" : ""}" type="button" data-avatar-url="${escapeHTML(
-                preset.key
+        <div class="avatar-manager">
+          <div class="avatar-manager-top">
+            <div>
+              <strong>头像推荐</strong>
+              <span id="avatarChoiceCount">${total ? `当前风格有 ${total} 个可选头像` : "没有匹配头像"}</span>
+            </div>
+            <button id="shuffleAvatarPage" class="ghost-button compact" type="button">换一批</button>
+          </div>
+          <div class="avatar-filter-row" aria-label="头像风格筛选">
+            ${AVATAR_STYLE_FILTERS.map(
+              (filter) => `
+                <button class="avatar-filter-chip ${state.avatarFilter === filter.key ? "active" : ""}" type="button" data-avatar-filter="${escapeHTML(
+                filter.key
               )}">
-                ${avatarHTML({ ...user, display_name: preset.label, avatar_url: preset.key }, "avatar-preset-preview")}
-                <span>${escapeHTML(preset.label)}</span>
-                <small>${escapeHTML(preset.hint)}</small>
-              </button>
-            `
-          ).join("")}
+                  ${escapeHTML(filter.label)}
+                </button>
+              `
+            ).join("")}
+          </div>
+          <label class="avatar-search-field">
+            <span>搜索风格</span>
+            <input id="avatarSearchInput" value="${escapeHTML(state.avatarSearch)}" placeholder="可爱 / 酷感 / 清爽" />
+          </label>
+          <div id="avatarChoiceGrid" class="avatar-preset-grid" aria-label="头像选择">
+            ${renderAvatarChoiceButtons(activeAvatar, user)}
+          </div>
         </div>
       </div>
-      <div class="profile-upload-row">
+      <div class="avatar-upload-card">
+        <div>
+          <strong>上传自己的照片</strong>
+          <span>先裁剪成头像比例，再保存到个人资料。</span>
+        </div>
+        <label class="avatar-file-button" for="profileAvatarInput">选择图片</label>
         <input id="profileAvatarInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
-        <button id="uploadProfileAvatar" class="ghost-button" type="button">上传头像</button>
+      </div>
+      ${
+        state.avatarCropPreviewUrl
+          ? `
+            <div class="avatar-crop-card">
+              <div class="avatar-crop-preview" aria-label="头像裁剪预览">
+                <img id="avatarCropImage" src="${escapeHTML(state.avatarCropPreviewUrl)}" alt="头像裁剪预览" style="${avatarCropStyle()}" />
+              </div>
+              <div class="avatar-crop-controls">
+                <label>
+                  缩放
+                  <input type="range" min="1" max="2.4" step="0.05" value="${escapeHTML(state.avatarCrop.scale)}" data-avatar-crop="scale" />
+                </label>
+                <label>
+                  左右
+                  <input type="range" min="-100" max="100" step="1" value="${escapeHTML(state.avatarCrop.x)}" data-avatar-crop="x" />
+                </label>
+                <label>
+                  上下
+                  <input type="range" min="-100" max="100" step="1" value="${escapeHTML(state.avatarCrop.y)}" data-avatar-crop="y" />
+                </label>
+              </div>
+              <div class="avatar-crop-actions">
+                <button id="cancelProfileAvatarCrop" class="ghost-button" type="button">取消</button>
+                <button id="uploadProfileAvatar" class="primary-button" type="button">裁剪并上传</button>
+              </div>
+            </div>
+          `
+          : ""
+      }
+      <div class="profile-upload-row">
         <button id="saveProfileSettings" class="primary-button" type="button">保存资料</button>
       </div>
       <div class="profile-status ${state.profileStatusError ? "error" : ""}">${escapeHTML(
@@ -6926,6 +7133,21 @@ $("#socialFeedList")?.addEventListener("click", (event) => {
 });
 $("#refreshProfile").addEventListener("click", loadRewardProfile);
 $("#profileGallery").addEventListener("click", (event) => {
+  const filterButton = event.target.closest("[data-avatar-filter]");
+  if (filterButton) {
+    state.avatarFilter = filterButton.dataset.avatarFilter || "featured";
+    state.avatarSearch = "";
+    state.avatarPage = 0;
+    const searchInput = $("#avatarSearchInput");
+    if (searchInput) searchInput.value = "";
+    updateAvatarChoiceGrid();
+    return;
+  }
+  if (event.target.closest("#shuffleAvatarPage")) {
+    state.avatarPage += 1;
+    updateAvatarChoiceGrid();
+    return;
+  }
   const avatarPresetButton = event.target.closest(".avatar-preset-button");
   if (avatarPresetButton) {
     selectProfileAvatar(avatarPresetButton);
@@ -6937,6 +7159,10 @@ $("#profileGallery").addEventListener("click", (event) => {
   }
   if (event.target.closest("#uploadProfileAvatar")) {
     uploadProfileAvatar();
+    return;
+  }
+  if (event.target.closest("#cancelProfileAvatarCrop")) {
+    clearAvatarCrop({ render: true });
     return;
   }
   const button = event.target.closest(".profile-open-episode");
@@ -6973,6 +7199,24 @@ $("#profileGallery").addEventListener("click", (event) => {
   if (event.target.closest(".voice-preview-button")) {
     generateVoicePreview();
   }
+});
+$("#profileGallery").addEventListener("input", (event) => {
+  if (event.target.closest("#avatarSearchInput")) {
+    state.avatarSearch = event.target.value;
+    state.avatarPage = 0;
+    updateAvatarChoiceGrid();
+    return;
+  }
+  const cropControl = event.target.closest("[data-avatar-crop]");
+  if (cropControl) {
+    const key = cropControl.dataset.avatarCrop;
+    state.avatarCrop[key] = Number(cropControl.value);
+    applyAvatarCropStyle();
+  }
+});
+$("#profileGallery").addEventListener("change", (event) => {
+  const input = event.target.closest("#profileAvatarInput");
+  if (input) prepareProfileAvatarCrop(input.files?.[0]);
 });
 endingRemixLayer?.addEventListener("click", (event) => {
   const choice = event.target.closest("[data-remix-choice]");
