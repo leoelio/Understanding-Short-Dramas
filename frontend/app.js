@@ -33,6 +33,19 @@ const AVATAR_STYLE_FILTERS = [
   { key: "story", label: "剧情感", tags: ["短剧", "情绪", "角色"] },
 ];
 
+const DRAMA_POSTER_ASSETS = [
+  { match: ["北派寻宝"], slug: "beipai_xunbao" },
+  { match: ["云渺"], slug: "yunmiao" },
+  { match: ["那年冬至", "冬至"], slug: "winter_solstice" },
+  { match: ["北往"], slug: "beiwang" },
+  { match: ["天下第一纨绔", "纨绔"], slug: "diyi_wanku" },
+  { match: ["十八岁太奶", "太奶"], slug: "eighteen_grandma" },
+  { match: ["幸得相遇离婚时", "幸福相遇离婚时", "离婚时"], slug: "lucky_divorce" },
+  { match: ["荒年全村", "满仓肉"], slug: "famine_village" },
+  { match: ["家里家外"], slug: "home_inside_out" },
+  { match: ["撕夜"], slug: "siye" },
+];
+
 const DANMAKU_MODES = {
   light: { label: "轻聊", enabled: true, density: 0.72, includeModes: ["light"] },
   carnival: { label: "狂欢", enabled: true, density: 1, includeModes: ["light", "curated", "seed", "carnival"] },
@@ -1914,17 +1927,47 @@ function dramaSignals(drama) {
   return ["高光互动", "弹幕氛围", "同看竞猜"];
 }
 
+function dramaPosterAsset(drama) {
+  const title = String(drama?.title || "");
+  const entry = DRAMA_POSTER_ASSETS.find((item) => item.match.some((keyword) => title.includes(keyword)));
+  if (!entry) return null;
+  return {
+    card: `/assets/drama_posters/generated/${entry.slug}_card.jpg`,
+    history: `/assets/drama_posters/generated/${entry.slug}_history.jpg`,
+  };
+}
+
+function posterImageFallbackScript() {
+  return "this.closest('[data-poster-shell]')?.classList.remove('has-image');this.remove();";
+}
+
 function renderDramaPoster(drama, signals) {
   const title = drama.title || "短剧";
   const genre = drama.genre || "互动短剧";
+  const poster = dramaPosterAsset(drama);
   return `
-    <div class="thumb-poster" aria-hidden="true">
-      <span>${escapeHTML(genre)}</span>
-      <strong>${escapeHTML(title)}</strong>
-      <em>${escapeHTML(signals[0] || "高光互动")}</em>
-      <i class="poster-mark">${escapeHTML(title.slice(0, 2))}</i>
-      <i class="poster-road"></i>
+    <div class="thumb-poster ${poster ? "has-image" : ""}" data-poster-shell aria-hidden="true">
+      ${poster ? `<img class="drama-poster-image" src="${escapeHTML(poster.card)}" alt="" loading="lazy" onerror="${posterImageFallbackScript()}" />` : ""}
+      <div class="poster-fallback">
+        <span>${escapeHTML(genre)}</span>
+        <strong>${escapeHTML(title)}</strong>
+        <em>${escapeHTML(signals[0] || "高光互动")}</em>
+        <i class="poster-mark">${escapeHTML(title.slice(0, 2))}</i>
+        <i class="poster-road"></i>
+      </div>
     </div>
+  `;
+}
+
+function renderHistoryPoster(drama) {
+  const title = drama.title || "剧";
+  const poster = dramaPosterAsset(drama);
+  return `
+    <span class="history-poster ${poster ? "has-image" : ""}" data-poster-shell>
+      ${poster ? `<img src="${escapeHTML(poster.history)}" alt="" loading="lazy" onerror="${posterImageFallbackScript()}" />` : ""}
+      <b>${escapeHTML(title.slice(0, 1))}</b>
+      <i>${escapeHTML(drama.genre || "短剧")}</i>
+    </span>
   `;
 }
 
@@ -2017,10 +2060,7 @@ function renderWatchHistory() {
       .map(
         (item) => `
           <button class="history-row" type="button" data-episode-id="${item.episode_id}" style="--card-hue:${dramaHue(item.drama)}deg">
-            <span class="history-poster">
-              <b>${escapeHTML((item.drama.title || "剧").slice(0, 1))}</b>
-              <i>${escapeHTML(item.drama.genre || "短剧")}</i>
-            </span>
+            ${renderHistoryPoster(item.drama)}
             <div>
               <strong>${escapeHTML(item.drama.title)} · ${escapeHTML(item.episode_title)}</strong>
               <span>${escapeHTML(item.drama.genre)} · 进度 ${formatTime(item.progress_sec)}</span>
