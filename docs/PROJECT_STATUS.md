@@ -1,18 +1,18 @@
 # Project Status
 
-更新时间：2026-06-08 00:07:31
+更新时间：2026-06-08 00:16:13
 
 ## 当前目标
 
-原生 Android 真机实验准备：ADB 未识别，扫码安装链路可用
+原生 Android Stage 1 真机验证通过
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`f0931da`
+- 最新提交：`916512b`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
+- 工作区干净
 
 ## 数据状态
 
@@ -52,14 +52,15 @@
 
 ## 本次变更摘要
 
-- Windows 能识别荣耀 Magic3 为便携设备，但 adb devices 仍为空，说明 USB 调试接口未暴露
-- 原生 APK 默认服务端地址更新为当前 Cloudflare 公网地址
-- 重新构建并复制 banju-native-debug.apk 到公网下载目录，APK 签名验证通过
+- 荣耀 Magic3 已通过 ADB 识别，设备序列 AYYKVB1820009822
+- 已通过 adb install -r 安装 com.banju.nativeapp，并成功启动 MainActivity
+- 真机 UI 显示 /api/health 连接成功，服务端返回 request_id
+- 已保存真机截图到 C:\tmp\banju-native-stage1.png
 
 ## 下一步建议
 
-- 用户通过下载页扫码安装原生包并点击检查服务端连接
-- 如需 USB 调试安装，需要手机开启 USB 调试并授权电脑
+- 进入 Stage 2：原生登录 + 选剧首页，继续保持最小闭环
+- 后续真机调试可直接使用 ADB 安装、启动、抓 UI 树和截图
 
 ## 安全提醒
 

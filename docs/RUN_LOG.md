@@ -1203,3 +1203,17 @@
 - 下一步：
   - 用户通过下载页扫码安装原生包并点击检查服务端连接
   - 如需 USB 调试安装，需要手机开启 USB 调试并授权电脑
+
+## 2026-06-08 00:16:13
+
+- 目标：原生 Android Stage 1 真机验证通过
+- Git：`916512b` / `native-android-migration`
+- 数据：10 部短剧，20 集，65 个高光，4 集已复核，1281 条弹幕，4 条体验配置，53 条片尾 AI 二创，2 条社交动态，22 条好友申请，13 条聊天消息。
+- 变更：
+  - 荣耀 Magic3 已通过 ADB 识别，设备序列 AYYKVB1820009822
+  - 已通过 adb install -r 安装 com.banju.nativeapp，并成功启动 MainActivity
+  - 真机 UI 显示 /api/health 连接成功，服务端返回 request_id
+  - 已保存真机截图到 C:\tmp\banju-native-stage1.png
+- 下一步：
+  - 进入 Stage 2：原生登录 + 选剧首页，继续保持最小闭环
+  - 后续真机调试可直接使用 ADB 安装、启动、抓 UI 树和截图
