@@ -1,19 +1,18 @@
 # Project Status
 
-更新时间：2026-06-08 00:01:20
+更新时间：2026-06-08 00:07:31
 
 ## 当前目标
 
-原生 Android 实验分发方式优化
+原生 Android 真机实验准备：ADB 未识别，扫码安装链路可用
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`6dd7a7d`
+- 最新提交：`f0931da`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M backend/app/main.py`
-- `M frontend/download.html`
+- `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
 
 ## 数据状态
 
@@ -53,15 +52,14 @@
 
 ## 本次变更摘要
 
-- 将原生 APK 复制到 frontend/assets/downloads/banju-native-debug.apk
-- 新增 /downloads/banju-native-debug.apk 专用下载接口，返回 Android APK MIME 类型
-- 重写 download.html，提供原生测试包、WebView 回退包和扫码安装入口
-- 重启 Cloudflare 临时隧道，新公网地址为 hopes-founded-economies-respondent.trycloudflare.com
+- Windows 能识别荣耀 Magic3 为便携设备，但 adb devices 仍为空，说明 USB 调试接口未暴露
+- 原生 APK 默认服务端地址更新为当前 Cloudflare 公网地址
+- 重新构建并复制 banju-native-debug.apk 到公网下载目录，APK 签名验证通过
 
 ## 下一步建议
 
-- 手机优先扫码下载原生包测试；USB ADB 需要先解决设备未识别问题
-- 真机能打开原生 App 后，验证 /api/health 服务端联通
+- 用户通过下载页扫码安装原生包并点击检查服务端连接
+- 如需 USB 调试安装，需要手机开启 USB 调试并授权电脑
 
 ## 安全提醒
 

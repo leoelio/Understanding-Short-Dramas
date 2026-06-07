@@ -29,7 +29,7 @@ import java.util.UUID;
 public class MainActivity extends Activity {
     private static final String PREFS = "banju_native_prefs";
     private static final String KEY_BASE_URL = "base_url";
-    private static final String DEFAULT_BASE_URL = "https://achievements-combine-advanced-readily.trycloudflare.com";
+    private static final String DEFAULT_BASE_URL = "https://hopes-founded-economies-respondent.trycloudflare.com";
 
     private EditText baseUrlInput;
     private TextView statusTitle;
