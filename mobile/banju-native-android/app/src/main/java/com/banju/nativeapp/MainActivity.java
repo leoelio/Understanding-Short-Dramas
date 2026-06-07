@@ -32,12 +32,14 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 public class MainActivity extends Activity {
     private static final String PREFS = "banju_native_prefs";
     private static final String KEY_BASE_URL = "base_url";
     private static final String KEY_TOKEN = "token";
     private static final String KEY_DISPLAY_NAME = "display_name";
+    private static final String KEY_SESSION_ID = "session_id";
     private static final String DEFAULT_BASE_URL = "http://127.0.0.1:8000";
 
     private EditText baseUrlInput;
@@ -51,14 +53,10 @@ public class MainActivity extends Activity {
     private Runnable progressRunnable;
     private LinearLayout activeHighlightPanel;
     private TextView activePlayerStatus;
-    private boolean firstHighlightTriggered;
     private boolean videoPrepared;
-    private int firstHighlightStartMs = -1;
-    private String firstHighlightTitle = "";
-    private String firstHighlightDescription = "";
-    private String firstHighlightType = "";
-    private String firstHighlightEmotion = "";
-    private JSONArray firstHighlightOptions = new JSONArray();
+    private JSONArray highlightTimeline = new JSONArray();
+    private int nextHighlightIndex;
+    private int activeHighlightId = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -353,7 +351,7 @@ public class MainActivity extends Activity {
             updatePlayerStatus();
             videoView.setBackgroundColor(Color.TRANSPARENT);
             videoView.start();
-            scheduleFirstHighlight();
+            scheduleNextHighlight();
         });
         videoView.setOnErrorListener((mediaPlayer, what, extra) -> {
             status.setText("视频播放失败，请确认服务端和 adb reverse 已连接。");
@@ -370,7 +368,7 @@ public class MainActivity extends Activity {
 
         setContentView(scrollView);
         videoView.requestFocus();
-        fetchFirstHighlight(firstEpisodeId, status);
+        fetchEpisodeHighlights(firstEpisodeId, status);
     }
 
     @Override
@@ -395,7 +393,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void fetchFirstHighlight(int episodeId, TextView status) {
+    private void fetchEpisodeHighlights(int episodeId, TextView status) {
         new Thread(() -> {
             try {
                 String body = httpGet(loadBaseUrl() + "/api/episodes/" + episodeId, loadToken());
@@ -406,23 +404,11 @@ public class MainActivity extends Activity {
                     return;
                 }
 
-                JSONObject first = highlights.optJSONObject(0);
-                if (first == null) {
-                    runOnUiThread(() -> status.setText("视频已准备，高光数据为空。"));
-                    return;
-                }
-
-                int startMs = (int) Math.round(first.optDouble("start_time_sec", -1) * 1000);
-                JSONArray options = first.optJSONArray("options");
                 runOnUiThread(() -> {
-                    firstHighlightStartMs = startMs;
-                    firstHighlightTitle = first.optString("title", "剧情高光");
-                    firstHighlightDescription = first.optString("description", "");
-                    firstHighlightType = first.optString("highlight_type", "高光");
-                    firstHighlightEmotion = first.optString("emotion", "情绪");
-                    firstHighlightOptions = options == null ? new JSONArray() : options;
+                    highlightTimeline = highlights;
+                    nextHighlightIndex = 0;
                     updatePlayerStatus();
-                    scheduleFirstHighlight();
+                    scheduleNextHighlight();
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> status.setText("视频已准备，高光加载失败：" + error.getMessage()));
@@ -430,54 +416,55 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    private void scheduleFirstHighlight() {
-        if (!videoPrepared || activeVideoView == null || firstHighlightStartMs < 0 || firstHighlightTriggered) {
+    private void scheduleNextHighlight() {
+        if (!videoPrepared || activeVideoView == null || nextHighlightIndex >= highlightTimeline.length()) {
             return;
         }
         stopProgressWatcher();
-        int positionMs = Math.max(0, activeVideoView.getCurrentPosition());
-        long delayMs = Math.max(300, firstHighlightStartMs - positionMs);
         progressRunnable = () -> {
-            if (activeVideoView != null && !firstHighlightTriggered) {
-                firstHighlightTriggered = true;
-                if (activePlayerStatus != null) {
-                    activePlayerStatus.setText("高光已触发，选择你的反应。");
+            if (!videoPrepared || activeVideoView == null) {
+                return;
+            }
+            while (nextHighlightIndex < highlightTimeline.length()) {
+                JSONObject currentHighlight = highlightTimeline.optJSONObject(nextHighlightIndex);
+                if (currentHighlight == null) {
+                    nextHighlightIndex++;
+                    continue;
                 }
-                showFirstHighlight();
+                int startMs = (int) Math.round(currentHighlight.optDouble("start_time_sec", -1) * 1000);
+                if (startMs < 0) {
+                    nextHighlightIndex++;
+                    continue;
+                }
+                int positionMs = Math.max(0, activeVideoView.getCurrentPosition());
+                if (positionMs >= startMs) {
+                    nextHighlightIndex++;
+                    if (activePlayerStatus != null) {
+                        activePlayerStatus.setText("高光已触发，选择你的反应。");
+                    }
+                    showHighlight(currentHighlight);
+                    return;
+                }
+                progressHandler.postDelayed(progressRunnable, 300);
+                return;
             }
         };
-        progressHandler.postDelayed(progressRunnable, delayMs);
-        if (activeHighlightPanel != null) {
-            activeHighlightPanel.postDelayed(progressRunnable, delayMs);
-        }
-        if (activePlayerStatus != null) {
-            activePlayerStatus.postDelayed(progressRunnable, delayMs);
-        }
+        progressHandler.post(progressRunnable);
     }
 
     private void stopProgressWatcher() {
         if (progressRunnable != null) {
             progressHandler.removeCallbacks(progressRunnable);
-            if (activeHighlightPanel != null) {
-                activeHighlightPanel.removeCallbacks(progressRunnable);
-            }
-            if (activePlayerStatus != null) {
-                activePlayerStatus.removeCallbacks(progressRunnable);
-            }
             progressRunnable = null;
         }
     }
 
     private void resetHighlightState() {
         stopProgressWatcher();
-        firstHighlightTriggered = false;
         videoPrepared = false;
-        firstHighlightStartMs = -1;
-        firstHighlightTitle = "";
-        firstHighlightDescription = "";
-        firstHighlightType = "";
-        firstHighlightEmotion = "";
-        firstHighlightOptions = new JSONArray();
+        highlightTimeline = new JSONArray();
+        nextHighlightIndex = 0;
+        activeHighlightId = -1;
         activeHighlightPanel = null;
         activePlayerStatus = null;
     }
@@ -486,11 +473,20 @@ public class MainActivity extends Activity {
         if (activePlayerStatus == null) {
             return;
         }
-        if (firstHighlightStartMs >= 0) {
-            activePlayerStatus.setText("视频已准备，首个高光将在 " + Math.max(0, firstHighlightStartMs / 1000) + "s 触发。");
+        JSONObject nextHighlight = nextHighlight();
+        if (nextHighlight != null) {
+            int startSec = (int) Math.round(nextHighlight.optDouble("start_time_sec", 0));
+            activePlayerStatus.setText("视频已准备，已加载 " + highlightTimeline.length() + " 个高光，下一高光 " + startSec + "s。");
         } else {
             activePlayerStatus.setText("视频已准备，正在播放。");
         }
+    }
+
+    private JSONObject nextHighlight() {
+        if (nextHighlightIndex < 0 || nextHighlightIndex >= highlightTimeline.length()) {
+            return null;
+        }
+        return highlightTimeline.optJSONObject(nextHighlightIndex);
     }
 
     private LinearLayout buildHighlightPanel() {
@@ -502,21 +498,29 @@ public class MainActivity extends Activity {
         return panel;
     }
 
-    private void showFirstHighlight() {
+    private void showHighlight(JSONObject highlight) {
         if (activeHighlightPanel == null) {
             return;
         }
         activeHighlightPanel.removeAllViews();
 
-        TextView badge = text(firstHighlightType + " · " + firstHighlightEmotion, 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        int highlightId = highlight.optInt("id", -1);
+        activeHighlightId = highlightId;
+        String highlightType = highlight.optString("highlight_type", "高光");
+        String emotion = highlight.optString("emotion", "情绪");
+        String titleText = highlight.optString("title", "剧情高光");
+        String descriptionText = highlight.optString("description", "");
+        JSONArray options = highlight.optJSONArray("options");
+
+        TextView badge = text(highlightType + " · " + emotion, 12, Color.rgb(83, 103, 160), Typeface.BOLD);
         activeHighlightPanel.addView(badge, matchWrap());
 
-        TextView title = text(firstHighlightTitle, 20, Color.rgb(18, 20, 26), Typeface.BOLD);
+        TextView title = text(titleText, 20, Color.rgb(18, 20, 26), Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = matchWrap();
         titleParams.topMargin = dp(6);
         activeHighlightPanel.addView(title, titleParams);
 
-        TextView description = text(firstHighlightDescription, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        TextView description = text(descriptionText, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
         description.setLineSpacing(dp(2), 1.0f);
         description.setMaxLines(3);
         LinearLayout.LayoutParams descParams = matchWrap();
@@ -529,23 +533,14 @@ public class MainActivity extends Activity {
         rowParams.topMargin = dp(12);
         activeHighlightPanel.addView(optionsRow, rowParams);
 
-        int count = Math.max(1, firstHighlightOptions.length());
+        int count = Math.max(1, options == null ? 0 : options.length());
         for (int i = 0; i < count; i++) {
-            JSONObject option = firstHighlightOptions.optJSONObject(i);
+            JSONObject option = options == null ? null : options.optJSONObject(i);
             String label = option == null ? "我有话说" : option.optString("label", "我有话说");
+            String optionKey = option == null ? "default" : option.optString("key", "default");
             Button optionButton = primaryButton(label);
             optionButton.setTextSize(13);
-            optionButton.setOnClickListener(v -> {
-                activeHighlightPanel.removeAllViews();
-                TextView feedback = text("已选择：" + label, 18, Color.rgb(10, 132, 80), Typeface.BOLD);
-                feedback.setGravity(Gravity.CENTER);
-                activeHighlightPanel.addView(feedback, matchWrap());
-                progressHandler.postDelayed(() -> {
-                    if (activeHighlightPanel != null) {
-                        activeHighlightPanel.setVisibility(View.GONE);
-                    }
-                }, 1500);
-            });
+            optionButton.setOnClickListener(v -> submitInteraction(highlightId, optionKey, label));
             LinearLayout.LayoutParams optionParams = weightHeight(1, dp(42));
             if (i > 0) {
                 optionParams.leftMargin = dp(8);
@@ -554,7 +549,7 @@ public class MainActivity extends Activity {
         }
 
         Button dismissButton = secondaryButton("暂不互动");
-        dismissButton.setOnClickListener(v -> activeHighlightPanel.setVisibility(View.GONE));
+        dismissButton.setOnClickListener(v -> hideHighlightAndScheduleNext());
         LinearLayout.LayoutParams dismissParams = matchHeight(dp(40));
         dismissParams.topMargin = dp(10);
         activeHighlightPanel.addView(dismissButton, dismissParams);
@@ -565,6 +560,56 @@ public class MainActivity extends Activity {
         if (activeHighlightPanel.getParent() instanceof View) {
             ((View) activeHighlightPanel.getParent()).requestLayout();
         }
+        progressHandler.postDelayed(() -> {
+            if (activeHighlightPanel != null
+                    && activeHighlightPanel.getVisibility() == View.VISIBLE
+                    && activeHighlightId == highlightId) {
+                hideHighlightAndScheduleNext();
+            }
+        }, 10000);
+    }
+
+    private void submitInteraction(int highlightId, String optionKey, String label) {
+        if (activeHighlightPanel == null) {
+            return;
+        }
+        activeHighlightPanel.removeAllViews();
+        TextView feedback = text("已选择：" + label + "，正在上报...", 16, Color.rgb(10, 132, 80), Typeface.BOLD);
+        feedback.setGravity(Gravity.CENTER);
+        activeHighlightPanel.addView(feedback, matchWrap());
+
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("highlight_id", highlightId);
+                payload.put("option_key", optionKey);
+                payload.put("session_id", loadSessionId());
+                httpPost(loadBaseUrl() + "/api/interactions", payload.toString(), loadToken());
+                runOnUiThread(() -> showInteractionFeedback("已选择：" + label + "，已上报。"));
+            } catch (Exception error) {
+                runOnUiThread(() -> showInteractionFeedback("已选择：" + label + "，上报失败。"));
+            }
+        }).start();
+    }
+
+    private void showInteractionFeedback(String message) {
+        if (activeHighlightPanel == null) {
+            return;
+        }
+        activeHighlightPanel.removeAllViews();
+        TextView feedback = text(message, 16, Color.rgb(10, 132, 80), Typeface.BOLD);
+        feedback.setGravity(Gravity.CENTER);
+        activeHighlightPanel.addView(feedback, matchWrap());
+        progressHandler.postDelayed(this::hideHighlightAndScheduleNext, 1500);
+    }
+
+    private void hideHighlightAndScheduleNext() {
+        if (activeHighlightPanel != null) {
+            activeHighlightPanel.setVisibility(View.GONE);
+        }
+        activeHighlightId = -1;
+        updatePlayerStatus();
+        scheduleNextHighlight();
     }
 
     private String httpGet(String urlString, String token) throws Exception {
@@ -643,6 +688,17 @@ public class MainActivity extends Activity {
 
     private String loadDisplayName() {
         return getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_DISPLAY_NAME, "普通用户");
+    }
+
+    private String loadSessionId() {
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        String sessionId = prefs.getString(KEY_SESSION_ID, "");
+        if (!sessionId.isEmpty()) {
+            return sessionId;
+        }
+        String newSessionId = UUID.randomUUID().toString();
+        prefs.edit().putString(KEY_SESSION_ID, newSessionId).apply();
+        return newSessionId;
     }
 
     private void saveSession(String token, String displayName) {

@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-08 01:22:02
+更新时间：2026-06-08 01:54:43
 
 ## 当前目标
 
-原生 Android Stage 4：北往第一集接入首个高光按时触发弹层。
+原生 Android 播放页已从第一条高光扩展为整集高光时间轴，并接入互动上报闭环。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`f7ac2c3`
+- 最新提交：`95de51e`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -22,7 +22,7 @@
 - 高光点：65
 - 已复核剧集：4
 - 待复核剧集：16
-- 互动记录：67
+- 互动记录：71
 - 弹幕记录：1281
 - 体验配置：4
 - 片尾 AI 二创：53
@@ -52,14 +52,16 @@
 
 ## 本次变更摘要
 
-- 原生播放页请求 /api/episodes/{episode_id}，读取第一条 highlights 数据作为首个互动高光。
-- 视频准备完成后按 start_time_sec 定时触发高光卡片，展示高光类型、情绪、标题、描述和三个互动选项。
-- 真机验证第一个高光在北往第一集触发，UI 出现冲突对抗/愤怒、工友开头上门要债、欠薪得还/站工友/别拖了/暂不互动。
+- 原生端加载 /api/episodes/{episode_id} 的 highlights 数组，按 start_time_sec 依次触发整集多个高光。
+- 高光触发改为跟随 VideoView 当前播放进度轮询，避免暂停、缓冲或真机卡顿造成时间错位。
+- 每条高光支持选项点击、暂不互动、10 秒自动收起，并在收起后继续排下一条高光。
+- 点击互动选项会 POST /api/interactions，上报 highlight_id、option_key、session_id。
+- 真机验证：北往第一集首个高光 16s 正常弹出，点击欠薪得还后 highlight_id=70 的互动数从 14 增至 15；继续等待后状态显示下一高光 198s，证明 112s 高光已被时间轴推进。
 
 ## 下一步建议
 
-- 下一步将高光触发从第一条扩展为整集时间轴，并加入防打扰、触发后消失、互动上报。
-- 随后接入原生弹幕轨道和片尾 AI 二创入口。
+- 下一步建议接入原生弹幕轨道：先拉取 /api/episodes/{episode_id}/danmaku，按轻聊/狂欢/沉浸三档显示。
+- 再下一步接片尾 AI 二创入口：先复用 Web 已缓存的图片分镜与语音资产，保证 Android 演示闭环。
 
 ## 安全提醒
 
