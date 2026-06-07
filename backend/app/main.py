@@ -3569,5 +3569,17 @@ def download_banju_android_apk() -> FileResponse:
     )
 
 
+@app.api_route("/downloads/banju-native-debug.apk", methods=["GET", "HEAD"], include_in_schema=False)
+def download_banju_native_android_apk() -> FileResponse:
+    path = FRONTEND_DIR / "assets" / "downloads" / "banju-native-debug.apk"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="APK not found")
+    return FileResponse(
+        path,
+        media_type="application/vnd.android.package-archive",
+        filename="banju-native-debug.apk",
+    )
+
+
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

@@ -1,21 +1,19 @@
 # Project Status
 
-更新时间：2026-06-07 23:32:34
+更新时间：2026-06-08 00:01:20
 
 ## 当前目标
 
-原生 Android 迁移阶段 1：Native 健康检查 App 已构建
+原生 Android 实验分发方式优化
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`9133e1f`
+- 最新提交：`6dd7a7d`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M .gitignore`
-- `?? mobile/banju-native-android/`
-- `?? scripts/build_banju_native_android_debug.ps1`
-- `?? scripts/install_banju_native_android_debug.ps1`
+- `M backend/app/main.py`
+- `M frontend/download.html`
 
 ## 数据状态
 
@@ -55,15 +53,15 @@
 
 ## 本次变更摘要
 
-- 新增 mobile/banju-native-android 原生 Android 工程，独立于现有 Capacitor WebView 壳
-- 实现原生 MainActivity：服务端地址输入、/api/health 检查、连接状态展示
-- 新增原生 Android debug 构建和安装脚本
-- 构建通过，APK 包名 com.banju.nativeapp，应用名 半句，v2 签名验证通过
+- 将原生 APK 复制到 frontend/assets/downloads/banju-native-debug.apk
+- 新增 /downloads/banju-native-debug.apk 专用下载接口，返回 Android APK MIME 类型
+- 重写 download.html，提供原生测试包、WebView 回退包和扫码安装入口
+- 重启 Cloudflare 临时隧道，新公网地址为 hopes-founded-economies-respondent.trycloudflare.com
 
 ## 下一步建议
 
-- 连接安卓手机后安装原生 APK，验证 Cloudflare HTTPS、局域网 IP 或 adb reverse 三种服务端连接方式
-- 阶段 2 接入登录和选剧首页，仍优先保持最小闭环
+- 手机优先扫码下载原生包测试；USB ADB 需要先解决设备未识别问题
+- 真机能打开原生 App 后，验证 /api/health 服务端联通
 
 ## 安全提醒
 

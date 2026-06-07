@@ -29,13 +29,13 @@
         background:
           radial-gradient(circle at 24% 12%, rgba(10, 102, 255, 0.18), transparent 34%),
           radial-gradient(circle at 82% 24%, rgba(255, 138, 40, 0.18), transparent 30%),
-          linear-gradient(145deg, #f7f9fd 0%, #eef2f8 48%, #fff7ef 100%);
+          linear-gradient(145deg, #f7f9fd 0%, #eef2f8 52%, #fff7ef 100%);
       }
 
       main {
-        width: min(920px, calc(100% - 32px));
+        width: min(980px, calc(100% - 28px));
         margin: 0 auto;
-        padding: 42px 0;
+        padding: 32px 0;
       }
 
       .shell {
@@ -49,9 +49,9 @@
 
       .hero {
         display: grid;
-        grid-template-columns: 1fr 260px;
+        grid-template-columns: 1fr 240px;
         gap: 28px;
-        padding: 42px;
+        padding: 36px;
         align-items: center;
       }
 
@@ -64,13 +64,13 @@
 
       h1 {
         margin: 0;
-        font-size: clamp(40px, 8vw, 72px);
+        font-size: clamp(42px, 8vw, 72px);
         letter-spacing: 0;
         line-height: 0.96;
       }
 
       .subtitle {
-        max-width: 560px;
+        max-width: 600px;
         margin: 18px 0 0;
         color: #3b4353;
         font-size: 18px;
@@ -80,79 +80,137 @@
       .brand-card {
         display: grid;
         place-items: center;
-        min-height: 260px;
+        min-height: 230px;
         border-radius: 28px;
         background:
-          linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(236, 243, 255, 0.72)),
+          linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(236, 243, 255, 0.72)),
           radial-gradient(circle at 70% 30%, rgba(255, 138, 40, 0.22), transparent 38%);
         border: 1px solid rgba(255, 255, 255, 0.9);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
       }
 
       .brand-card img {
-        width: 156px;
-        height: 156px;
-        border-radius: 34px;
+        width: 148px;
+        height: 148px;
+        border-radius: 32px;
         box-shadow: 0 24px 60px rgba(10, 102, 255, 0.18);
       }
 
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
+      .download-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 18px;
+        padding: 0 36px 36px;
+      }
+
+      .panel {
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.62);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+        padding: 22px;
+      }
+
+      .package-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .package-card {
+        display: grid;
         gap: 12px;
-        margin-top: 28px;
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .package-card.recommended {
+        border-color: rgba(10, 102, 255, 0.28);
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(236, 243, 255, 0.86)),
+          radial-gradient(circle at 90% 10%, rgba(10, 102, 255, 0.16), transparent 38%);
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h2 {
+        font-size: 22px;
+      }
+
+      h3 {
+        font-size: 18px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        padding: 0 10px;
+        border-radius: 999px;
+        color: #064dbf;
+        background: rgba(10, 102, 255, 0.12);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .desc {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
       }
 
       .button {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 48px;
-        padding: 0 22px;
+        min-height: 46px;
+        padding: 0 18px;
         border-radius: 999px;
         color: #fff;
         text-decoration: none;
         font-weight: 800;
         background: linear-gradient(135deg, var(--blue), #0047c6);
-        box-shadow: 0 14px 34px rgba(10, 102, 255, 0.26);
-        transition:
-          transform 180ms ease,
-          box-shadow 180ms ease;
-      }
-
-      .button:active {
-        transform: scale(0.98);
-        box-shadow: 0 8px 20px rgba(10, 102, 255, 0.24);
+        box-shadow: 0 14px 34px rgba(10, 102, 255, 0.22);
       }
 
       .button.secondary {
         color: var(--ink);
-        background: rgba(255, 255, 255, 0.72);
+        background: rgba(255, 255, 255, 0.78);
         border: 1px solid var(--line);
         box-shadow: none;
       }
 
-      .meta {
+      .qr-box {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 1px;
-        background: var(--line);
+        place-items: center;
+        min-height: 244px;
+        margin-top: 18px;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid var(--line);
       }
 
-      .meta section {
-        padding: 24px;
-        background: rgba(255, 255, 255, 0.58);
+      .qr-box img {
+        width: min(210px, 70vw);
+        height: min(210px, 70vw);
       }
 
-      .meta h2 {
-        margin: 0 0 8px;
-        font-size: 16px;
-      }
-
-      .meta p {
-        margin: 0;
+      .note {
+        margin-top: 14px;
         color: var(--muted);
-        font-size: 14px;
+        font-size: 13px;
         line-height: 1.7;
       }
 
@@ -164,31 +222,37 @@
 
       @media (max-width: 760px) {
         main {
-          width: min(100% - 20px, 520px);
-          padding: 18px 0;
+          width: min(100% - 18px, 520px);
+          padding: 14px 0;
         }
 
         .shell {
           border-radius: 26px;
         }
 
-        .hero {
+        .hero,
+        .download-grid {
           grid-template-columns: 1fr;
-          padding: 28px;
+          padding: 24px;
+        }
+
+        .download-grid {
+          padding-top: 0;
         }
 
         .brand-card {
-          min-height: 190px;
+          min-height: 170px;
           order: -1;
         }
 
         .brand-card img {
-          width: 128px;
-          height: 128px;
+          width: 122px;
+          height: 122px;
         }
 
-        .meta {
-          grid-template-columns: 1fr;
+        .row {
+          align-items: flex-start;
+          flex-direction: column;
         }
       }
     </style>
@@ -201,32 +265,71 @@
             <p class="eyebrow">Android 测试包</p>
             <h1>半句</h1>
             <p class="subtitle">
-              短剧陪伴体验包。当前版本用于比赛演示和真机测试，打开后会连接当前公网演示服务。
+              当前提供两种安装包。原生包用于测试迁移进度；WebView 包用于回退到现有完整 Web 体验。
             </p>
-            <div class="actions">
-              <a class="button" href="/downloads/banju-debug.apk" download>下载 Android 安装包</a>
-              <a class="button secondary" href="/">先打开 Web 版</a>
-            </div>
           </section>
           <div class="brand-card" aria-label="半句应用图标">
             <img src="/assets/brand/banju-icon.png" alt="半句" />
           </div>
         </div>
-        <div class="meta">
-          <section>
-            <h2>安装方式</h2>
-            <p>安卓手机打开本页，下载 APK 后允许浏览器安装未知来源应用。</p>
+
+        <div class="download-grid">
+          <section class="panel">
+            <div class="row">
+              <h2>选择安装包</h2>
+              <span class="tag">测试推荐：原生包</span>
+            </div>
+            <div class="package-list" style="margin-top: 18px">
+              <article class="package-card recommended">
+                <div class="row">
+                  <h3>半句原生 Android</h3>
+                  <span class="tag">Stage 1</span>
+                </div>
+                <p class="desc">
+                  真正的 Android 原生页面。当前用于验证手机连接电脑服务端，后续继续迁移登录、选剧和播放器。
+                </p>
+                <a class="button" id="nativeApkLink" href="/downloads/banju-native-debug.apk" download>
+                  下载原生测试包
+                </a>
+              </article>
+
+              <article class="package-card">
+                <div class="row">
+                  <h3>半句 WebView 回退包</h3>
+                  <span class="tag">完整体验</span>
+                </div>
+                <p class="desc">
+                  当前 Web/Capacitor 版本。功能更完整，适合继续演示现有短剧互动体验。
+                </p>
+                <a class="button secondary" href="/downloads/banju-debug.apk" download>
+                  下载 WebView 包
+                </a>
+              </article>
+            </div>
           </section>
-          <section>
-            <h2>版本说明</h2>
-            <p>这是 debug 测试包，包名 <code>com.banju.shortdrama</code>，用于功能体验。</p>
-          </section>
-          <section>
-            <h2>公网限制</h2>
-            <p>当前链接依赖临时隧道。隧道关闭后，需要重新生成下载链接并重打包。</p>
+
+          <section class="panel">
+            <h2>扫码安装原生包</h2>
+            <div class="qr-box">
+              <img id="nativeQr" alt="原生 Android 安装包二维码" />
+            </div>
+            <p class="note">
+              安卓手机扫码后下载 APK。若微信拦截，请选择“在浏览器打开”。安装时允许浏览器安装未知来源应用。
+            </p>
+            <p class="note">
+              原生包包名：<code>com.banju.nativeapp</code>
+            </p>
           </section>
         </div>
       </div>
     </main>
+
+    <script>
+      const nativeUrl = new URL("/downloads/banju-native-debug.apk", location.origin).toString();
+      document.getElementById("nativeApkLink").href = nativeUrl;
+      document.getElementById("nativeQr").src =
+        "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" +
+        encodeURIComponent(nativeUrl);
+    </script>
   </body>
 </html>

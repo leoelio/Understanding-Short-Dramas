@@ -1176,3 +1176,17 @@
 - 下一步：
   - 连接安卓手机后安装原生 APK，验证 Cloudflare HTTPS、局域网 IP 或 adb reverse 三种服务端连接方式
   - 阶段 2 接入登录和选剧首页，仍优先保持最小闭环
+
+## 2026-06-08 00:01:20
+
+- 目标：原生 Android 实验分发方式优化
+- Git：`6dd7a7d` / `native-android-migration`
+- 数据：10 部短剧，20 集，65 个高光，4 集已复核，1281 条弹幕，4 条体验配置，53 条片尾 AI 二创，2 条社交动态，22 条好友申请，13 条聊天消息。
+- 变更：
+  - 将原生 APK 复制到 frontend/assets/downloads/banju-native-debug.apk
+  - 新增 /downloads/banju-native-debug.apk 专用下载接口，返回 Android APK MIME 类型
+  - 重写 download.html，提供原生测试包、WebView 回退包和扫码安装入口
+  - 重启 Cloudflare 临时隧道，新公网地址为 hopes-founded-economies-respondent.trycloudflare.com
+- 下一步：
+  - 手机优先扫码下载原生包测试；USB ADB 需要先解决设备未识别问题
+  - 真机能打开原生 App 后，验证 /api/health 服务端联通
