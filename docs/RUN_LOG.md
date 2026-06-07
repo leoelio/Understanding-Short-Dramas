@@ -1303,3 +1303,18 @@
 - 下一步：
   - 手机恢复后优先真机复核播放页：视频是否铺满、底部控制是否遮挡、二创浮层是否过高、弹幕是否影响观看。
   - 如果原生 View 的视觉仍不达标，再单独评估接入 Material Components 或 QMUI，不和业务迁移混在同一轮。
+
+## 2026-06-08 03:34:06
+
+- 目标：Android 原生迁移继续推进：片尾 AI 二创从文字结果升级为原生三镜头图片浏览，并预留原声/用户声音播放入口。
+- Git：`9af0fd7` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
+  - 原生 ai-remix 结果优先读取 image_plan.shots，使用缓存图片 storage_hint/image_url 加载到 ImageView。
+  - 二创结果浮层支持三镜头点击翻页、上一张/下一张切换，并保留重新选择剧情入口。
+  - 新增原声讲述和我的声音按钮，调用 /api/episodes/{episode_id}/remix-voice-clips 并用 MediaPlayer 播放返回音频。
+  - 本轮手机仍在充电，未做真机验证；Android debug APK 编译成功。
+- 下一步：
+  - 手机可用后优先验证二创图片是否按比例显示、点击翻页是否顺滑、声音按钮是否能播放原声和处理用户声音未配置错误。
+  - 继续 Android 迁移时仍以 Web 主线接口为准，不在 Android 分支改后端协议。

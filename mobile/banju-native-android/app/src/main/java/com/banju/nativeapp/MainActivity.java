@@ -2,9 +2,12 @@ package com.banju.nativeapp;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -64,6 +67,7 @@ public class MainActivity extends Activity {
     private Button carnivalDanmakuButton;
     private Button immersiveDanmakuButton;
     private Button activeRemixEntryButton;
+    private MediaPlayer remixAudioPlayer;
     private boolean videoPrepared;
     private JSONArray highlightTimeline = new JSONArray();
     private JSONArray danmakuTimeline = new JSONArray();
@@ -499,9 +503,17 @@ public class MainActivity extends Activity {
         stopProgressWatcher();
         stopDanmakuWatcher();
         stopRemixWatcher();
+        stopRemixAudio();
         if (activeVideoView != null) {
             activeVideoView.stopPlayback();
             activeVideoView = null;
+        }
+    }
+
+    private void stopRemixAudio() {
+        if (remixAudioPlayer != null) {
+            remixAudioPlayer.release();
+            remixAudioPlayer = null;
         }
     }
 
@@ -968,6 +980,13 @@ public class MainActivity extends Activity {
         if (activeRemixPanel == null) {
             return;
         }
+        JSONObject imagePlan = result.optJSONObject("image_plan");
+        JSONArray shots = imagePlan == null ? null : imagePlan.optJSONArray("shots");
+        if (shots != null && shots.length() > 0) {
+            renderRemixShot(result, imagePlan, shots, 0);
+            return;
+        }
+
         activeRemixPanel.removeAllViews();
         TextView badge = text(result.optString("source", "AI 二创"), 12, Color.rgb(83, 103, 160), Typeface.BOLD);
         activeRemixPanel.addView(badge, matchWrap());
@@ -1007,6 +1026,184 @@ public class MainActivity extends Activity {
         againParams.topMargin = dp(12);
         activeRemixPanel.addView(againButton, againParams);
         animatePanel(activeRemixPanel);
+    }
+
+    private void renderRemixShot(JSONObject result, JSONObject imagePlan, JSONArray shots, int shotIndex) {
+        if (activeRemixPanel == null) {
+            return;
+        }
+        int safeIndex = Math.max(0, Math.min(shotIndex, shots.length() - 1));
+        JSONObject shot = shots.optJSONObject(safeIndex);
+        if (shot == null) {
+            renderRemixError("二创图片数据异常");
+            return;
+        }
+
+        activeRemixPanel.removeAllViews();
+        JSONObject choice = result.optJSONObject("choice");
+        String titleText = choice == null ? "AI 二创分镜" : choice.optString("label", "AI 二创分镜");
+        TextView badge = text("镜头 " + (safeIndex + 1) + " / " + shots.length(), 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        activeRemixPanel.addView(badge, matchWrap());
+
+        TextView title = text(titleText, 18, Color.rgb(18, 20, 26), Typeface.BOLD);
+        title.setSingleLine(true);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(6);
+        activeRemixPanel.addView(title, titleParams);
+
+        ImageView image = new ImageView(this);
+        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        image.setBackground(imagePlaceholderBackground());
+        image.setOnClickListener(v -> renderRemixShot(result, imagePlan, shots, (safeIndex + 1) % shots.length()));
+        LinearLayout.LayoutParams imageParams = matchHeight(dp(238));
+        imageParams.topMargin = dp(10);
+        activeRemixPanel.addView(image, imageParams);
+        loadImageInto(image, shotImageUrl(shot));
+
+        String subtitle = shot.optString("subtitle", shot.optString("caption", ""));
+        TextView subtitleView = text(subtitle.isEmpty() ? "点击图片切换下一镜头" : subtitle, 14, Color.rgb(28, 45, 76), Typeface.BOLD);
+        subtitleView.setGravity(Gravity.CENTER);
+        subtitleView.setSingleLine(true);
+        LinearLayout.LayoutParams subtitleParams = matchWrap();
+        subtitleParams.topMargin = dp(8);
+        activeRemixPanel.addView(subtitleView, subtitleParams);
+
+        LinearLayout navRow = new LinearLayout(this);
+        navRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams navParams = matchWrap();
+        navParams.topMargin = dp(10);
+        activeRemixPanel.addView(navRow, navParams);
+
+        Button previousButton = secondaryButton("上一张");
+        previousButton.setOnClickListener(v -> renderRemixShot(result, imagePlan, shots, safeIndex == 0 ? shots.length() - 1 : safeIndex - 1));
+        navRow.addView(previousButton, weightHeight(1, dp(40)));
+
+        Button nextButton = primaryButton(safeIndex >= shots.length() - 1 ? "回到第一张" : "下一张");
+        nextButton.setOnClickListener(v -> renderRemixShot(result, imagePlan, shots, (safeIndex + 1) % shots.length()));
+        LinearLayout.LayoutParams nextParams = weightHeight(1, dp(40));
+        nextParams.leftMargin = dp(8);
+        navRow.addView(nextButton, nextParams);
+
+        LinearLayout voiceRow = new LinearLayout(this);
+        voiceRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams voiceParams = matchWrap();
+        voiceParams.topMargin = dp(8);
+        activeRemixPanel.addView(voiceRow, voiceParams);
+
+        Button originalVoiceButton = secondaryButton("原声讲述");
+        originalVoiceButton.setOnClickListener(v -> requestRemixVoice(imagePlan, shot, "original"));
+        voiceRow.addView(originalVoiceButton, weightHeight(1, dp(40)));
+
+        Button userVoiceButton = secondaryButton("我的声音");
+        userVoiceButton.setOnClickListener(v -> requestRemixVoice(imagePlan, shot, "user"));
+        LinearLayout.LayoutParams userVoiceParams = weightHeight(1, dp(40));
+        userVoiceParams.leftMargin = dp(8);
+        voiceRow.addView(userVoiceButton, userVoiceParams);
+
+        Button againButton = secondaryButton("重新选择剧情");
+        againButton.setOnClickListener(v -> showRemixEntry(false));
+        LinearLayout.LayoutParams againParams = matchHeight(dp(38));
+        againParams.topMargin = dp(8);
+        activeRemixPanel.addView(againButton, againParams);
+        animatePanel(activeRemixPanel);
+    }
+
+    private String shotImageUrl(JSONObject shot) {
+        String raw = shot.optString("image_url", "");
+        if (raw.isEmpty()) {
+            raw = shot.optString("storage_hint", "");
+        }
+        return absoluteUrl(raw);
+    }
+
+    private String absoluteUrl(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return "";
+        }
+        if (raw.startsWith("http://") || raw.startsWith("https://")) {
+            return raw;
+        }
+        if (raw.startsWith("/")) {
+            return loadBaseUrl() + raw;
+        }
+        return loadBaseUrl() + "/" + raw;
+    }
+
+    private void loadImageInto(ImageView imageView, String imageUrl) {
+        if (imageUrl.isEmpty()) {
+            imageView.setImageDrawable(null);
+            return;
+        }
+        new Thread(() -> {
+            try {
+                HttpURLConnection connection = (HttpURLConnection) new URL(imageUrl).openConnection();
+                connection.setConnectTimeout(6000);
+                connection.setReadTimeout(8000);
+                InputStream stream = connection.getInputStream();
+                Bitmap bitmap = BitmapFactory.decodeStream(stream);
+                stream.close();
+                connection.disconnect();
+                runOnUiThread(() -> imageView.setImageBitmap(bitmap));
+            } catch (Exception error) {
+                runOnUiThread(() -> imageView.setImageDrawable(null));
+            }
+        }).start();
+    }
+
+    private void requestRemixVoice(JSONObject imagePlan, JSONObject shot, String voiceMode) {
+        if (activeRemixPanel == null || imagePlan == null || shot == null) {
+            return;
+        }
+        int shotIndex = shot.optInt("index", 1);
+        String choiceKey = imagePlan.optString("choice_key", "");
+        String variantKey = imagePlan.optString("variant_key", "");
+        if (choiceKey.isEmpty() || variantKey.isEmpty()) {
+            renderRemixError("当前分镜缺少声音参数");
+            return;
+        }
+        TextView status = text("正在准备" + ("user".equals(voiceMode) ? "我的声音" : "原声") + "...", 13, Color.rgb(83, 103, 160), Typeface.BOLD);
+        activeRemixPanel.addView(status, matchWrap());
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("choice_key", choiceKey);
+                payload.put("variant_key", variantKey);
+                payload.put("shot_index", shotIndex);
+                payload.put("voice_mode", voiceMode);
+                payload.put("session_id", loadSessionId());
+                String body = httpPost(loadBaseUrl() + "/api/episodes/" + activeEpisodeId + "/remix-voice-clips", payload.toString(), loadToken());
+                JSONObject result = new JSONObject(body);
+                String audioUrl = absoluteUrl(result.optString("audio_url", ""));
+                runOnUiThread(() -> playRemixAudio(audioUrl, status));
+            } catch (Exception error) {
+                runOnUiThread(() -> status.setText("声音暂不可用：" + error.getMessage()));
+            }
+        }).start();
+    }
+
+    private void playRemixAudio(String audioUrl, TextView status) {
+        if (audioUrl.isEmpty()) {
+            status.setText("声音暂不可用：缺少音频地址");
+            return;
+        }
+        try {
+            stopRemixAudio();
+            remixAudioPlayer = new MediaPlayer();
+            remixAudioPlayer.setDataSource(audioUrl);
+            remixAudioPlayer.setOnPreparedListener(player -> {
+                status.setText("正在播放声音");
+                player.start();
+            });
+            remixAudioPlayer.setOnCompletionListener(player -> status.setText("声音播放完成"));
+            remixAudioPlayer.setOnErrorListener((player, what, extra) -> {
+                status.setText("声音播放失败");
+                return true;
+            });
+            status.setText("正在加载声音...");
+            remixAudioPlayer.prepareAsync();
+        } catch (Exception error) {
+            status.setText("声音播放失败：" + error.getMessage());
+        }
     }
 
     private void renderRemixError(String message) {
@@ -1514,6 +1711,19 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(18));
         drawable.setStroke(dp(1), Color.argb(88, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable imagePlaceholderBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.rgb(232, 238, 249),
+                        Color.rgb(250, 243, 235)
+                }
+        );
+        drawable.setCornerRadius(dp(18));
+        drawable.setStroke(dp(1), Color.argb(54, 20, 26, 38));
         return drawable;
     }
 
