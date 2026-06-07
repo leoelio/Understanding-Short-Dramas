@@ -1,18 +1,18 @@
 # Project Status
 
-更新时间：2026-06-08 00:16:13
+更新时间：2026-06-08 00:31:53
 
 ## 当前目标
 
-原生 Android Stage 1 真机验证通过
+原生 Android Stage 2：完成登录、token 保存、真实短剧首页和北往占位播放页最小闭环。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`916512b`
+- 最新提交：`72d490b`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- 工作区干净
+- `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
 
 ## 数据状态
 
@@ -52,15 +52,14 @@
 
 ## 本次变更摘要
 
-- 荣耀 Magic3 已通过 ADB 识别，设备序列 AYYKVB1820009822
-- 已通过 adb install -r 安装 com.banju.nativeapp，并成功启动 MainActivity
-- 真机 UI 显示 /api/health 连接成功，服务端返回 request_id
-- 已保存真机截图到 C:\tmp\banju-native-stage1.png
+- 原生 App 默认使用 http://127.0.0.1:8000，配合 adb reverse 连接电脑 FastAPI 服务端。
+- 新增 user_demo 登录、SharedPreferences token 持久化、/api/dramas 拉取和真实短剧卡片渲染。
+- 点击北往进入原生播放占位页，保留 first_episode_id 供下一阶段接入播放器。
 
 ## 下一步建议
 
-- 进入 Stage 2：原生登录 + 选剧首页，继续保持最小闭环
-- 后续真机调试可直接使用 ADB 安装、启动、抓 UI 树和截图
+- 下一阶段接入原生视频播放页：先播放 /media/episodes/3，再逐步接高光、弹幕和片尾 AI 二创。
+- 公网演示时将登录页服务端地址替换为新的 HTTPS 隧道地址。
 
 ## 安全提醒
 
