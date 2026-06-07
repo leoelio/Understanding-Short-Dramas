@@ -1162,3 +1162,17 @@
 - 下一步：
   - 阶段 1 创建 mobile/banju-native-android 原生工程，并优先验证 /api/health 联通
   - 真机联调前确认使用 USB adb reverse、局域网 IP 或 Cloudflare HTTPS 隧道中的一种
+
+## 2026-06-07 23:32:34
+
+- 目标：原生 Android 迁移阶段 1：Native 健康检查 App 已构建
+- Git：`9133e1f` / `native-android-migration`
+- 数据：10 部短剧，20 集，65 个高光，4 集已复核，1281 条弹幕，4 条体验配置，53 条片尾 AI 二创，2 条社交动态，22 条好友申请，13 条聊天消息。
+- 变更：
+  - 新增 mobile/banju-native-android 原生 Android 工程，独立于现有 Capacitor WebView 壳
+  - 实现原生 MainActivity：服务端地址输入、/api/health 检查、连接状态展示
+  - 新增原生 Android debug 构建和安装脚本
+  - 构建通过，APK 包名 com.banju.nativeapp，应用名 半句，v2 签名验证通过
+- 下一步：
+  - 连接安卓手机后安装原生 APK，验证 Cloudflare HTTPS、局域网 IP 或 adb reverse 三种服务端连接方式
+  - 阶段 2 接入登录和选剧首页，仍优先保持最小闭环

@@ -1,18 +1,21 @@
 # Project Status
 
-更新时间：2026-06-07 22:33:29
+更新时间：2026-06-07 23:32:34
 
 ## 当前目标
 
-原生 Android 迁移阶段 0：分支和迁移计划已建立
+原生 Android 迁移阶段 1：Native 健康检查 App 已构建
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`e443275`
+- 最新提交：`9133e1f`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `?? docs/NATIVE_ANDROID_MIGRATION_PLAN.md`
+- `M .gitignore`
+- `?? mobile/banju-native-android/`
+- `?? scripts/build_banju_native_android_debug.ps1`
+- `?? scripts/install_banju_native_android_debug.ps1`
 
 ## 数据状态
 
@@ -52,14 +55,15 @@
 
 ## 本次变更摘要
 
-- 从 v0.9.0-webview-baseline 创建 native-android-migration 分支
-- 新增 docs/NATIVE_ANDROID_MIGRATION_PLAN.md，明确原生迁移目标、接口清单、阶段计划和暂不迁移内容
-- 确认第一版采用 Android 原生客户端 + 电脑 FastAPI 服务端，旧 Capacitor 壳保留为回退方案
+- 新增 mobile/banju-native-android 原生 Android 工程，独立于现有 Capacitor WebView 壳
+- 实现原生 MainActivity：服务端地址输入、/api/health 检查、连接状态展示
+- 新增原生 Android debug 构建和安装脚本
+- 构建通过，APK 包名 com.banju.nativeapp，应用名 半句，v2 签名验证通过
 
 ## 下一步建议
 
-- 阶段 1 创建 mobile/banju-native-android 原生工程，并优先验证 /api/health 联通
-- 真机联调前确认使用 USB adb reverse、局域网 IP 或 Cloudflare HTTPS 隧道中的一种
+- 连接安卓手机后安装原生 APK，验证 Cloudflare HTTPS、局域网 IP 或 adb reverse 三种服务端连接方式
+- 阶段 2 接入登录和选剧首页，仍优先保持最小闭环
 
 ## 安全提醒
 

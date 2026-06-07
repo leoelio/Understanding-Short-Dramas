@@ -49,8 +49,8 @@
 
 ## 技术选型
 
-- 语言：Kotlin。
-- UI：Jetpack Compose。
+- 语言：第一阶段使用 Java + Android SDK，先验证原生构建和服务端联通；后续播放器和主界面进入时再引入 Kotlin。
+- UI：第一阶段使用原生 View，避免为了健康检查引入 Compose 依赖；后续复杂页面可迁移到 Jetpack Compose。
 - 播放器：Media3 ExoPlayer。
 - 网络：Retrofit + OkHttp。
 - 图片：Coil。
@@ -324,6 +324,7 @@ Android 处理：
 - App 能安装启动。
 - 能配置服务端地址。
 - 能调用 `GET /api/health`。
+- 不引入播放器、登录、Compose 或复杂依赖。
 
 验证：
 
@@ -406,9 +407,9 @@ Android 处理：
 如果确认继续，下一步开始阶段 1：
 
 1. 创建 `mobile/banju-native-android` 原生工程。
-2. 接入 Kotlin、Compose、Media3、Retrofit、Coil。
-3. 写最小启动页和服务端连接检查。
-4. 在真机上验证能访问电脑服务端。
+2. 写最小启动页和服务端连接检查。
+3. 在真机上验证能访问电脑服务端。
+4. 服务端联通后，再进入登录、选剧和播放器迁移。
 
 成功标准：
 
