@@ -2,6 +2,7 @@ import json
 import hashlib
 import os
 import re
+import shutil
 import subprocess
 import urllib.request
 from collections import Counter
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from .config import APP_NAME, COSYVOICE_BASE_URL, COSYVOICE_TIMEOUT_SECONDS, DATA_DIR, FRONTEND_DIR, ROOT_DIR, VOICE_ASSET_DIR
 from .database import SessionLocal, get_db
+from .danmaku_governance import apply_governance_to_episode, evaluate_comment
 from .danmaku_moderation import moderate_danmaku, moderation_rules_payload
 from .migrations import ensure_database_schema
 from .models import (
@@ -47,8 +49,10 @@ from .models import (
 from .schemas import (
     ChatMessageCreate,
     DanmakuCreate,
+    DanmakuReviewUpdate,
     EpisodeRemixCreate,
     EpisodeRemixReviewUpdate,
+    EpisodeRemixVoiceCreate,
     ExperienceConfigUpdate,
     FriendCreate,
     InteractionCreate,
@@ -98,6 +102,9 @@ VOICE_ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".aac", ".ogg", ".webm"}
 VOICE_MAX_BYTES = 12 * 1024 * 1024
 VOICE_PROMPT_DIR = VOICE_ASSET_DIR / "prompts"
 VOICE_CLIP_DIR = VOICE_ASSET_DIR / "clips"
+VOICE_TTS_SPEED = 1.18
+VOICE_MODEL_VERSION = "cosyvoice-local-v2-fast"
+REMIX_AUDIO_DIR = FRONTEND_DIR / "assets" / "remix_audio" / "beiwang_ep1"
 AVATAR_ASSET_DIR = DATA_DIR / "avatar_assets"
 AVATAR_POOL_DIR = ROOT_DIR / "avatars"
 AVATAR_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
@@ -107,6 +114,7 @@ AVATAR_MAX_BYTES = 4 * 1024 * 1024
 def ensure_voice_dirs() -> None:
     VOICE_PROMPT_DIR.mkdir(parents=True, exist_ok=True)
     VOICE_CLIP_DIR.mkdir(parents=True, exist_ok=True)
+    REMIX_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def ensure_avatar_dirs() -> None:
@@ -153,7 +161,7 @@ def sha256_text(value: str) -> str:
 
 def normalize_voice_prompt_audio(source_path: Path, original_suffix: str) -> Path:
     target_path = source_path.with_name(f"{source_path.stem}_prompt.wav")
-    if target_path.exists():
+    if target_path.exists() and target_path.stat().st_mtime >= source_path.stat().st_mtime:
         return target_path
     try:
         subprocess.run(
@@ -286,34 +294,105 @@ def download_voice_audio(provider_payload: dict, target_path: Path) -> None:
     raise RuntimeError("CosyVoice did not return an audio file")
 
 
-def generate_voice_clip_file(profile: VoiceProfile, text: str, output_path: Path) -> dict:
-    ensure_voice_dirs()
-    prompt_path = Path(profile.prompt_audio_path)
-    prompt_suffix = prompt_path.suffix.lower() or ".wav"
-    prompt_wav_path = normalize_voice_prompt_audio(prompt_path, prompt_suffix)
-    payload = post_multipart_json(
-        f"{COSYVOICE_BASE_URL}/api/tts/zero_shot",
-        {
-            "tts_text": text,
-            "prompt_text": profile.prompt_text,
-            "seed": "0",
-            "speed": "1.0",
-            "format": "mp3",
-        },
-        "prompt_wav",
-        prompt_wav_path,
-        prompt_wav_path.name,
-        "audio/wav",
+def copy_voice_audio(source_path: Path, target_path: Path) -> None:
+    if target_path.suffix.lower() == ".mp3" and source_path.suffix.lower() != ".mp3":
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(source_path), "-codec:a", "libmp3lame", "-q:a", "2", str(target_path)],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
+        )
+        return
+    shutil.copyfile(source_path, target_path)
+
+
+def normalize_tts_line(value: str) -> str:
+    text = re.sub(r"[“”\"'‘’《》]", "", value or "")
+    text = re.sub(r"\s+", "", text)
+    text = re.sub(r"[，,、；;：:]+", "", text)
+    text = re.sub(r"[。.!！?？…]+", "", text)
+    return text.strip() or (value or "").strip()
+
+
+def generate_voice_clip_file_with_gradio(text: str, prompt_text: str, prompt_wav_path: Path, output_path: Path) -> dict:
+    try:
+        from gradio_client import Client, handle_file
+    except Exception as exc:
+        raise RuntimeError("gradio_client is not installed") from exc
+
+    client = Client(
+        COSYVOICE_BASE_URL,
+        verbose=False,
+        httpx_kwargs={"timeout": max(5, COSYVOICE_TIMEOUT_SECONDS)},
     )
-    download_voice_audio(payload, output_path)
-    return payload
+    result = client.predict(
+        tts_text=normalize_tts_line(text),
+        mode_checkbox_group="3s极速复刻",
+        sft_dropdown="",
+        prompt_text=normalize_tts_line(prompt_text),
+        prompt_wav_upload=handle_file(str(prompt_wav_path)),
+        prompt_wav_record=handle_file(str(prompt_wav_path)),
+        instruct_text="",
+        seed=0,
+        stream=False,
+        speed=VOICE_TTS_SPEED,
+        api_name="/generate_audio",
+    )
+    if isinstance(result, (list, tuple)):
+        result = result[0] if result else ""
+    if isinstance(result, dict):
+        result = result.get("path") or result.get("url") or ""
+    result_text = str(result or "").strip()
+    if not result_text:
+        raise RuntimeError("CosyVoice Gradio did not return an audio file")
+    if result_text.startswith("http://") or result_text.startswith("https://"):
+        with urllib.request.urlopen(result_text, timeout=COSYVOICE_TIMEOUT_SECONDS) as response:
+            output_path.write_bytes(response.read())
+    else:
+        source_path = Path(result_text)
+        if not source_path.exists():
+            raise RuntimeError("CosyVoice Gradio returned a missing audio file")
+        copy_voice_audio(source_path, output_path)
+    return {"path": str(output_path), "duration_seconds": 0, "source": "gradio_client"}
+
+
+def generate_voice_clip_file_from_prompt(text: str, prompt_text: str, prompt_audio_path: Path, output_path: Path) -> dict:
+    ensure_voice_dirs()
+    prompt_suffix = prompt_audio_path.suffix.lower() or ".wav"
+    prompt_wav_path = normalize_voice_prompt_audio(prompt_audio_path, prompt_suffix)
+    tts_text = normalize_tts_line(text)
+    prompt_tts_text = normalize_tts_line(prompt_text)
+    try:
+        payload = post_multipart_json(
+            f"{COSYVOICE_BASE_URL}/api/tts/zero_shot",
+            {
+                "tts_text": tts_text,
+                "prompt_text": prompt_tts_text,
+                "seed": "0",
+                "speed": f"{VOICE_TTS_SPEED:.2f}",
+                "format": "mp3",
+            },
+            "prompt_wav",
+            prompt_wav_path,
+            prompt_wav_path.name,
+            "audio/wav",
+        )
+        download_voice_audio(payload, output_path)
+        return payload
+    except Exception:
+        return generate_voice_clip_file_with_gradio(tts_text, prompt_tts_text, prompt_wav_path, output_path)
+
+
+def generate_voice_clip_file(profile: VoiceProfile, text: str, output_path: Path) -> dict:
+    return generate_voice_clip_file_from_prompt(text, profile.prompt_text, Path(profile.prompt_audio_path), output_path)
 
 
 def ensure_voice_clip(db: Session, user: User, profile: VoiceProfile, payload: VoiceClipCreate) -> dict:
     text = payload.text.strip()
     scene_key = payload.scene_key.strip()
     text_hash = sha256_text(text)
-    cache_key = sha256_text(f"cosyvoice-local-v1:{profile.id}:{scene_key}:{text_hash}")
+    cache_key = sha256_text(f"{VOICE_MODEL_VERSION}:{profile.id}:{scene_key}:{text_hash}")
     existing = db.query(VoiceClipCache).filter(VoiceClipCache.cache_key == cache_key).first()
     if existing and existing.status == "ready" and existing.audio_path and Path(existing.audio_path).exists():
         return voice_clip_payload(existing, cached=True)
@@ -345,7 +424,7 @@ def ensure_voice_clip(db: Session, user: User, profile: VoiceProfile, payload: V
         clip.provider_url = str(provider_payload.get("url") or "")
         clip.duration_sec = float(provider_payload.get("duration_seconds") or 0)
         clip.source = "cosyvoice_zero_shot"
-        clip.model_version = "cosyvoice-local-v1"
+        clip.model_version = VOICE_MODEL_VERSION
         clip.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(clip)
@@ -667,6 +746,46 @@ def danmaku_user_payload(comment: DanmakuComment) -> dict:
         "nickname": f"游客{suffix:03d}",
         "relation_ready": False,
     }
+
+
+def safe_json_loads(raw: str | None, fallback):
+    if not raw:
+        return fallback
+    try:
+        return json.loads(raw)
+    except Exception:
+        return fallback
+
+
+def danmaku_payload(comment: DanmakuComment, include_governance: bool = False) -> dict:
+    payload = {
+        "id": comment.id,
+        "episode_id": comment.episode_id,
+        "time_sec": comment.time_sec,
+        "text": comment.text,
+        "mode": comment.mode,
+        "user": danmaku_user_payload(comment),
+        "created_at": comment.created_at.isoformat() if comment.created_at else None,
+    }
+    if include_governance:
+        payload.update(
+            {
+                "original_text": comment.original_text or comment.text,
+                "source_like_count": comment.source_like_count or 0,
+                "review_status": comment.review_status or "approved",
+                "risk_score": round(float(comment.risk_score or 0), 3),
+                "quality_score": round(float(comment.quality_score or 0), 3),
+                "spoiler_score": round(float(comment.spoiler_score or 0), 3),
+                "relevance_score": round(float(comment.relevance_score or 0), 3),
+                "cluster_key": comment.cluster_key or "",
+                "cluster_size": comment.cluster_size or 1,
+                "suggested_time_sec": comment.suggested_time_sec,
+                "moderation_model_version": comment.moderation_model_version or "",
+                "moderation_reason": comment.moderation_reason or "",
+                "moderation_layers": safe_json_loads(comment.moderation_layers_json, {}),
+            }
+        )
+    return payload
 
 
 def user_brief(user: User | None) -> dict | None:
@@ -1079,57 +1198,57 @@ REMIX_SYSTEM_PROMPT = """
 BEIWANG_EP1_REMIX_VARIANTS = {
     "road_breakdown": [
         {
-            "variant_key": "chain_bridge",
-            "label": "链条断在小桥",
-            "variable_label": "困难：镇外小桥断链",
-            "summary": "摩托链条在镇外小桥断了，雪越下越大，他借手电和铁丝临时修好继续赶路。",
+            "variant_key": "red_cola",
+            "label": "红罐可乐救场",
+            "variable_label": "饮料：红罐可乐",
+            "summary": "摩托爆胎后，他用最后零钱买红罐可乐提神，借小卖部工具补胎继续赶路。",
             "runtime_sec": 26,
-            "story_text": "年三十的风把路吹得发硬，摩托刚上镇外小桥就猛地一顿，链条掉进雪泥里。手机只剩 8% 电，修车铺早已落锁。他蹲在桥边把手冻红，正想放弃时，一个路过的大爷递来手电和一截铁丝。他把链条临时接上，发动机重新响起，他冲着黑路低声说：妈，我往回赶呢。",
+            "story_text": "摩托后轮在荒路上扎进铁钉，车身一沉，他差点把整个人的劲儿都泄掉。路边小卖部已经要关门，他用最后几枚零钱买了一罐红色可乐，冰得手心发麻。老板娘翻出旧补胎工具，他灌下一口甜的，像把那点委屈也咽了回去。补好胎后，他把空罐塞进包侧袋，重新扶起摩托：甜是甜，但家还远。",
             "storyboard": [
-                {"shot": "镜头一", "visual": "旧摩托冲上镇外小桥，车身猛地一歪，链条甩进雪泥。", "subtitle": "“不是吧，就差这段路了。”", "sound": "金属断响和风声"},
-                {"shot": "镜头二", "visual": "主角蹲在桥边修车，手被冻红，老人用手电替他照着链条。", "subtitle": "“孩子，回家这事儿，别半道停。”", "sound": "手电开关声"},
-                {"shot": "镜头三", "visual": "摩托重新点火，车灯划开雪夜，他把围巾往上拉继续上路。", "subtitle": "“妈，等我。”", "sound": "发动机重新轰鸣"},
+                {"shot": "镜头一", "visual": "荒路上旧摩托后轮爆胎，铁钉卡在轮胎上，两人停在路边。", "subtitle": "“还有几十公里，不能在这儿停。”", "sound": "轮胎漏气声"},
+                {"shot": "镜头二", "visual": "乡镇小卖部半关门，主角握着无字红罐可乐，工友拿着旧补胎工具。", "subtitle": "“喝口甜的，手就不抖了。”", "sound": "开罐气泡声"},
+                {"shot": "镜头三", "visual": "路灯下轮胎补好，红罐可乐塞在包侧袋，两人重新扶起摩托。", "subtitle": "“甜是甜，路还得自己骑。”", "sound": "摩托点火声"},
             ],
             "video_shots": [
-                {"duration_sec": 8, "caption": "小桥断链", "video_prompt": "现实主义短剧画面，东北年三十雪夜，打工返乡青年穿朴素冬装，骑旧摩托经过镇外小桥，链条断裂甩进雪泥，冷色电影感，移动端竖屏，克制但有冲击力", "sound": "链条断裂、寒风"},
-                {"duration_sec": 10, "caption": "借光修车", "video_prompt": "桥边近景，青年蹲在雪地修摩托链条，手冻红，一位路过老人递手电照明，旧行李绑在车尾，人物表情坚韧，写实温暖光线", "sound": "手电咔哒、呼吸声"},
-                {"duration_sec": 8, "caption": "继续上路", "video_prompt": "旧摩托重新发动，车灯照亮乡道积雪，青年拉紧围巾继续往家赶，远处村口有微弱灯火，返乡悬念和希望感", "sound": "发动机轰鸣"},
+                {"duration_sec": 8, "caption": "荒路爆胎", "video_prompt": "东北冬日荒路，旧摩托后轮爆胎，铁钉明显卡在轮胎上，两位返乡青年停在路边查看，车尾绑着行李，写实竖屏短剧", "sound": "漏气、寒风"},
+                {"duration_sec": 9, "caption": "买红罐可乐", "video_prompt": "暖黄色乡镇小卖部半关门，蓝灰外套青年握着无字红色汽水罐，手被冻红，格子衬衫工友拿着旧补胎工具，红罐清晰可见，无商标文字", "sound": "开罐气泡"},
+                {"duration_sec": 9, "caption": "补好继续走", "video_prompt": "路灯下旧摩托轮胎补好，红色汽水罐插在行李包侧袋，两位青年扶起摩托准备继续上路，冬夜道路延伸，现实温暖", "sound": "摩托点火"},
             ],
         },
         {
-            "variant_key": "flat_tire",
-            "label": "轮胎扎进铁钉",
-            "variable_label": "困难：荒路爆胎",
-            "summary": "半路轮胎扎钉，寒风里没人修车，他用工地胶布和借来的补胎工具撑到下一站。",
+            "variant_key": "green_soda",
+            "label": "绿罐汽水提神",
+            "variable_label": "饮料：绿罐汽水",
+            "summary": "后轮爆胎时，他买绿罐汽水给自己壮胆，靠一点冲劲把摩托重新修好。",
             "runtime_sec": 27,
-            "story_text": "摩托刚过废弃收费站，后轮突然一软，铁钉扎进轮胎。导航显示离家还有几十公里，路边小卖部也准备关门。他摸出最后一点零钱买了热水，老板娘看他发抖，翻出一套旧补胎工具。胶条塞进去的那一刻，他听见母亲发来的语音：路上慢点。于是他把语音按了收藏，重新扶起摩托。",
+            "story_text": "铁钉扎破后轮时，他第一反应不是疼，是烦。小卖部老板说补胎工具旧得不一定好使，他却从冰柜里拿出一罐绿色汽水，说越冷越得来点冲的。汽水开罐的一声像给自己壮胆，气泡顶上来，他也跟着缓过来。补胎时手冻得直抖，嘴上还贫：这玩意儿比我摩托还带劲。等后轮重新鼓起来，他把易拉罐压扁，继续往北骑。",
             "storyboard": [
-                {"shot": "镜头一", "visual": "荒路上旧摩托后轮泄气，铁钉在轮胎上反光。", "subtitle": "“还有几十公里，不能在这儿停。”", "sound": "轮胎漏气声"},
-                {"shot": "镜头二", "visual": "小卖部半拉卷帘门，老板娘递出热水和旧补胎工具。", "subtitle": "“先暖暖手，再补。”", "sound": "卷帘门摩擦声"},
-                {"shot": "镜头三", "visual": "主角听完母亲语音，把手机贴近胸口，推车重新上路。", "subtitle": "“嗯，马上回。”", "sound": "微信语音提示"},
+                {"shot": "镜头一", "visual": "孤路上摩托后轮泄气，主角指着轮胎露出又气又好笑的表情。", "subtitle": "“不是，连轮胎都想过年歇着？”", "sound": "轮胎漏气声"},
+                {"shot": "镜头二", "visual": "小卖部门口，主角打开无字绿罐汽水，气泡从罐口涌起。", "subtitle": "“越苦，越得来点冲的。”", "sound": "汽水气泡声"},
+                {"shot": "镜头三", "visual": "主角蹲在补好的轮胎旁，把绿罐放在摩托座边，对着摩托开玩笑。", "subtitle": "“行，咱俩都别泄气。”", "sound": "轻笑和发动机低鸣"},
             ],
             "video_shots": [
-                {"duration_sec": 8, "caption": "荒路爆胎", "video_prompt": "东北返乡公路，废弃收费站旁，旧摩托后轮被铁钉扎破，青年下车查看，车尾绑着行李，冷风吹过空路，写实竖屏短剧", "sound": "漏气、风声"},
-                {"duration_sec": 10, "caption": "小卖部补胎", "video_prompt": "乡镇小卖部半关门，暖黄色灯光，老板娘递给返乡青年热水和旧补胎工具，青年手冻红但眼神坚定，温暖现实主义", "sound": "卷帘门、热水杯"},
-                {"duration_sec": 9, "caption": "听语音上路", "video_prompt": "青年在路灯下听母亲语音，把手机贴近胸口，然后扶起补好的摩托继续赶路，远处公路延伸进夜色", "sound": "语音提示、摩托点火"},
+                {"duration_sec": 8, "caption": "后轮泄气", "video_prompt": "孤独冬日公路，旧摩托后轮变瘪，蓝灰外套青年指着轮胎露出苦笑，格子衬衫工友蹲下检查铁钉，写实短剧但带一点荒诞喜感", "sound": "漏气声"},
+                {"duration_sec": 9, "caption": "买绿罐汽水", "video_prompt": "小卖部门口暖光，青年打开无字绿色柠檬汽水罐，清晰气泡从罐口涌起，工友拿着补胎工具看着他笑，冷空气和暖灯对比，绿色罐子必须明显", "sound": "开罐气泡"},
+                {"duration_sec": 10, "caption": "气泡和发动机", "video_prompt": "旧摩托轮胎补好，青年把无字绿色汽水罐放在摩托座旁，一边拧气门芯一边开玩笑，工友绑紧行李，白色呼吸雾，路灯柔光", "sound": "轻笑、发动机低鸣"},
             ],
         },
         {
-            "variant_key": "frozen_engine",
-            "label": "发动机冻住",
-            "variable_label": "困难：夜里打不着火",
-            "summary": "夜里发动机被冻住，他手机低电、路边无车，只能用热水和耐心把摩托重新唤醒。",
+            "variant_key": "mineral_water",
+            "label": "矿泉水硬撑",
+            "variable_label": "饮料：矿泉水",
+            "summary": "他没钱买更贵的东西，只买矿泉水补口气，克制地把摩托修好继续赶年三十。",
             "runtime_sec": 25,
-            "story_text": "夜越深，摩托越不争气。主角在路边连踩几脚，发动机只闷闷响了两声就彻底沉默。手机电量红了，地图也开始卡。他盯着后备箱里的年货，差点把头埋进围巾里。远处环卫站的灯还亮着，值班大叔给他倒了一壶热水。他一点点暖发动机，像哄一个也想回家的老伙计。",
+            "story_text": "后轮泄气时，他先数了数兜里的钱，够买最便宜的一瓶水，也够买一卷胶条。他没说丧气话，只拧开无字矿泉水，喝了一口，像给自己按了暂停。小卖部老板把旧打气筒递出来，他蹲在路边一点点补胎，动作慢，但没停。水瓶被他塞进行李缝里，摩托重新站稳，他也重新站稳。",
             "storyboard": [
-                {"shot": "镜头一", "visual": "路边空旷，主角反复踩启动杆，摩托只抖不响。", "subtitle": "“你也想歇了？”", "sound": "空踩声"},
-                {"shot": "镜头二", "visual": "环卫站暖灯下，大叔把热水壶递给他。", "subtitle": "“车冷，人也冷，慢慢来。”", "sound": "热水倒入杯中"},
-                {"shot": "镜头三", "visual": "白雾从发动机旁升起，摩托终于点火，主角笑了一下。", "subtitle": "“走，回家。”", "sound": "发动机低鸣"},
+                {"shot": "镜头一", "visual": "荒路旁主角站在爆胎摩托边，低头数掌心零钱。", "subtitle": "“不矫情，补口水继续赶路。”", "sound": "风吹硬币声"},
+                {"shot": "镜头二", "visual": "主角在小卖部门口喝无字透明矿泉水，工友接过旧打气筒。", "subtitle": "“便宜点，能顶事。”", "sound": "拧瓶盖声"},
+                {"shot": "镜头三", "visual": "摩托轮胎重新鼓起，透明水瓶塞在行李缝里，两人准备继续骑。", "subtitle": "“不快，但不停。”", "sound": "打气筒最后一下"},
             ],
             "video_shots": [
-                {"duration_sec": 7, "caption": "打不着火", "video_prompt": "寒冷夜路，青年反复踩旧摩托启动杆，发动机冻住只抖动不点火，手机红色低电，行李和年货绑在后座，现实主义", "sound": "启动失败声"},
-                {"duration_sec": 9, "caption": "环卫站热水", "video_prompt": "路边环卫站暖灯，值班大叔递热水壶给返乡青年，雪夜白雾，人物质朴，有人情味，竖屏电影质感", "sound": "热水声"},
-                {"duration_sec": 9, "caption": "唤醒摩托", "video_prompt": "青年用热水和布慢慢暖发动机，白雾升起，旧摩托终于启动，青年露出疲惫但开心的笑，继续返乡", "sound": "发动机启动"},
+                {"duration_sec": 7, "caption": "数零钱", "video_prompt": "荒凉冬日公路旁，旧摩托爆胎，蓝灰外套青年站在车边数掌心几枚零钱，格子衬衫工友检查轮胎和行李，情绪克制现实", "sound": "风声、硬币声"},
+                {"duration_sec": 9, "caption": "买矿泉水", "video_prompt": "小卖部门口，青年喝一瓶透明无标签矿泉水，工友从老板手里接过旧打气筒和补胎胶条，画面安静克制，透明水瓶必须清晰，无文字无商标", "sound": "瓶盖声"},
+                {"duration_sec": 9, "caption": "安静上路", "video_prompt": "路边旧摩托后轮重新鼓起，透明矿泉水瓶塞在行李缝里，两个青年扶车准备继续骑，长路延伸，现实主义短剧质感", "sound": "打气筒、摩托低鸣"},
             ],
         },
     ],
@@ -1171,21 +1290,21 @@ BEIWANG_EP1_REMIX_VARIANTS = {
             ],
         },
         {
-            "variant_key": "standing_ticket",
-            "label": "借钱买站票",
-            "variable_label": "票种：临时站票",
-            "summary": "暴雪封路让骑车变危险，他借钱抢到临时站票，挤上车继续赶年三十。",
+            "variant_key": "high_speed_standing",
+            "label": "借钱买高铁站票",
+            "variable_label": "票种：高铁站票",
+            "summary": "暴雪封路让骑车变危险，他借钱抢到高铁站票，站着也要继续赶年三十。",
             "runtime_sec": 27,
-            "story_text": "暴雪预警一响，路口的交警把摩托全拦了下来。主角看着手机上跳出的红色封路提示，嘴硬了半天，最后还是给工友发了一句：站票也行，帮我抢一张。车站里人挤人，他背着行李站在过道，鞋边还沾着雪泥。有人抱怨太挤，他却笑了一下：挤点好，挤说明大家都在往家赶。",
+            "story_text": "暴雪预警一响，路口的交警把摩托全拦了下来。主角看着手机上跳出的红色封路提示，嘴硬了半天，最后还是给工友发了一句：高铁站票也行，帮我抢一张。高铁站里人潮往检票口挤，他背着行李站在候车大厅边上，鞋边还沾着雪泥。有人说站几个小时太遭罪，他却笑了一下：站着也行，站着说明我还在往家赶。",
             "storyboard": [
                 {"shot": "镜头一", "visual": "路口警示灯闪烁，交警拦下摩托，暴雪压低视线。", "subtitle": "“前面封了，不能骑。”", "sound": "警示喇叭"},
-                {"shot": "镜头二", "visual": "主角盯着手机抢票页面，最后点下确认。", "subtitle": "“站票也行，能回去就行。”", "sound": "抢票提示音"},
-                {"shot": "镜头三", "visual": "拥挤车厢过道，主角背着行李站稳，鞋边雪泥慢慢化开。", "subtitle": "“大家都在往家赶。”", "sound": "车厢人声"},
+                {"shot": "镜头二", "visual": "主角在高铁站角落盯着手机抢票页面，最后点下确认。", "subtitle": "“站着也行，能回去就行。”", "sound": "抢票提示音"},
+                {"shot": "镜头三", "visual": "高铁车厢连接处人很多，主角背着行李站稳，鞋边雪泥慢慢化开。", "subtitle": "“站着也算往家赶。”", "sound": "车厢人声"},
             ],
             "video_shots": [
                 {"duration_sec": 8, "caption": "暴雪封路", "video_prompt": "东北公路暴雪，路口警示灯和交警拦下旧摩托，青年披着雪站在车旁，返乡路被迫中断，竖屏写实", "sound": "警示喇叭"},
-                {"duration_sec": 8, "caption": "抢站票", "video_prompt": "青年在车站角落盯着手机抢票页面，屏幕显示临时站票，手指犹豫后点下确认，周围人群焦急", "sound": "手机提示"},
-                {"duration_sec": 11, "caption": "挤上车", "video_prompt": "拥挤火车过道，青年背着行李站稳，鞋边雪泥融化，车窗外夜色飞过，他露出释然笑意", "sound": "车厢人声"},
+                {"duration_sec": 8, "caption": "抢高铁站票", "video_prompt": "青年在现代高铁站角落盯着手机抢票页面，屏幕不可读，手指犹豫后点下确认，周围人群焦急，写实竖屏", "sound": "手机提示"},
+                {"duration_sec": 11, "caption": "站上高铁", "video_prompt": "现代高铁车厢连接处，青年背着行李站稳，鞋边雪泥融化，车窗外夜色飞过，他露出释然笑意", "sound": "车厢人声"},
             ],
         },
     ],
@@ -1227,21 +1346,21 @@ BEIWANG_EP1_REMIX_VARIANTS = {
             ],
         },
         {
-            "variant_key": "convertible",
-            "label": "敞篷跑车热血顺路",
-            "variable_label": "车主：敞篷跑车",
-            "summary": "他帮跑车车主盖住坏掉的车篷，摩托被偷后，对方用夸张但热血的方式载他回家。",
+            "variant_key": "range_rover_suv",
+            "label": "揽胜越野雪路救援",
+            "variable_label": "车主：揽胜越野",
+            "summary": "他帮揽胜越野车主脱困，摩托被偷后，对方腾出后备箱和座位载他往东北走。",
             "runtime_sec": 25,
-            "story_text": "最荒唐的是，雪夜里竟然停着一辆敞篷跑车，车篷卡住，车主冻得直打哆嗦。主角把自己的防水布拆下来帮他盖车，嘴上还吐槽：你这也挺摇滚。结果一回头，摩托被偷了。车主愣了两秒，忽然把暖风开到最大：哥们，上车，我这车虽然离谱，但往北开没问题。于是返乡路突然从苦情变成了热血喜剧。",
+            "story_text": "雪越下越厚，一辆深色揽胜越野陷在村外坡道，车主急着把药送回家。主角看了眼时间，还是停下帮他垫木板、推车。车轮终于咬住雪面冲出来，他却发现自己的摩托被人顺走了。车主没说漂亮话，只把后排座椅放倒，腾出一块位置：东西放上来，我车能走雪路，先送你回东北。那一刻，他第一次觉得这条路没那么孤单。",
             "storyboard": [
-                {"shot": "镜头一", "visual": "雪夜敞篷跑车卡在路边，车主抱着头发抖。", "subtitle": "“你这也太摇滚了。”", "sound": "夸张冷风声"},
-                {"shot": "镜头二", "visual": "主角用防水布帮盖车，再回头发现摩托没了。", "subtitle": "“不是，摇滚到我车没了？”", "sound": "喜剧停顿"},
-                {"shot": "镜头三", "visual": "跑车暖风开满，主角抱着行李坐上副驾，车灯冲进雪夜。", "subtitle": "“走，东北方向！”", "sound": "发动机高转"},
+                {"shot": "镜头一", "visual": "深色揽胜越野陷在雪坡，主角和工友垫木板推车。", "subtitle": "“雪路难走，先帮他出来。”", "sound": "轮胎碾雪声"},
+                {"shot": "镜头二", "visual": "越野车脱困后，主角回头发现摩托没了。", "subtitle": "“我摩托呢？”", "sound": "风声骤停"},
+                {"shot": "镜头三", "visual": "越野车后门打开，后排放倒，主角把行李塞进去。", "subtitle": "“东西放上来，我送你往北走。”", "sound": "后备箱打开声"},
             ],
             "video_shots": [
-                {"duration_sec": 7, "caption": "离谱跑车", "video_prompt": "雪夜乡路，一辆敞篷跑车车篷卡住，车主冻得发抖，返乡青年骑旧摩托停下吐槽，轻喜剧但写实", "sound": "冷风呼啸"},
-                {"duration_sec": 8, "caption": "帮盖车篷", "video_prompt": "青年拆下摩托防水布帮敞篷跑车盖车，动作利落，下一秒回头发现旧摩托被偷，表情夸张懵住", "sound": "喜剧停顿"},
-                {"duration_sec": 10, "caption": "热血向北", "video_prompt": "跑车暖风开满，青年抱行李坐上副驾，车灯穿过雪夜，路线牌指向东北，现实喜剧和返乡热血结合", "sound": "跑车发动机"},
+                {"duration_sec": 7, "caption": "越野陷坡", "video_prompt": "雪夜村外坡道，深色揽胜风格越野车陷在雪里，车主拿着药袋焦急，返乡青年停下帮忙垫木板推车", "sound": "轮胎碾雪"},
+                {"duration_sec": 8, "caption": "摩托被顺走", "video_prompt": "越野车刚脱困，青年回头发现旧摩托消失，只剩雪地拖痕和松开的绑绳，深色豪华越野车车灯照亮空位", "sound": "风声骤停"},
+                {"duration_sec": 10, "caption": "越野送回家", "video_prompt": "深色揽胜风格越野车后门打开，后排放倒，青年和工友把返乡行李放进去，车灯穿过雪夜往北走", "sound": "后备箱和发动机"},
             ],
         },
     ],
@@ -1264,10 +1383,12 @@ def public_remix_variant(variant: dict | None) -> dict | None:
     }
 
 
-def remix_variant_for_choice(choice: dict, session_id: str) -> dict | None:
+def remix_variant_for_choice(choice: dict, session_id: str, variant_key: str | None = None) -> dict | None:
     variants = BEIWANG_EP1_REMIX_VARIANTS.get(choice["key"], [])
     if not variants:
         return None
+    if variant_key:
+        return next((item for item in variants if item["variant_key"] == variant_key), None)
     digest = hashlib.sha1(f"{session_id}:{choice['key']}".encode("utf-8")).hexdigest()
     return variants[int(digest[:8], 16) % len(variants)]
 
@@ -1321,13 +1442,51 @@ def remix_image_plan(choice: dict, variant: dict | None) -> dict | None:
     return {
         "asset_status": "cached_images" if all_cached else "script_ready",
         "render_mode": "click_through_storyboard_images",
-        "generation_model": "gpt-image-1",
+        "generation_model": "gpt-image-1.5",
         "variant_slot": slot,
+        "choice_key": choice["key"],
+        "variant_key": variant["variant_key"],
         "replacement_axis": variant["variable_label"],
         "shot_count": len(shots),
         "storage_dir": "/assets/remix_images/beiwang_ep1",
         "note": "当前片尾二创改为三镜头图片分镜。可先用缓存图展示，后续用 OpenAI 图片生成脚本覆盖同名图片。",
         "shots": shots,
+    }
+
+
+def ensure_original_remix_voice_clip(variant_slot: str, shot_index: int, text: str) -> dict:
+    prompt_path = VOICE_PROMPT_DIR / "system" / "beiwang_ep1_main_prompt.wav"
+    if not prompt_path.exists():
+        raise HTTPException(status_code=503, detail="缺少北往原版参考音频，请先截取主角台词样本")
+    filename = f"{variant_slot}_shot_{shot_index}.mp3"
+    output_path = REMIX_AUDIO_DIR / filename
+    audio_url = f"/assets/remix_audio/beiwang_ep1/{filename}"
+    if output_path.exists():
+        return {
+            "voice_mode": "original",
+            "scene_key": f"{variant_slot}_shot_{shot_index}",
+            "text": text,
+            "status": "ready",
+            "source": "cosyvoice_original_prompt",
+            "model_version": VOICE_MODEL_VERSION,
+            "audio_url": audio_url,
+            "duration_sec": 0,
+            "cached": True,
+        }
+    try:
+        provider_payload = generate_voice_clip_file_from_prompt(text, "你这玩意叫摇滚啊", prompt_path, output_path)
+    except Exception:
+        raise HTTPException(status_code=503, detail="原版声音生成暂时不可用，请确认本地 CosyVoice 服务已启动")
+    return {
+        "voice_mode": "original",
+        "scene_key": f"{variant_slot}_shot_{shot_index}",
+        "text": text,
+        "status": "ready",
+        "source": "cosyvoice_original_prompt",
+        "model_version": VOICE_MODEL_VERSION,
+        "audio_url": audio_url,
+        "duration_sec": float(provider_payload.get("duration_seconds") or 0),
+        "cached": False,
     }
 
 
@@ -1338,11 +1497,12 @@ def remix_options_for_episode(episode: Episode) -> list[dict]:
             {
                 "key": "road_breakdown",
                 "label": "车坏在半路",
-                "description": "摩托骑到半路出故障，他遇到风雪、断链或打不着火的困难，修好后继续赶回家。",
+                "description": "摩托半路爆胎，他会买红罐可乐、绿罐汽水还是矿泉水，撑住继续回家。",
                 "tone": "返乡闯关",
                 "icon": "修",
                 "variant_count": 3,
                 "target_duration_sec": 28,
+                "variants": [public_remix_variant(item) for item in BEIWANG_EP1_REMIX_VARIANTS["road_breakdown"]],
             },
             {
                 "key": "ticket_home",
@@ -1352,6 +1512,7 @@ def remix_options_for_episode(episode: Episode) -> list[dict]:
                 "icon": "票",
                 "variant_count": 3,
                 "target_duration_sec": 28,
+                "variants": [public_remix_variant(item) for item in BEIWANG_EP1_REMIX_VARIANTS["ticket_home"]],
             },
             {
                 "key": "kindness_ride",
@@ -1361,6 +1522,7 @@ def remix_options_for_episode(episode: Episode) -> list[dict]:
                 "icon": "善",
                 "variant_count": 3,
                 "target_duration_sec": 28,
+                "variants": [public_remix_variant(item) for item in BEIWANG_EP1_REMIX_VARIANTS["kindness_ride"]],
             },
         ]
     if "冬至" in title:
@@ -2424,22 +2586,14 @@ def list_danmaku(episode_id: int, db: Session = Depends(get_db)) -> list[dict]:
         raise HTTPException(status_code=404, detail="剧集不存在")
     rows = (
         db.query(DanmakuComment)
-        .filter(DanmakuComment.episode_id == episode_id)
+        .filter(
+            DanmakuComment.episode_id == episode_id,
+            or_(DanmakuComment.review_status.is_(None), DanmakuComment.review_status == "approved"),
+        )
         .order_by(DanmakuComment.time_sec.asc(), DanmakuComment.id.asc())
         .all()
     )
-    return [
-        {
-            "id": row.id,
-            "episode_id": row.episode_id,
-            "time_sec": row.time_sec,
-            "text": row.text,
-            "mode": row.mode,
-            "user": danmaku_user_payload(row),
-            "created_at": row.created_at.isoformat() if row.created_at else None,
-        }
-        for row in rows
-    ]
+    return [danmaku_payload(row) for row in rows]
 
 
 @app.get("/api/episodes/{episode_id}/experience")
@@ -2483,7 +2637,15 @@ def create_episode_ai_remix(
     if not choice:
         raise HTTPException(status_code=400, detail="二创选项不存在")
     context = remix_context_payload(episode, db)
-    variant = remix_variant_for_choice(choice, payload.session_id) if is_beiwang_first_episode(episode) else None
+    if payload.variant_key and not is_beiwang_first_episode(episode):
+        raise HTTPException(status_code=400, detail="该剧集暂不支持指定二创版本")
+    variant = (
+        remix_variant_for_choice(choice, payload.session_id, payload.variant_key)
+        if is_beiwang_first_episode(episode)
+        else None
+    )
+    if payload.variant_key and not variant:
+        raise HTTPException(status_code=400, detail="二创版本不存在")
     fallback = fallback_remix_payload(episode, choice, context, variant)
     if fallback.get("image_plan", {}).get("asset_status") == "cached_images":
         result = {
@@ -2507,6 +2669,48 @@ def create_episode_ai_remix(
         "choice": choice,
         **result,
     }
+
+
+@app.post("/api/episodes/{episode_id}/remix-voice-clips")
+def create_episode_remix_voice_clip(
+    episode_id: int,
+    payload: EpisodeRemixVoiceCreate,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    if not is_beiwang_first_episode(episode):
+        raise HTTPException(status_code=400, detail="该剧集暂未配置片尾二创语音")
+    options = remix_options_for_episode(episode)
+    choice = next((item for item in options if item["key"] == payload.choice_key), None)
+    if not choice:
+        raise HTTPException(status_code=400, detail="二创选项不存在")
+    variant = remix_variant_for_choice(choice, payload.session_id, payload.variant_key)
+    if not variant:
+        raise HTTPException(status_code=400, detail="二创版本不存在")
+    image_plan = remix_image_plan(choice, variant)
+    shot = next((item for item in image_plan["shots"] if int(item["index"]) == payload.shot_index), None)
+    if not shot:
+        raise HTTPException(status_code=400, detail="二创镜头不存在")
+    text = str(shot.get("audio_text") or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="该镜头没有可生成语音的台词")
+
+    voice_mode = payload.voice_mode.strip().lower()
+    scene_key = f"{image_plan['variant_slot']}_shot_{payload.shot_index}"
+    if voice_mode == "user":
+        if not user:
+            raise HTTPException(status_code=401, detail="请先登录后再生成我的声音版本")
+        profile = active_voice_profile(db, user)
+        if not profile:
+            raise HTTPException(status_code=400, detail="请先在个人主页上传声音样本")
+        result = ensure_voice_clip(db, user, profile, VoiceClipCreate(text=text, scene_key=scene_key))
+        return {"voice_mode": "user", **result}
+    if voice_mode != "original":
+        raise HTTPException(status_code=400, detail="声音版本仅支持 original 或 user")
+    return ensure_original_remix_voice_clip(image_plan["variant_slot"], payload.shot_index, text)
 
 
 @app.get("/api/episodes/{episode_id}/featured-remixes")
@@ -2546,21 +2750,33 @@ def create_danmaku(
         user_id=user.id if user else None,
         time_sec=round(max(0, safe_time), 2),
         text=moderation.text,
+        original_text=text,
         session_id=payload.session_id,
         mode=payload.mode,
     )
+    comment.episode = episode
+    governance = evaluate_comment(comment, 1)
+    comment.review_status = governance.review_status
+    comment.mode = governance.mode
+    comment.risk_score = governance.risk_score
+    comment.quality_score = governance.quality_score
+    comment.spoiler_score = governance.spoiler_score
+    comment.relevance_score = governance.relevance_score
+    comment.cluster_key = governance.cluster_key
+    comment.cluster_size = governance.cluster_size
+    comment.suggested_time_sec = governance.suggested_time_sec
+    comment.moderation_model_version = governance.layers["small_model"]["model_version"]
+    comment.moderation_layers_json = json.dumps(governance.layers, ensure_ascii=False)
+    comment.moderation_reason = governance.reason
     db.add(comment)
     db.commit()
     db.refresh(comment)
-    return {
-        "id": comment.id,
-        "episode_id": comment.episode_id,
-        "time_sec": comment.time_sec,
-        "text": comment.text,
-        "mode": comment.mode,
-        "user": danmaku_user_payload(comment),
-        "created_at": comment.created_at.isoformat() if comment.created_at else None,
-    }
+    if comment.review_status != "approved":
+        raise HTTPException(
+            status_code=400,
+            detail={"category": comment.review_status, "message": comment.moderation_reason or "弹幕需要复核后展示"},
+        )
+    return danmaku_payload(comment)
 
 
 @app.get("/api/users/me/watch-history")
@@ -3062,6 +3278,104 @@ def admin_review_status(
     }
 
 
+def danmaku_governance_summary(rows: list[DanmakuComment]) -> dict:
+    status_counter = Counter(row.review_status or "approved" for row in rows)
+    mode_counter = Counter(row.mode or "light" for row in rows)
+    return {
+        "total": len(rows),
+        "status": dict(status_counter),
+        "mode": dict(mode_counter),
+        "needs_review": status_counter.get("needs_review", 0),
+        "hidden": status_counter.get("hidden", 0),
+        "approved": status_counter.get("approved", 0),
+    }
+
+
+@app.get("/api/admin/episodes/{episode_id}/danmaku-governance")
+def admin_list_episode_danmaku_governance(
+    episode_id: int,
+    status: str = "needs_review",
+    mode: str = "all",
+    q: str = "",
+    limit: int = 240,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles("admin", "reviewer")),
+) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    rows = (
+        db.query(DanmakuComment)
+        .filter(DanmakuComment.episode_id == episode_id)
+        .order_by(DanmakuComment.time_sec.asc(), DanmakuComment.id.asc())
+        .all()
+    )
+    filtered = rows
+    if status != "all":
+        filtered = [row for row in filtered if (row.review_status or "approved") == status]
+    if mode != "all":
+        filtered = [row for row in filtered if (row.mode or "light") == mode]
+    keyword = q.strip()
+    if keyword:
+        filtered = [row for row in filtered if keyword in row.text or keyword in (row.moderation_reason or "")]
+    filtered.sort(
+        key=lambda row: (
+            0 if (row.review_status or "approved") == "needs_review" else 1,
+            -(row.risk_score or 0),
+            -(row.spoiler_score or 0),
+            row.time_sec,
+        )
+    )
+    safe_limit = max(20, min(500, int(limit or 240)))
+    return {
+        "episode": episode_review_meta(episode),
+        "summary": danmaku_governance_summary(rows),
+        "items": [danmaku_payload(row, include_governance=True) for row in filtered[:safe_limit]],
+    }
+
+
+@app.post("/api/admin/episodes/{episode_id}/danmaku-governance/run")
+def admin_run_episode_danmaku_governance(
+    episode_id: int,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles("admin", "reviewer")),
+) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    return apply_governance_to_episode(db, episode_id)
+
+
+@app.patch("/api/admin/danmaku/{comment_id}")
+def admin_update_danmaku_review(
+    comment_id: int,
+    payload: DanmakuReviewUpdate,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles("admin", "reviewer")),
+) -> dict:
+    comment = db.get(DanmakuComment, comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="弹幕不存在")
+    if payload.text is not None:
+        comment.text = payload.text.strip()
+    if payload.time_sec is not None:
+        duration = comment.episode.duration_sec or payload.time_sec
+        comment.time_sec = round(min(max(0, payload.time_sec), duration), 2)
+    if payload.mode is not None:
+        if payload.mode not in {"light", "carnival", "curated", "seed"}:
+            raise HTTPException(status_code=400, detail="弹幕模式不合法")
+        comment.mode = payload.mode
+    if payload.review_status is not None:
+        if payload.review_status not in {"approved", "needs_review", "hidden"}:
+            raise HTTPException(status_code=400, detail="复核状态不合法")
+        comment.review_status = payload.review_status
+    if payload.moderation_reason is not None:
+        comment.moderation_reason = payload.moderation_reason.strip()
+    db.commit()
+    db.refresh(comment)
+    return danmaku_payload(comment, include_governance=True)
+
+
 @app.get("/api/admin/episodes/{episode_id}/highlights")
 def admin_get_episode_highlights(
     episode_id: int,
@@ -3241,6 +3555,18 @@ def admin_replace_episode_highlights(
 
     db.commit()
     return {"ok": True, "episode_id": episode.id, "highlight_count": len(normalized_payload["highlights"])}
+
+
+@app.api_route("/downloads/banju-debug.apk", methods=["GET", "HEAD"], include_in_schema=False)
+def download_banju_android_apk() -> FileResponse:
+    path = FRONTEND_DIR / "assets" / "downloads" / "banju-debug.apk"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="APK not found")
+    return FileResponse(
+        path,
+        media_type="application/vnd.android.package-archive",
+        filename="banju-debug.apk",
+    )
 
 
 if FRONTEND_DIR.exists():

@@ -1,0 +1,20 @@
+{
+  "appId": "com.banju.shortdrama",
+  "appName": "半句",
+  "webDir": "www",
+  "server": {
+    "url": "https://achievements-combine-advanced-readily.trycloudflare.com",
+    "cleartext": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#F6F9FE",
+      "showSpinner": false
+    }
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true
+  }
+}

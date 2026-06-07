@@ -17,8 +17,25 @@ class DanmakuCreate(BaseModel):
     mode: str = Field(default="light", max_length=32)
 
 
+class DanmakuReviewUpdate(BaseModel):
+    text: str | None = Field(default=None, min_length=1, max_length=80)
+    time_sec: float | None = Field(default=None, ge=0)
+    mode: str | None = Field(default=None, max_length=32)
+    review_status: str | None = Field(default=None, max_length=32)
+    moderation_reason: str | None = Field(default=None, max_length=500)
+
+
 class EpisodeRemixCreate(BaseModel):
     choice_key: str = Field(min_length=1, max_length=64)
+    variant_key: str | None = Field(default=None, min_length=1, max_length=64)
+    session_id: str = Field(min_length=1, max_length=128)
+
+
+class EpisodeRemixVoiceCreate(BaseModel):
+    choice_key: str = Field(min_length=1, max_length=64)
+    variant_key: str = Field(min_length=1, max_length=64)
+    shot_index: int = Field(ge=1, le=3)
+    voice_mode: str = Field(default="original", max_length=32)
     session_id: str = Field(min_length=1, max_length=128)
 
 

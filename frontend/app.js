@@ -265,9 +265,12 @@ const state = {
   reviewEpisodes: [],
   reviewExperience: null,
   reviewRemixes: [],
+  reviewDanmaku: { summary: {}, items: [] },
   reviewFilter: "all",
   reviewSection: "highlights",
   reviewRemixFilter: "all",
+  reviewDanmakuStatusFilter: "needs_review",
+  reviewDanmakuModeFilter: "all",
   currentUser: null,
   adminUsers: [],
   authToken: readStorage("auth_token") || "",
@@ -283,6 +286,8 @@ const state = {
   roomFeed: [],
   friendData: { friends: [], candidates: [], incoming_requests: [], outgoing_requests: [] },
   chatData: { conversations: [], unread_count: 0 },
+  chatEmojiPack: { packs: [] },
+  chatEmojiPanelOpen: true,
   activeChatUserId: null,
   chatThread: { friend: null, messages: [] },
   chatStatus: "",
@@ -316,6 +321,8 @@ const state = {
   voiceStatusError: false,
   voiceUsageMode: readStorage("voice_usage_mode") || "original",
   voiceClipLoading: false,
+  remixAudio: null,
+  remixVoiceRequestSerial: 0,
   voiceRecording: false,
   voiceRecorder: null,
   voiceRecordChunks: [],
@@ -325,10 +332,12 @@ const state = {
   danmakuFeedbackTimer: null,
   interactionMode: "choice",
   tapHideDelayMs: 2200,
+  userStartedPlayback: false,
   stickerSerial: 0,
   ambientStickerTimer: null,
   stickerHideTimers: new Map(),
   stickerCombo: 0,
+  vehicleResumeAfterChoice: false,
   danmakuActionTimer: null,
   stickerSuggestionDraft: "",
   routeTransitionTimer: null,
@@ -358,6 +367,7 @@ const reviewTab = $("#reviewTab");
 const player = $("#player");
 const interactionLayer = $("#interactionLayer");
 const endingRemixLayer = $("#endingRemixLayer");
+const endingRemixLayerHome = endingRemixLayer?.parentElement || null;
 const danmakuLayer = $("#danmakuLayer");
 const stickerLayer = $("#stickerLayer");
 const playToggle = $("#playToggle");
@@ -568,6 +578,61 @@ async function loadAvatarPool() {
   }
 }
 
+function fallbackChatEmojiPack() {
+  return {
+    packs: [
+      {
+        id: "fallback",
+        title: "快捷表情",
+        items: [
+          { id: "laugh", label: "哈哈", icon: "😆", text: "😆 哈哈哈" },
+          { id: "shock", label: "震惊", icon: "😱", text: "😱 这也太突然了" },
+          { id: "heart", label: "送心", icon: "💗", text: "💗 磕到了" },
+          { id: "hurt", label: "心疼", icon: "🥲", text: "🥲 心疼了" },
+        ],
+      },
+    ],
+  };
+}
+
+async function loadChatEmojiPack() {
+  try {
+    const payload = await fetchJSON("/assets/chat_emoji_pack.json");
+    state.chatEmojiPack = payload?.packs?.length ? payload : fallbackChatEmojiPack();
+  } catch {
+    state.chatEmojiPack = fallbackChatEmojiPack();
+  }
+  renderChatEmojiPanel();
+}
+
+function renderChatEmojiPanel() {
+  const panel = $("#chatEmojiPanel");
+  if (!panel) return;
+  const packs = state.chatEmojiPack?.packs || [];
+  panel.hidden = !state.chatEmojiPanelOpen;
+  panel.innerHTML = packs
+    .map(
+      (pack) => `
+        <section class="chat-emoji-group">
+          <strong>${escapeHTML(pack.title || "表情包")}</strong>
+          <div>
+            ${(pack.items || [])
+              .map(
+                (item) => `
+                  <button type="button" data-chat-emoji="${escapeHTML(item.text || item.label || "")}">
+                    <span>${escapeHTML(item.icon || item.label || "")}</span>
+                    <em>${escapeHTML(item.label || "")}</em>
+                  </button>
+                `
+              )
+              .join("")}
+          </div>
+        </section>
+      `
+    )
+    .join("");
+}
+
 function roleLabel(role) {
   return { admin: "管理员", reviewer: "复核员", user: "普通用户" }[role] || role || "用户";
 }
@@ -676,6 +741,7 @@ function syncHomeUrl() {
 async function afterAuth(options = {}) {
   updateAuthUI();
   await loadAvatarPool();
+  await loadChatEmojiPack();
   await loadDramas();
   await loadWatchHistory();
   await loadRewardProfile();
@@ -691,7 +757,10 @@ async function afterAuth(options = {}) {
 }
 
 async function routeAfterAuth() {
-  const episodeId = Number(new URLSearchParams(location.search).get("episode"));
+  const params = new URLSearchParams(location.search);
+  const episodeId = Number(params.get("episode"));
+  const resumeTime = Number(params.get("resume") || 0);
+  const openRemix = params.get("remix") === "1";
   if (location.hash === "#admin") {
     setView("admin");
   } else if (location.hash === "#review") {
@@ -703,7 +772,7 @@ async function routeAfterAuth() {
   } else if (location.hash === "#profile") {
     setView("profile");
   } else if (Number.isFinite(episodeId) && episodeId > 0) {
-    await openEpisodeFromUrl(episodeId);
+    await openEpisodeFromUrl(episodeId, Number.isFinite(resumeTime) ? resumeTime : 0, { openRemix });
   } else {
     setView("home");
   }
@@ -933,6 +1002,11 @@ function updatePlayerControls() {
   progressSlider.style.setProperty("--progress", `${ratio / 10}%`);
   $("#themeControls")?.style.setProperty("--progress", `${ratio / 10}%`);
   playerTime.textContent = `${formatTime(player.currentTime)} / ${formatTime(duration)}`;
+}
+
+function playPlayer(markUserStarted = false) {
+  if (markUserStarted) state.userStartedPlayback = true;
+  return player.play().catch(() => {});
 }
 
 function stableRatio(value) {
@@ -1650,6 +1724,42 @@ const STICKER_RULES = [
     heartEffect: true,
     maxScale: 2.08,
   },
+  {
+    asset: "vehicleTrain",
+    className: "sticker-vehicle",
+    keywords: ["火车", "买票", "车票", "交通工具"],
+    tapWords: ["火车票", "候车", "回家线"],
+    positions: [
+      { left: "57%", top: "24%" },
+      { left: "10%", top: "43%" },
+    ],
+    durationMs: 2800,
+    clickHoldMs: 1300,
+  },
+  {
+    asset: "vehicleCar",
+    className: "sticker-vehicle",
+    keywords: ["小车", "汽车", "顺风车", "交通工具"],
+    tapWords: ["小车", "上车", "走起"],
+    positions: [
+      { left: "11%", top: "25%" },
+      { left: "59%", top: "42%" },
+    ],
+    durationMs: 2800,
+    clickHoldMs: 1300,
+  },
+  {
+    asset: "vehicleMotorcycle",
+    className: "sticker-vehicle",
+    keywords: ["摩托", "摇滚", "交通工具", "回家方式"],
+    tapWords: ["摩托", "贼摇滚", "出发"],
+    positions: [
+      { left: "55%", top: "23%" },
+      { left: "11%", top: "44%" },
+    ],
+    durationMs: 3000,
+    clickHoldMs: 1400,
+  },
   { asset: "charge", className: "sticker-charge", keywords: ["冲", "干", "走"], tapWords: ["冲"] },
   { asset: "question", className: "sticker-question", keywords: ["悬念", "疑问"], tapWords: ["?"] },
   { asset: "laugh", className: "sticker-laugh", keywords: ["搞笑", "笑", "好笑", "哈哈"], tapWords: ["鹅鹅鹅"] },
@@ -1837,6 +1947,79 @@ function tapSticker(sticker, rule = {}) {
   setStickerLifetime(sticker, rule.clickHoldMs || 1800);
 }
 
+const STICKER_SAFE_ANCHORS = [
+  { left: 9, top: 21 },
+  { left: 57, top: 19 },
+  { left: 12, top: 43 },
+  { left: 60, top: 43 },
+  { left: 42, top: 16 },
+  { left: 47, top: 49 },
+];
+
+const BEIWANG_SAFE_ANCHORS = [
+  { left: 8, top: 24 },
+  { left: 61, top: 20 },
+  { left: 10, top: 46 },
+  { left: 59, top: 45 },
+  { left: 44, top: 18 },
+  { left: 49, top: 50 },
+];
+
+function parsePercent(value, fallback) {
+  const parsed = Number(String(value || "").replace("%", ""));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function clampPercent(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function stickerMotionClass(rule) {
+  const asset = rule?.asset || "";
+  if (/rock|moto|vehicle|north/i.test(asset)) return "motion-drive";
+  if (/stamp|bill|cash|charge|trap/i.test(asset)) return "motion-stamp";
+  if (/smoke|question|crow/i.test(asset)) return "motion-drift";
+  if (/phone|lantern|ticket|heart|kiss|snow|rain/i.test(asset)) return "motion-float";
+  return "motion-pop";
+}
+
+function stickerPosition(rule, index, options = {}) {
+  if (options.left || options.top) {
+    return { left: options.left || "50%", top: options.top || "28%" };
+  }
+  const explicit = rule.positions?.[index % rule.positions.length];
+  const anchors = isBeiwangEpisode() ? BEIWANG_SAFE_ANCHORS : STICKER_SAFE_ANCHORS;
+  const seed = `${rule.asset}-${index}-${Math.floor(player.currentTime || 0)}-${state.stickerSerial}`;
+  const anchor = explicit || anchors[(index + Math.floor(stableRatio(seed) * anchors.length)) % anchors.length];
+  const leftBase = parsePercent(anchor.left, 50);
+  const topBase = parsePercent(anchor.top, 28);
+  const jitterX = (stableRatio(`${seed}-x`) - 0.5) * 8;
+  const jitterY = (stableRatio(`${seed}-y`) - 0.5) * 7;
+  return {
+    left: `${clampPercent(leftBase + jitterX, 5, 70).toFixed(1)}%`,
+    top: `${clampPercent(topBase + jitterY, 10, 56).toFixed(1)}%`,
+  };
+}
+
+function applyStickerMotion(sticker, rule, index, options = {}) {
+  sticker.classList.add(stickerMotionClass(rule));
+  const seed = `${rule.asset}-${index}-${state.sessionId}-${Date.now()}`;
+  const side = stableRatio(`${seed}-side`) > 0.5 ? 1 : -1;
+  const enterX = Math.round(side * (12 + stableRatio(`${seed}-enter`) * 26));
+  const driftX = Math.round(-side * (8 + stableRatio(`${seed}-drift`) * 22));
+  const exitX = Math.round(-side * (18 + stableRatio(`${seed}-exit`) * 34));
+  const lift = Math.round(28 + stableRatio(`${seed}-lift`) * 28);
+  const rotate = Math.round((stableRatio(`${seed}-rot`) - 0.5) * 18);
+  sticker.style.setProperty("--enter-x", `${enterX}px`);
+  sticker.style.setProperty("--enter-y", `${Math.round(10 + stableRatio(`${seed}-drop`) * 18)}px`);
+  sticker.style.setProperty("--float-x", `${driftX}px`);
+  sticker.style.setProperty("--float-y", `${-Math.round(10 + stableRatio(`${seed}-float`) * 18)}px`);
+  sticker.style.setProperty("--exit-x", `${exitX}px`);
+  sticker.style.setProperty("--exit-y", `${-lift}px`);
+  sticker.style.setProperty("--rot", `${rotate}deg`);
+  sticker.style.setProperty("--duration", `${options.durationMs || rule.durationMs || 3600}ms`);
+}
+
 function spawnVideoSticker(rule, index = 0, options = {}) {
   if (!stickerLayer || !rule) return;
   const asset = STICKER_ASSETS[rule.asset];
@@ -1849,11 +2032,12 @@ function spawnVideoSticker(rule, index = 0, options = {}) {
   sticker.dataset.asset = rule.asset;
   if (rule.heartEffect) sticker.dataset.mood = "heart";
   if (options.interactive !== false) sticker.type = "button";
-  const position = rule.positions?.[index % rule.positions.length];
-  sticker.style.setProperty("--left", options.left || position?.left || `${8 + ((index * 23 + state.stickerSerial * 7) % 72)}%`);
-  sticker.style.setProperty("--top", options.top || position?.top || `${8 + ((index * 17 + state.stickerSerial * 11) % 48)}%`);
+  const position = stickerPosition(rule, index, options);
+  sticker.style.setProperty("--left", position.left);
+  sticker.style.setProperty("--top", position.top);
   sticker.style.setProperty("--delay", `${options.delayMs ?? index * 90}ms`);
   sticker.style.setProperty("--tap-color", rule.tapColor || "rgba(255, 122, 48, 0.72)");
+  applyStickerMotion(sticker, rule, index, options);
   sticker.innerHTML = `<img src="${asset.src}" alt="${escapeHTML(asset.label)}" /><span class="sticker-count">0</span>`;
   if (options.interactive !== false) {
     sticker.addEventListener("click", (event) => {
@@ -2791,6 +2975,7 @@ function renderVoiceProfileSection() {
   const previewText = state.voiceUsageMode === "user" ? VOICE_PREVIEW_TEXTS.user : VOICE_PREVIEW_TEXTS.original;
   const previewButtonText = state.voiceUsageMode === "user" ? "生成我的声音试听" : "播放原版试听";
   const previewDisabled = state.voiceUsageMode === "user" && !hasVoice;
+  const latestClip = clips[0] || null;
   return `
     <section class="voice-profile-card ${hasVoice ? "ready" : "empty"}">
       <div class="voice-profile-head">
@@ -2836,25 +3021,34 @@ function renderVoiceProfileSection() {
         <button class="ghost-button voice-preview-button" type="button" ${previewDisabled ? "disabled" : ""}>${previewButtonText}</button>
       </div>
       ${state.voiceStatus ? `<div class="voice-status${statusClass}">${escapeHTML(state.voiceStatus)}</div>` : ""}
-      <div class="voice-cache-list">
-        ${
-          clips.length
-            ? clips
-                .map(
-                  (clip) => `
-                    <article>
-                      <div>
-                        <strong>${escapeHTML(clip.scene_key || "voice")}</strong>
-                        <span>${escapeHTML(clip.text || "")}</span>
-                      </div>
-                      ${clip.audio_url ? `<audio controls preload="none" src="${escapeHTML(clip.audio_url)}"></audio>` : ""}
-                    </article>
-                  `
-                )
-                .join("")
-            : `<span>暂无缓存音频。后续片尾二创、陪看小助手会复用这里的生成结果。</span>`
-        }
-      </div>
+      ${
+        clips.length
+          ? `<details class="voice-cache-list">
+              <summary>
+                <div>
+                  <strong>生成缓存</strong>
+                  <span>已收起 ${clips.length} 段音频${latestClip?.text ? ` · 最近：${escapeHTML(latestClip.text)}` : ""}</span>
+                </div>
+                <em>展开</em>
+              </summary>
+              <div class="voice-cache-items">
+                ${clips
+                  .map(
+                    (clip) => `
+                      <article>
+                        <div>
+                          <strong>${escapeHTML(clip.scene_key || "voice")}</strong>
+                          <span>${escapeHTML(clip.text || "")}</span>
+                        </div>
+                        ${clip.audio_url ? `<audio controls preload="none" src="${escapeHTML(clip.audio_url)}"></audio>` : ""}
+                      </article>
+                    `
+                  )
+                  .join("")}
+              </div>
+            </details>`
+          : `<div class="voice-cache-list empty"><span>暂无缓存音频。后续片尾二创、陪看小助手会复用这里的生成结果。</span></div>`
+      }
     </section>
   `;
 }
@@ -3836,6 +4030,7 @@ function renderChatWorkspace() {
   const header = $("#chatThreadHeader");
   const messageList = $("#chatMessageList");
   if (!conversationList || !header || !messageList) return;
+  renderChatEmojiPanel();
   const conversations = state.chatData?.conversations || [];
   conversationList.innerHTML = conversations.length
     ? conversations
@@ -4295,6 +4490,31 @@ async function createVoiceClip(text, sceneKey = "manual_preview") {
   });
 }
 
+async function createRemixVoiceClip(frame, voiceMode) {
+  if (!state.currentEpisode || !frame) throw new Error("缺少当前剧集或分镜");
+  const choiceKey = frame.dataset.remixChoiceKey;
+  const variantKey = frame.dataset.remixVariantKey;
+  const shotIndex = Number(frame.dataset.shotIndex || 1);
+  if (!choiceKey || !variantKey || !shotIndex) throw new Error("缺少片尾二创语音参数");
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 60000);
+  try {
+    return await fetchJSON(`/api/episodes/${state.currentEpisode.id}/remix-voice-clips`, {
+      method: "POST",
+      signal: controller.signal,
+      body: JSON.stringify({
+        choice_key: choiceKey,
+        variant_key: variantKey,
+        shot_index: shotIndex,
+        voice_mode: voiceMode,
+        session_id: state.sessionId,
+      }),
+    });
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 function playOriginalVoicePreview(text) {
   if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
     setVoiceStatus("当前浏览器不支持原版旁白试听，请切换到我的声音或使用支持语音朗读的浏览器。", true);
@@ -4382,7 +4602,7 @@ async function applyRoomState(room) {
       player.currentTime = Number(room.progress_sec || 0);
     }
     if (room.playback_state === "playing" && player.paused) {
-      player.play().catch(() => {});
+      if (state.userStartedPlayback) playPlayer();
     }
     if (room.playback_state !== "playing" && !player.paused) {
       player.pause();
@@ -4527,9 +4747,12 @@ async function openEpisode(episodeId, options = {}) {
   }
 }
 
-async function openEpisodeFromUrl(episodeId, resumeTime = 0) {
+async function openEpisodeFromUrl(episodeId, resumeTime = 0, options = {}) {
   const episode = await fetchJSON(`/api/episodes/${episodeId}`);
   await openDrama(episode.drama.id, episodeId, resumeTime);
+  if (options.openRemix) {
+    window.setTimeout(() => showEndingRemix(), 320);
+  }
 }
 
 function renderTimeline() {
@@ -4558,21 +4781,49 @@ function renderTimeline() {
       hideInteraction();
       state.lastInteractionTime = -Infinity;
       player.currentTime = targetTime;
-      player.play();
+      if (state.userStartedPlayback) playPlayer();
     });
   });
 }
 
 function clearEndingRemix() {
+  stopRemixAudio();
   state.endingRemixEntryShown = false;
   state.endingRemixShown = false;
   state.remixOptions = null;
   state.remixResult = null;
   state.remixLoading = false;
   if (endingRemixLayer) {
+    resetEndingRemixViewportOffset();
     endingRemixLayer.className = "ending-remix-layer hidden";
     endingRemixLayer.innerHTML = "";
+    setEndingRemixLayerHost(false);
   }
+}
+
+function setEndingRemixLayerHost(immersive) {
+  if (!endingRemixLayer || !endingRemixLayerHome) return;
+  const target = immersive ? document.body : endingRemixLayerHome;
+  if (endingRemixLayer.parentElement !== target) {
+    target.appendChild(endingRemixLayer);
+  }
+}
+
+function resetEndingRemixViewportOffset() {
+  if (!endingRemixLayer) return;
+  endingRemixLayer.style.removeProperty("--remix-viewport-x");
+  endingRemixLayer.style.removeProperty("--remix-viewport-y");
+}
+
+function alignEndingRemixLayerToViewport() {
+  if (!endingRemixLayer?.classList.contains("ending-remix-immersive-layer")) return;
+  requestAnimationFrame(() => {
+    if (!endingRemixLayer?.classList.contains("ending-remix-immersive-layer")) return;
+    resetEndingRemixViewportOffset();
+    const rect = endingRemixLayer.getBoundingClientRect();
+    endingRemixLayer.style.setProperty("--remix-viewport-x", `${Math.round(-rect.x)}px`);
+    endingRemixLayer.style.setProperty("--remix-viewport-y", `${Math.round(-rect.y)}px`);
+  });
 }
 
 function getNextEpisode() {
@@ -4583,6 +4834,7 @@ function getNextEpisode() {
 
 function renderEndingRemixEntry(payload = state.remixOptions) {
   if (!endingRemixLayer) return;
+  setEndingRemixLayerHost(false);
   const nextEpisode = getNextEpisode();
   const featuredCount = payload?.featured_remixes?.length || 0;
   endingRemixLayer.className = "ending-remix-layer ending-remix-entry-layer";
@@ -4610,15 +4862,19 @@ function renderEndingRemixOptions(payload) {
   if (!endingRemixLayer) return;
   const options = payload.options || [];
   const featured = payload.featured_remixes || [];
-  endingRemixLayer.className = "ending-remix-layer";
+  setEndingRemixLayerHost(true);
+  endingRemixLayer.className = "ending-remix-layer ending-remix-immersive-layer";
+  alignEndingRemixLayerToViewport();
   endingRemixLayer.innerHTML = `
-    <section class="ending-remix-panel">
+    <section class="ending-remix-panel remix-select-panel">
       <div class="remix-head">
-        <span>片尾 AI 二创</span>
+        <span>片尾 AI 二创 · 方向选择</span>
         <button class="close-button remix-close-button" type="button" data-remix-action="close" aria-label="关闭">×</button>
       </div>
-      <h3>你想看哪种下一集走向？</h3>
-      <p>${escapeHTML(payload.disclaimer || "AI 猜测剧情，非正片内容")}</p>
+      <div class="remix-select-copy">
+        <h3>下一段路，你想让他们怎么走？</h3>
+        <p>${escapeHTML(payload.disclaimer || "AI 猜测剧情，非正片内容")}。先选故事方向，再进入专属番外。</p>
+      </div>
       <div class="remix-choice-grid">
         ${options
           .map(
@@ -4628,13 +4884,6 @@ function renderEndingRemixOptions(payload) {
                 <strong>${escapeHTML(option.label)}</strong>
                 <span>${escapeHTML(option.description || "")}</span>
                 <em>${escapeHTML(option.tone || "剧情预测")}</em>
-                ${
-                  option.variant_count
-                    ? `<small>${Number(option.variant_count)} 个预生成版本 · 约 ${Number(
-                        option.target_duration_sec || 30
-                      )} 秒</small>`
-                    : ""
-                }
               </button>
             `
           )
@@ -4658,14 +4907,62 @@ function renderEndingRemixOptions(payload) {
             </div>`
           : ""
       }
-      <small>当前已接入图片分镜，后续可替换为更高质量的生成图或视频资产。</small>
+    </section>
+  `;
+}
+
+function renderEndingRemixVariantOptions(choiceKey) {
+  if (!endingRemixLayer) return;
+  const choice = state.remixOptions?.options?.find((item) => item.key === choiceKey);
+  const variants = choice?.variants || [];
+  if (!choice || !variants.length) {
+    generateEndingRemix(choiceKey);
+    return;
+  }
+  setEndingRemixLayerHost(true);
+  endingRemixLayer.className = "ending-remix-layer ending-remix-immersive-layer";
+  alignEndingRemixLayerToViewport();
+  endingRemixLayer.innerHTML = `
+    <section class="ending-remix-panel remix-select-panel remix-variant-panel">
+      <div class="remix-head">
+        <span>片尾 AI 二创 · 个性化选择</span>
+        <button class="close-button remix-close-button" type="button" data-remix-action="close" aria-label="关闭">×</button>
+      </div>
+      <div class="remix-branch-summary">
+        <b>${escapeHTML(choice.icon || "AI")}</b>
+        <div>
+          <h3>${escapeHTML(choice.label)}</h3>
+          <p>${escapeHTML(choice.description || "")}</p>
+        </div>
+      </div>
+      <div class="remix-variant-grid">
+        ${variants
+          .map(
+            (variant) => `
+              <button class="remix-variant-card" type="button" data-remix-choice-key="${escapeHTML(
+                choice.key
+              )}" data-remix-variant="${escapeHTML(variant.variant_key)}">
+                <span>${escapeHTML(variant.variable_label || "个性化版本")}</span>
+                <strong>${escapeHTML(variant.label || "")}</strong>
+                <p>${escapeHTML(variant.summary || "")}</p>
+              </button>
+            `
+          )
+          .join("")}
+      </div>
+      <div class="remix-footer">
+        <span>选择会直接决定三张番外图片和对应语音。</span>
+        <button class="ghost-button" type="button" data-remix-action="back">重新选择方向</button>
+      </div>
     </section>
   `;
 }
 
 function renderEndingRemixLoading(choice) {
   if (!endingRemixLayer) return;
-  endingRemixLayer.className = "ending-remix-layer";
+  setEndingRemixLayerHost(true);
+  endingRemixLayer.className = "ending-remix-layer ending-remix-immersive-layer";
+  alignEndingRemixLayerToViewport();
   endingRemixLayer.innerHTML = `
     <section class="ending-remix-panel remix-loading">
       <div class="remix-head">
@@ -4673,7 +4970,7 @@ function renderEndingRemixLoading(choice) {
       </div>
       <div class="remix-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
       <h3>${escapeHTML(choice?.label || "剧情预测")}</h3>
-      <p>正在根据本集高光和你的选择生成文字卡/分镜文案。</p>
+      <p>正在穿梭进入剧集，准备你的片尾番外。</p>
     </section>
   `;
 }
@@ -4686,11 +4983,13 @@ function remixImageStatusLabel(status) {
 function renderRemixImageSequence(imagePlan) {
   const shots = imagePlan?.shots || [];
   if (!shots.length) return "";
+  const hasVoiceProfile = Boolean(state.voiceProfile?.profile);
+  const activeVoiceMode = hasVoiceProfile ? state.voiceUsageMode : "original";
   return `
     <div class="remix-image-plan" data-remix-image-plan data-active-index="0">
-      <div class="remix-video-plan-head">
+      <div class="remix-image-topbar">
         <div>
-          <span>三镜头图片分镜</span>
+          <span>片尾番外</span>
           <strong>${escapeHTML(imagePlan.replacement_axis || "可替换变量")}</strong>
         </div>
         <em>${escapeHTML(remixImageStatusLabel(imagePlan.asset_status))} · ${Number(imagePlan.shot_count || shots.length)} 张</em>
@@ -4699,7 +4998,11 @@ function renderRemixImageSequence(imagePlan) {
         ${shots
           .map(
             (shot, index) => `
-              <figure class="remix-image-frame ${index === 0 ? "active" : ""}" data-shot-index="${index}" data-audio-scene-key="${
+              <figure class="remix-image-frame ${index === 0 ? "active" : ""}" data-shot-index="${
+                index + 1
+              }" data-remix-choice-key="${escapeHTML(imagePlan.choice_key || "")}" data-remix-variant-key="${escapeHTML(
+                imagePlan.variant_key || ""
+              )}" data-audio-scene-key="${
                 imagePlan.variant_slot || "remix"
               }_shot_${index + 1}" data-audio-ready="${
                 shot.audio_status === "ready" ? "true" : "false"
@@ -4714,7 +5017,7 @@ function renderRemixImageSequence(imagePlan) {
                 <div class="remix-image-fallback">
                   <b>IMAGE ${index + 1}</b>
                   <span>${escapeHTML(shot.image_prompt || "等待 OpenAI 图片生成")}</span>
-                </div>
+        </div>
                 <figcaption>
                   <b>0${index + 1}</b>
                   <div>
@@ -4727,64 +5030,125 @@ function renderRemixImageSequence(imagePlan) {
           )
           .join("")}
       </div>
+      <div class="remix-image-dots" aria-hidden="true">
+        ${shots.map((_, index) => `<i class="${index === 0 ? "active" : ""}"></i>`).join("")}
+      </div>
       <div class="remix-image-controls">
         <button class="ghost-button" type="button" data-remix-action="image-prev">上一张</button>
         <span><b data-remix-image-current>1</b> / ${shots.length}</span>
         <button class="primary-button" type="button" data-remix-action="image-next">下一张</button>
-        ${
-          state.voiceProfile?.profile
-            ? `<button class="ghost-button remix-voice-button" type="button" data-remix-action="voice-current">我的声音读这句</button>`
-            : ""
-        }
       </div>
-      <p>${escapeHTML(imagePlan.note || "点击图片进入下一张分镜。")}</p>
-      <div class="video-slot-pill">${escapeHTML(imagePlan.storage_dir || imagePlan.variant_slot || "")}</div>
+      <div class="remix-audio-controls">
+        <div class="voice-mode-toggle remix-voice-switch" aria-label="片尾二创声音版本">
+          <button class="${activeVoiceMode === "original" ? "active" : ""}" type="button" data-voice-mode="original">原版</button>
+          <button class="${activeVoiceMode === "user" ? "active" : ""}" type="button" data-voice-mode="user" ${
+            hasVoiceProfile ? "" : "disabled"
+          }>我的声音</button>
+        </div>
+        <button class="ghost-button remix-voice-button" type="button" data-remix-action="voice-current">
+          播放这一句
+        </button>
+      </div>
     </div>
   `;
 }
 
 function playAudioSrc(src) {
   if (!src) return;
-  new Audio(src).play().catch(() => {});
+  stopRemixAudio({ invalidate: false });
+  const audio = new Audio(src);
+  state.remixAudio = audio;
+  audio.addEventListener(
+    "ended",
+    () => {
+      if (state.remixAudio === audio) state.remixAudio = null;
+    },
+    { once: true },
+  );
+  audio.play().catch(() => {
+    if (state.remixAudio === audio) state.remixAudio = null;
+  });
 }
 
-async function playFrameWithUserVoice(frame) {
+function stopRemixAudio(options = {}) {
+  if (options.invalidate !== false) {
+    state.remixVoiceRequestSerial += 1;
+    state.voiceClipLoading = false;
+  }
+  if (state.remixAudio) {
+    state.remixAudio.pause();
+    state.remixAudio.currentTime = 0;
+    state.remixAudio = null;
+  }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+function playOriginalRemixText(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return false;
+  stopRemixAudio({ invalidate: false });
+  const utterance = new SpeechSynthesisUtterance(trimmed);
+  utterance.lang = "zh-CN";
+  utterance.rate = 0.98;
+  utterance.pitch = 1;
+  const voice = window.speechSynthesis
+    .getVoices()
+    .find((item) => /zh|Chinese|Mandarin|中文/i.test(`${item.lang} ${item.name}`));
+  if (voice) utterance.voice = voice;
+  window.speechSynthesis.speak(utterance);
+  return true;
+}
+
+async function generateAndPlayRemixVoice(frame, voiceMode) {
   const text = frame?.dataset.audioText;
   if (!frame || !text || state.voiceClipLoading) return;
-  if (frame.dataset.userAudioSrc) {
-    playAudioSrc(frame.dataset.userAudioSrc);
+  const requestSerial = ++state.remixVoiceRequestSerial;
+  const isUserVoice = voiceMode === "user";
+  const cachedSrc = isUserVoice ? frame.dataset.userAudioSrc : frame.dataset.audioSrc;
+  const hasCachedOriginal = !isUserVoice && cachedSrc && frame.dataset.audioReady === "true";
+  if ((isUserVoice && cachedSrc) || hasCachedOriginal) {
+    if (requestSerial === state.remixVoiceRequestSerial) playAudioSrc(cachedSrc);
+    return;
+  }
+  if (isUserVoice && !state.voiceProfile?.profile) {
+    if (requestSerial === state.remixVoiceRequestSerial) playOriginalRemixText(text);
     return;
   }
   frame.classList.add("voice-generating");
+  frame.dataset.voiceStatus = isUserVoice ? "正在用你的声音穿梭进入剧集..." : "正在复刻主角声音穿梭进入剧集...";
   state.voiceClipLoading = true;
   try {
-    const clip = await createVoiceClip(text, frame.dataset.audioSceneKey || "remix_shot");
+    const clip = await createRemixVoiceClip(frame, isUserVoice ? "user" : "original");
+    if (requestSerial !== state.remixVoiceRequestSerial) return;
     if (clip.audio_url) {
-      frame.dataset.userAudioSrc = clip.audio_url;
+      if (isUserVoice) {
+        frame.dataset.userAudioSrc = clip.audio_url;
+      } else {
+        frame.dataset.audioSrc = clip.audio_url;
+        frame.dataset.audioReady = "true";
+      }
       playAudioSrc(clip.audio_url);
     }
   } catch {
+    if (requestSerial !== state.remixVoiceRequestSerial) return;
     const src = frame.dataset.audioSrc;
     if (src && frame.dataset.audioReady === "true") playAudioSrc(src);
+    else playOriginalRemixText(text);
   } finally {
-    state.voiceClipLoading = false;
+    if (requestSerial === state.remixVoiceRequestSerial) state.voiceClipLoading = false;
     frame.classList.remove("voice-generating");
+    delete frame.dataset.voiceStatus;
   }
 }
 
 function playRemixShotAudio(frame) {
-  if (state.voiceUsageMode === "user" && state.voiceProfile?.profile) {
-    playFrameWithUserVoice(frame);
-    return;
-  }
-  const src = frame?.dataset.audioSrc;
-  if (!src || frame?.dataset.audioReady !== "true") return;
-  playAudioSrc(src);
+  const voiceMode = state.voiceUsageMode === "user" && state.voiceProfile?.profile ? "user" : "original";
+  generateAndPlayRemixVoice(frame, voiceMode);
 }
 
 function playCurrentRemixFrameVoice() {
   const frame = endingRemixLayer?.querySelector(".remix-image-frame.active");
-  if (frame) playFrameWithUserVoice(frame);
+  if (frame) playRemixShotAudio(frame);
 }
 
 function stepRemixImage(delta) {
@@ -4794,11 +5158,15 @@ function stepRemixImage(delta) {
   if (!frames.length) return;
   const current = Number(plan.dataset.activeIndex || 0);
   const next = Math.max(0, Math.min(frames.length - 1, current + delta));
+  if (next === current) return;
+  stopRemixAudio();
+  plan.dataset.direction = delta >= 0 ? "next" : "prev";
   plan.dataset.activeIndex = String(next);
   frames.forEach((frame, index) => frame.classList.toggle("active", index === next));
   playRemixShotAudio(frames[next]);
   const counter = plan.querySelector("[data-remix-image-current]");
   if (counter) counter.textContent = String(next + 1);
+  plan.querySelectorAll(".remix-image-dots i").forEach((dot, index) => dot.classList.toggle("active", index === next));
 }
 
 function renderEndingRemixResult(result) {
@@ -4808,94 +5176,99 @@ function renderEndingRemixResult(result) {
   const imagePlan = result.image_plan || result.prompt_trace?.image_plan || null;
   const videoPlan = result.video_plan || result.prompt_trace?.video_plan || null;
   const videoShots = videoPlan?.shots || [];
-  endingRemixLayer.className = "ending-remix-layer";
+  const storyboardHTML = storyboard
+    .map(
+      (shot, index) => `
+        <article class="storyboard-card">
+          <span>0${index + 1}</span>
+          <strong>${escapeHTML(shot.shot || `镜头${index + 1}`)}</strong>
+          <p>${escapeHTML(shot.visual || "")}</p>
+          <em>${escapeHTML(shot.subtitle || "")}</em>
+          <small>${escapeHTML(shot.sound || "")}</small>
+        </article>
+      `
+    )
+    .join("");
+  const imageSequenceHTML = renderRemixImageSequence(imagePlan);
+  const videoFallbackHTML =
+    !imagePlan && videoPlan
+      ? `<div class="remix-video-plan">
+          <div class="remix-video-plan-head">
+            <div>
+              <span>预生成短片方案</span>
+              <strong>${escapeHTML(videoPlan.replacement_axis || "可替换变量")}</strong>
+            </div>
+            <em>${videoPlan.asset_status === "cached_video" ? "已缓存" : "脚本就绪"} · ${Number(
+          videoPlan.target_duration_sec || 30
+        )} 秒以内</em>
+          </div>
+          ${
+            videoPlan.storage_hint
+              ? `<video class="remix-preview-video" src="${escapeHTML(
+                  videoPlan.storage_hint
+                )}" controls playsinline preload="metadata"></video>`
+              : ""
+          }
+          <p>${escapeHTML(videoPlan.note || "该版本适合赛前批量生成并缓存。")}</p>
+          <div class="video-slot-pill">${escapeHTML(videoPlan.storage_hint || videoPlan.variant_slot || "")}</div>
+          <div class="video-shot-list">
+            ${videoShots
+              .map(
+                (shot, index) => `
+                  <article>
+                    <b>0${index + 1}</b>
+                    <div>
+                      <strong>${escapeHTML(shot.caption || `镜头${index + 1}`)}</strong>
+                      <span>${Number(shot.duration_sec || 0)}s · ${escapeHTML(shot.sound || "")}</span>
+                      <p>${escapeHTML(shot.video_prompt || "")}</p>
+                    </div>
+                  </article>
+                `
+              )
+              .join("")}
+          </div>
+        </div>`
+      : "";
+  setEndingRemixLayerHost(true);
+  endingRemixLayer.className = "ending-remix-layer ending-remix-immersive-layer remix-result-layer";
+  alignEndingRemixLayerToViewport();
   endingRemixLayer.innerHTML = `
-    <section class="ending-remix-panel remix-result-panel">
-      <div class="remix-head">
+    <section class="ending-remix-panel remix-result-panel remix-cinema-panel">
+      <div class="remix-head remix-cinema-head">
         <span>${escapeHTML(result.disclaimer || "AI 猜测剧情，非正片内容")}</span>
         <button class="close-button remix-close-button" type="button" data-remix-action="close" aria-label="关闭">×</button>
       </div>
-      <div class="remix-result-title">
-        <b>${escapeHTML(result.choice?.icon || "AI")}</b>
-        <div>
-          <h3>${escapeHTML(result.title || "AI 猜测卡")}</h3>
-          <p>${escapeHTML(result.logline || "")}</p>
+      <div class="remix-result-layout ${imageSequenceHTML ? "has-images" : ""}">
+        <div class="remix-result-copy">
+          <div class="remix-result-title">
+            <b>${escapeHTML(result.choice?.icon || "AI")}</b>
+            <div>
+              <h3>${escapeHTML(result.title || "AI 猜测卡")}</h3>
+              <p>${escapeHTML(result.logline || "")}</p>
+            </div>
+          </div>
+          <p class="remix-story-text">${escapeHTML(result.story_text || "")}</p>
+          ${
+            variant
+              ? `<div class="remix-variant-strip">
+                  <span>本次版本</span>
+                  <strong>${escapeHTML(variant.label || "")}</strong>
+                  <em>${escapeHTML(variant.variable_label || "")}</em>
+                </div>`
+              : ""
+          }
+          <div class="remix-storyboard-drawer">
+            <span>文字分镜</span>
+            <div class="storyboard-grid">${storyboardHTML}</div>
+          </div>
         </div>
+        ${imageSequenceHTML || videoFallbackHTML}
       </div>
-      <p class="remix-story-text">${escapeHTML(result.story_text || "")}</p>
-      ${
-        variant
-          ? `<div class="remix-variant-strip">
-              <span>本次版本</span>
-              <strong>${escapeHTML(variant.label || "")}</strong>
-              <em>${escapeHTML(variant.variable_label || "")}</em>
-            </div>`
-          : ""
-      }
-      <div class="storyboard-grid">
-        ${storyboard
-          .map(
-            (shot, index) => `
-              <article class="storyboard-card">
-                <span>0${index + 1}</span>
-                <strong>${escapeHTML(shot.shot || `镜头${index + 1}`)}</strong>
-                <p>${escapeHTML(shot.visual || "")}</p>
-                <em>${escapeHTML(shot.subtitle || "")}</em>
-                <small>${escapeHTML(shot.sound || "")}</small>
-              </article>
-            `
-          )
-          .join("")}
-      </div>
-      ${renderRemixImageSequence(imagePlan)}
-      ${
-        !imagePlan && videoPlan
-          ? `<div class="remix-video-plan">
-              <div class="remix-video-plan-head">
-                <div>
-                  <span>预生成短片方案</span>
-                  <strong>${escapeHTML(videoPlan.replacement_axis || "可替换变量")}</strong>
-                </div>
-                <em>${videoPlan.asset_status === "cached_video" ? "已缓存" : "脚本就绪"} · ${Number(
-                  videoPlan.target_duration_sec || 30
-                )} 秒以内</em>
-              </div>
-              ${
-                videoPlan.storage_hint
-                  ? `<video class="remix-preview-video" src="${escapeHTML(
-                      videoPlan.storage_hint
-                    )}" controls playsinline preload="metadata"></video>`
-                  : ""
-              }
-              <p>${escapeHTML(videoPlan.note || "该版本适合赛前批量生成并缓存。")}</p>
-              <div class="video-slot-pill">${escapeHTML(videoPlan.storage_hint || videoPlan.variant_slot || "")}</div>
-              <div class="video-shot-list">
-                ${videoShots
-                  .map(
-                    (shot, index) => `
-                      <article>
-                        <b>0${index + 1}</b>
-                        <div>
-                          <strong>${escapeHTML(shot.caption || `镜头${index + 1}`)}</strong>
-                          <span>${Number(shot.duration_sec || 0)}s · ${escapeHTML(shot.sound || "")}</span>
-                          <p>${escapeHTML(shot.video_prompt || "")}</p>
-                        </div>
-                      </article>
-                    `
-                  )
-                  .join("")}
-              </div>
-            </div>`
-          : ""
-      }
-      <div class="remix-footer">
+      <div class="remix-footer remix-cinema-footer">
         <span>${escapeHTML(result.share_copy || "AI 已生成一个非正片番外走向。")}</span>
         <button class="ghost-button" type="button" data-remix-action="back">换一个走向</button>
         <button class="primary-button" type="button" data-remix-action="close">收起</button>
       </div>
-      <small>生成来源：${escapeHTML(remixSourceLabel(result.source))} · ${escapeHTML(result.model_version || "remix-text-v1")}${
-        result.record_id ? ` · 记录 #${Number(result.record_id)}` : ""
-      }</small>
     </section>
   `;
 }
@@ -4935,6 +5308,9 @@ async function showEndingRemix() {
     player.pause();
   }
   try {
+    if (state.currentUser && !state.voiceProfile) {
+      await loadVoiceProfile();
+    }
     const payload = state.remixOptions || (await fetchJSON(`/api/episodes/${state.currentEpisode.id}/remix-options`));
     state.remixOptions = payload;
     renderEndingRemixOptions(payload);
@@ -4971,7 +5347,7 @@ function maybeShowEndingRemixEntry(force = false) {
   }
 }
 
-async function generateEndingRemix(choiceKey) {
+async function generateEndingRemix(choiceKey, variantKey = "") {
   if (!state.currentEpisode || state.remixLoading) return;
   const choice = state.remixOptions?.options?.find((item) => item.key === choiceKey);
   state.remixLoading = true;
@@ -4979,7 +5355,7 @@ async function generateEndingRemix(choiceKey) {
   try {
     const result = await fetchJSON(`/api/episodes/${state.currentEpisode.id}/ai-remix`, {
       method: "POST",
-      body: JSON.stringify({ choice_key: choiceKey, session_id: state.sessionId }),
+      body: JSON.stringify({ choice_key: choiceKey, variant_key: variantKey || null, session_id: state.sessionId }),
     });
     state.remixResult = result;
     renderEndingRemixResult(result);
@@ -5130,9 +5506,39 @@ function spawnVehicleSticker(optionKey, anchor) {
       keywords: [],
       tapWords: [sticker.label],
     };
-  spawnVideoSticker(videoRule, 4, { left: "53%", top: "15%", durationMs: 2800 });
+  spawnVideoSticker(videoRule, 4, { durationMs: 2800 });
 
   window.setTimeout(() => panelImage.remove(), 1400);
+}
+
+function spawnVehicleRevealTrail(optionKey, isCorrect = false) {
+  const picked = VEHICLE_STICKERS[optionKey];
+  if (!picked) return;
+  const pickedRule = STICKER_RULES.find((rule) => rule.asset === picked.asset);
+  const revealRules = isCorrect
+    ? ["rockWord", "rockMoto", "northTitle"].map(stickerRuleByAsset).filter(Boolean)
+    : [pickedRule, stickerRuleByAsset("roadQuestion")].filter(Boolean);
+  const positions = isCorrect
+    ? [
+        { left: "11%", top: "19%" },
+        { left: "53%", top: "31%" },
+        { left: "31%", top: "48%" },
+      ]
+    : [
+        { left: "57%", top: "22%" },
+        { left: "10%", top: "45%" },
+      ];
+  revealRules.forEach((rule, index) => {
+    window.setTimeout(
+      () =>
+        spawnVideoSticker(rule, index + 8, {
+          ...positions[index % positions.length],
+          durationMs: isCorrect ? 3600 : 2600,
+          delayMs: index * 80,
+        }),
+      index * 190
+    );
+  });
 }
 
 function getInteractionMode(highlight, ui, vehicleChoice) {
@@ -5153,7 +5559,10 @@ function showInteraction(highlight) {
   state.firedHighlights.add(highlight.id);
   state.lastInteractionTime = highlight.start_time_sec;
   if (vehicleChoice) {
+    state.vehicleResumeAfterChoice = !player.paused;
     player.pause();
+  } else {
+    state.vehicleResumeAfterChoice = false;
   }
   window.clearTimeout(state.hideTimer);
   interactionLayer.className = `interaction-layer ${ui.className} effect-${ui.effect} ${
@@ -5227,6 +5636,7 @@ function showInteraction(highlight) {
 function hideInteraction() {
   window.clearTimeout(state.hideTimer);
   state.activeHighlight = null;
+  state.vehicleResumeAfterChoice = false;
   interactionLayer.className = "interaction-layer hidden";
   interactionLayer.innerHTML = "";
   scheduleAmbientStickers();
@@ -5253,6 +5663,7 @@ async function submitInteraction(optionKey, anchor) {
   if (!state.activeHighlight) return;
   const highlight = state.activeHighlight;
   const option = highlight.options?.find((item) => item.key === optionKey);
+  const vehicleChoice = isVehicleChoice(highlight);
   if (anchor) burstReaction(anchor);
   spawnVehicleSticker(optionKey, anchor);
   const result = await fetchJSON("/api/interactions", {
@@ -5263,7 +5674,16 @@ async function submitInteraction(optionKey, anchor) {
       session_id: state.sessionId,
     }),
   });
+  if (vehicleChoice) {
+    spawnVehicleRevealTrail(optionKey, Boolean(result.reward?.correct));
+  }
   renderInteractionResult(result.stats, result.reward);
+  if (vehicleChoice && state.vehicleResumeAfterChoice) {
+    window.setTimeout(() => {
+      if (player.paused && views.watch.classList.contains("active") && state.userStartedPlayback) playPlayer();
+    }, 1200);
+  }
+  state.vehicleResumeAfterChoice = false;
   postRoomEvent("interaction", {
     episode_id: state.currentEpisode?.id,
     highlight_id: highlight.id,
@@ -5544,7 +5964,8 @@ async function loadReviewEpisodes() {
     $("#reviewPreview").innerHTML = `<div class="empty-state">无法加载复核列表：${escapeHTML(errorMessage(error))}</div>`;
     $("#experiencePreview").innerHTML = "";
     $("#remixReviewPanel").innerHTML = "";
-    updateReviewWorkbenchCounts({ highlights: [] }, { config: {} }, []);
+    $("#danmakuReviewPanel").innerHTML = "";
+    updateReviewWorkbenchCounts({ highlights: [] }, { config: {} }, [], { summary: {}, items: [] });
     setReviewStatus(errorMessage(error), true);
     return;
   }
@@ -5554,22 +5975,34 @@ async function loadReviewEpisodes() {
   await renderReviewEpisodeOptions(preferredEpisodeId || Number($("#reviewEpisodeSelect").value));
 }
 
+async function fetchDanmakuReview(episodeId) {
+  const params = new URLSearchParams({
+    status: state.reviewDanmakuStatusFilter,
+    mode: state.reviewDanmakuModeFilter,
+    q: $("#danmakuReviewSearch")?.value?.trim() || "",
+  });
+  return fetchJSON(`/api/admin/episodes/${episodeId}/danmaku-governance?${params}`);
+}
+
 async function loadReviewPayload(episodeId) {
   if (!episodeId) return;
-  const [payload, experience, remixes] = await Promise.all([
+  const [payload, experience, remixes, danmaku] = await Promise.all([
     fetchJSON(`/api/admin/episodes/${episodeId}/highlights`),
     fetchJSON(`/api/admin/episodes/${episodeId}/experience`),
     fetchJSON(`/api/admin/episodes/${episodeId}/remixes`),
+    fetchDanmakuReview(episodeId),
   ]);
   const meta = state.reviewEpisodes.find((episode) => episode.id === episodeId);
   $("#reviewJson").value = JSON.stringify(payload, null, 2);
   $("#experienceJson").value = JSON.stringify(experience, null, 2);
   state.reviewExperience = experience;
   state.reviewRemixes = remixes;
+  state.reviewDanmaku = danmaku;
   renderReviewPreview(payload);
   renderExperiencePreview(experience);
   renderRemixReviewPanel(remixes);
-  updateReviewWorkbenchCounts(payload, experience, remixes);
+  renderDanmakuReviewPanel(danmaku);
+  updateReviewWorkbenchCounts(payload, experience, remixes, danmaku);
   setReviewSection(state.reviewSection);
   const status = meta
     ? `${meta.review_status_label} · 人工 ${meta.reviewed_highlight_count || 0}/${meta.highlight_count || 0}`
@@ -5627,22 +6060,153 @@ function setReviewSection(section = "highlights") {
   $("#saveReview").hidden = section !== "highlights";
 }
 
-function updateReviewWorkbenchCounts(payload = null, experience = null, remixes = state.reviewRemixes) {
+function updateReviewWorkbenchCounts(
+  payload = null,
+  experience = null,
+  remixes = state.reviewRemixes,
+  danmaku = state.reviewDanmaku
+) {
   const highlights = payload?.highlights || [];
   const timeline = experience?.config?.sticker_timeline || [];
   const quiz = experience?.config?.quiz_rewards || [];
   const highlightCount = $("#reviewHighlightCount");
   const experienceCount = $("#reviewExperienceCount");
   const remixCount = $("#reviewRemixCount");
+  const danmakuCount = $("#reviewDanmakuCount");
   if (highlightCount) highlightCount.textContent = String(highlights.length);
   if (experienceCount) experienceCount.textContent = String(timeline.length + quiz.length);
   if (remixCount) remixCount.textContent = String(remixes.length);
+  if (danmakuCount) danmakuCount.textContent = String(danmaku?.summary?.needs_review || 0);
 }
 
 function remixStatusLabel(status, featured) {
   if (featured || status === "featured") return "精选";
   if (status === "hidden") return "隐藏";
   return "待复核";
+}
+
+function danmakuStatusLabel(status) {
+  return { approved: "已通过", needs_review: "需复核", hidden: "已隐藏" }[status] || status || "已通过";
+}
+
+function scorePercent(value) {
+  return `${Math.round(Number(value || 0) * 100)}%`;
+}
+
+function renderDanmakuReviewPanel(payload = state.reviewDanmaku) {
+  const panel = $("#danmakuReviewPanel");
+  if (!panel) return;
+  const summary = payload?.summary || {};
+  const items = payload?.items || [];
+  panel.innerHTML = `
+    <div class="danmaku-governance-summary">
+      <article><span>总量</span><strong>${summary.total || 0}</strong></article>
+      <article><span>需复核</span><strong>${summary.needs_review || 0}</strong></article>
+      <article><span>已通过</span><strong>${summary.approved || 0}</strong></article>
+      <article><span>已隐藏</span><strong>${summary.hidden || 0}</strong></article>
+    </div>
+    <div class="danmaku-layer-explain">
+      <b>六层治理</b>
+      <span>规则过滤</span>
+      <span>时间感知</span>
+      <span>语义分类</span>
+      <span>聚类去重</span>
+      <span>小模型</span>
+      <span>人工复核</span>
+    </div>
+    ${
+      items.length
+        ? `<div class="danmaku-review-list">${items
+            .map(
+              (item) => `
+                <article class="danmaku-review-card ${escapeHTML(item.review_status || "approved")}">
+                  <div class="danmaku-review-card-main">
+                    <div>
+                      <span>${formatTime(item.time_sec)} · ${escapeHTML(danmakuStatusLabel(item.review_status))} · ${escapeHTML(
+                        item.mode || "light"
+                      )}</span>
+                      <strong>${escapeHTML(item.text || "")}</strong>
+                      <p>${escapeHTML(item.moderation_reason || "通过分层治理")}</p>
+                    </div>
+                    <div class="danmaku-score-pills">
+                      <em>风险 ${scorePercent(item.risk_score)}</em>
+                      <em>剧透 ${scorePercent(item.spoiler_score)}</em>
+                      <em>质量 ${scorePercent(item.quality_score)}</em>
+                      <em>相关 ${scorePercent(item.relevance_score)}</em>
+                      <em>聚类 ${Number(item.cluster_size || 1)}</em>
+                    </div>
+                  </div>
+                  <div class="danmaku-review-editor">
+                    <input class="danmaku-review-input" data-danmaku-field="text" data-danmaku-id="${item.id}" value="${escapeHTML(
+                      item.text || ""
+                    )}" />
+                    <input class="danmaku-review-input small" type="number" min="0" step="0.1" data-danmaku-field="time_sec" data-danmaku-id="${
+                      item.id
+                    }" value="${Number(item.time_sec || 0)}" />
+                    <select class="danmaku-review-input small" data-danmaku-field="mode" data-danmaku-id="${item.id}">
+                      ${["light", "carnival", "curated", "seed"]
+                        .map((mode) => `<option value="${mode}" ${mode === item.mode ? "selected" : ""}>${mode}</option>`)
+                        .join("")}
+                    </select>
+                    <button class="ghost-button danmaku-review-save" type="button" data-danmaku-id="${item.id}">保存</button>
+                    <button class="primary-button danmaku-review-approve" type="button" data-danmaku-id="${item.id}">通过</button>
+                    <button class="danger-button danmaku-review-hide" type="button" data-danmaku-id="${item.id}">隐藏</button>
+                  </div>
+                </article>
+              `
+            )
+            .join("")}</div>`
+        : `<div class="empty-state">当前筛选条件下没有弹幕。可以切换状态，或点击“运行治理”重新计算。</div>`
+    }
+  `;
+  updateReviewWorkbenchCounts(parseReviewJsonSafe(), parseExperienceJsonSafe(), state.reviewRemixes, payload);
+}
+
+async function reloadDanmakuReviewPanel() {
+  const episodeId = Number($("#reviewEpisodeSelect").value || parseReviewJsonSafe().episode_id);
+  if (!episodeId) return;
+  try {
+    state.reviewDanmaku = await fetchDanmakuReview(episodeId);
+    renderDanmakuReviewPanel(state.reviewDanmaku);
+    setReviewStatus("弹幕治理列表已刷新");
+  } catch (error) {
+    setReviewStatus(`弹幕治理加载失败：${errorMessage(error)}`, true);
+  }
+}
+
+function danmakuReviewCardValue(commentId, field) {
+  return document.querySelector(`[data-danmaku-id="${commentId}"][data-danmaku-field="${field}"]`)?.value || "";
+}
+
+async function updateDanmakuReview(commentId, patch = {}) {
+  const body = {
+    text: danmakuReviewCardValue(commentId, "text"),
+    time_sec: Number(danmakuReviewCardValue(commentId, "time_sec")),
+    mode: danmakuReviewCardValue(commentId, "mode"),
+    ...patch,
+  };
+  try {
+    await fetchJSON(`/api/admin/danmaku/${commentId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    await reloadDanmakuReviewPanel();
+    setReviewStatus("弹幕复核结果已保存");
+  } catch (error) {
+    setReviewStatus(`弹幕保存失败：${errorMessage(error)}`, true);
+  }
+}
+
+async function runDanmakuGovernance() {
+  const episodeId = Number($("#reviewEpisodeSelect").value || parseReviewJsonSafe().episode_id);
+  if (!episodeId) return;
+  try {
+    const result = await fetchJSON(`/api/admin/episodes/${episodeId}/danmaku-governance/run`, { method: "POST" });
+    await reloadDanmakuReviewPanel();
+    setReviewStatus(`弹幕治理已完成：处理 ${result.processed || 0} 条`);
+  } catch (error) {
+    setReviewStatus(`弹幕治理失败：${errorMessage(error)}`, true);
+  }
 }
 
 function renderRemixStoryboardEditor(item) {
@@ -7047,7 +7611,7 @@ player.addEventListener("ended", () => {
 
 playToggle.addEventListener("click", () => {
   if (player.paused) {
-    player.play();
+    playPlayer(true);
   } else {
     player.pause();
   }
@@ -7069,6 +7633,8 @@ document.addEventListener("visibilitychange", () => {
     stopPlaybackForExit();
   }
 });
+
+window.addEventListener("resize", alignEndingRemixLayerToViewport);
 
 window.addEventListener("pagehide", stopPlaybackForExit);
 
@@ -7117,8 +7683,20 @@ $("#chatMessageList")?.addEventListener("click", (event) => {
   const joinButton = event.target.closest("[data-chat-join-room]");
   if (joinButton) joinChatWatchRoom(joinButton.dataset.chatJoinRoom);
 });
-document.querySelectorAll("[data-chat-emoji]").forEach((button) => {
-  button.addEventListener("click", () => sendChatMessage("emoji", button.dataset.chatEmoji));
+$("#chatEmojiPanel")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-chat-emoji]");
+  if (!button) return;
+  sendChatMessage("emoji", button.dataset.chatEmoji);
+});
+$("#chatEmojiToggle")?.addEventListener("click", () => {
+  state.chatEmojiPanelOpen = !state.chatEmojiPanelOpen;
+  renderChatEmojiPanel();
+});
+$("#chatVoiceShortcut")?.addEventListener("click", () => {
+  setChatStatus("语音消息入口已预留，后续会接入声音资产和实时语音。");
+});
+$("#chatMicShortcut")?.addEventListener("click", () => {
+  setChatStatus("麦克风入口已预留，当前先支持文字、表情包和同看链接。");
 });
 $("#publishSocialPost")?.addEventListener("click", publishSocialPost);
 $("#chatInboxList")?.addEventListener("click", (event) => {
@@ -7254,9 +7832,26 @@ $("#profileGallery").addEventListener("change", (event) => {
   if (input) prepareProfileAvatarCrop(input.files?.[0]);
 });
 endingRemixLayer?.addEventListener("click", (event) => {
+  const voiceModeButton = event.target.closest("[data-voice-mode]");
+  if (voiceModeButton && !voiceModeButton.disabled) {
+    stopRemixAudio();
+    state.voiceUsageMode = voiceModeButton.dataset.voiceMode;
+    writeStorage("voice_usage_mode", state.voiceUsageMode);
+    endingRemixLayer
+      .querySelectorAll(".remix-voice-switch [data-voice-mode]")
+      .forEach((button) => button.classList.toggle("active", button.dataset.voiceMode === state.voiceUsageMode));
+    return;
+  }
+  const variant = event.target.closest("[data-remix-variant]");
+  if (variant) {
+    stopRemixAudio();
+    generateEndingRemix(variant.dataset.remixChoiceKey, variant.dataset.remixVariant);
+    return;
+  }
   const choice = event.target.closest("[data-remix-choice]");
   if (choice) {
-    generateEndingRemix(choice.dataset.remixChoice);
+    stopRemixAudio();
+    renderEndingRemixVariantOptions(choice.dataset.remixChoice);
     return;
   }
   const actionButton = event.target.closest("[data-remix-action]");
@@ -7284,15 +7879,19 @@ endingRemixLayer?.addEventListener("click", (event) => {
     return;
   }
   if (action === "back" && state.remixOptions) {
+    stopRemixAudio();
     renderEndingRemixOptions(state.remixOptions);
     return;
   }
   if (action === "close") {
+    stopRemixAudio();
+    resetEndingRemixViewportOffset();
     endingRemixLayer.className = "ending-remix-layer hidden";
     endingRemixLayer.innerHTML = "";
+    setEndingRemixLayerHost(false);
     const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode?.duration_sec || 0;
     if (duration && player.currentTime < duration - 1 && player.paused) {
-      player.play().catch(() => {});
+      if (state.userStartedPlayback) playPlayer();
     }
   }
 });
@@ -7474,6 +8073,35 @@ $("#remixReviewPanel").addEventListener("click", (event) => {
   const button = event.target.closest(".remix-review-action");
   if (button) updateRemixReview(button);
 });
+$("#reloadDanmakuReview")?.addEventListener("click", reloadDanmakuReviewPanel);
+$("#runDanmakuGovernance")?.addEventListener("click", runDanmakuGovernance);
+$("#danmakuReviewStatusFilter")?.addEventListener("change", (event) => {
+  state.reviewDanmakuStatusFilter = event.target.value;
+  reloadDanmakuReviewPanel();
+});
+$("#danmakuReviewModeFilter")?.addEventListener("change", (event) => {
+  state.reviewDanmakuModeFilter = event.target.value;
+  reloadDanmakuReviewPanel();
+});
+$("#danmakuReviewSearch")?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") reloadDanmakuReviewPanel();
+});
+$("#danmakuReviewPanel")?.addEventListener("click", (event) => {
+  const saveButton = event.target.closest(".danmaku-review-save");
+  if (saveButton) {
+    updateDanmakuReview(saveButton.dataset.danmakuId);
+    return;
+  }
+  const approveButton = event.target.closest(".danmaku-review-approve");
+  if (approveButton) {
+    updateDanmakuReview(approveButton.dataset.danmakuId, { review_status: "approved" });
+    return;
+  }
+  const hideButton = event.target.closest(".danmaku-review-hide");
+  if (hideButton) {
+    updateDanmakuReview(hideButton.dataset.danmakuId, { review_status: "hidden" });
+  }
+});
 $("#danmakuForm").addEventListener("submit", sendDanmaku);
 $("#danmakuSettingsToggle").addEventListener("click", () => {
   $("#danmakuSettings").classList.toggle("open");
@@ -7520,6 +8148,7 @@ async function bootstrap() {
     return;
   }
   await loadAvatarPool();
+  await loadChatEmojiPack();
   await loadDramas();
   await loadWatchHistory();
   await loadRewardProfile();

@@ -3,15 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>短剧互动激发系统</title>
-    <link rel="stylesheet" href="/styles.css?v=20260604-chat-center" />
+    <title>半句 - 短剧陪伴</title>
+    <link rel="icon" href="/assets/brand/banju-icon.png" />
+    <link rel="stylesheet" href="/styles.css?v=20260605-danmaku-chat" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">AI Drama Interaction</p>
-          <h1>短剧互动激发</h1>
+          <p class="eyebrow">Banju Drama Companion</p>
+          <h1>半句</h1>
         </div>
         <nav class="tabs">
           <button id="homeTab" class="tab active" type="button">短剧</button>
@@ -31,14 +32,14 @@
         <section id="authView" class="view active auth-view">
           <div class="auth-hero-shell">
             <div class="auth-store-strip" aria-label="登录页状态">
-              <span>AI Drama ID</span>
-              <strong>Private MVP</strong>
+              <span>Banju ID</span>
+              <strong>短剧陪伴</strong>
               <span>Web Mobile</span>
             </div>
             <div class="auth-hero-grid">
               <div class="auth-copy">
                 <p class="eyebrow">Product V2</p>
-                <h2>登录，进入你的短剧互动宇宙。</h2>
+                <h2>登录半句，进入你的短剧陪伴空间。</h2>
                 <p>
                   高光识别、同看房间、弹幕互动、勋章成长和片尾 AI 二创会沉淀到同一个账号里，形成可展示、可复用的产品闭环。
                 </p>
@@ -76,7 +77,7 @@
                   </div>
                 </div>
                 <div class="auth-slogan-strip" aria-label="产品口号">
-                  <strong>看剧不用打字，情绪自动到场。</strong>
+                  <strong>看剧不用打字，半句陪你表达。</strong>
                   <span>高光识别 · 一键互动 · 同看社交 · AI 片尾二创</span>
                 </div>
                 <div class="auth-feature-rail" aria-label="账号能力">
@@ -97,7 +98,7 @@
               <div class="auth-panel">
                 <div class="auth-card-head">
                   <span>Continue</span>
-                  <strong>短剧互动账号</strong>
+                  <strong>半句账号</strong>
                   <em>演示环境</em>
                 </div>
                 <form id="authForm" class="auth-form">
@@ -193,16 +194,16 @@
             <section class="chat-thread-panel">
               <div id="chatThreadHeader" class="chat-thread-header"></div>
               <div id="chatMessageList" class="chat-message-list"></div>
-              <div class="chat-emoji-row" aria-label="快捷表情">
-                <button type="button" data-chat-emoji="爽到了">爽到了</button>
-                <button type="button" data-chat-emoji="哈哈哈">哈哈哈</button>
-                <button type="button" data-chat-emoji="磕到了">磕到了</button>
-                <button type="button" data-chat-emoji="心疼">心疼</button>
-              </div>
-              <div class="chat-composer">
-                <input id="chatMessageInput" maxlength="500" placeholder="给好友发消息，聊剧情、发表情、约同看" />
-                <button id="sendWatchLinkMessage" class="ghost-button" type="button">同看链接</button>
-                <button id="sendChatMessage" class="primary-button" type="button">发送</button>
+              <div id="chatEmojiPanel" class="chat-emoji-panel" aria-label="快捷表情"></div>
+              <div class="chat-composer chat-composer-rich">
+                <button id="chatVoiceShortcut" class="chat-tool-button" type="button" aria-label="语音入口">)))</button>
+                <div class="chat-input-shell">
+                  <input id="chatMessageInput" maxlength="500" placeholder="发消息、表情包或约同看" />
+                  <button id="chatMicShortcut" class="chat-inline-button" type="button" aria-label="麦克风">mic</button>
+                </div>
+                <button id="chatEmojiToggle" class="chat-tool-button" type="button" aria-label="表情包">☺</button>
+                <button id="sendWatchLinkMessage" class="chat-tool-button" type="button" aria-label="更多">+</button>
+                <button id="sendChatMessage" class="primary-button chat-send-button" type="button">发送</button>
               </div>
               <div id="chatStatus" class="social-status"></div>
             </section>
@@ -439,6 +440,9 @@
             <button type="button" data-review-section="experience">
               体验配置 <span id="reviewExperienceCount">0</span>
             </button>
+            <button type="button" data-review-section="danmaku">
+              弹幕治理 <span id="reviewDanmakuCount">0</span>
+            </button>
             <button type="button" data-review-section="remix">
               片尾二创 <span id="reviewRemixCount">0</span>
             </button>
@@ -465,6 +469,35 @@
             <textarea id="experienceJson" class="review-raw-json" spellcheck="false" aria-label="体验配置 JSON" hidden></textarea>
             <div id="experiencePreview" class="experience-preview"></div>
             </div>
+          </section>
+          <section class="review-section" data-review-section-panel="danmaku" hidden>
+            <div class="experience-head">
+              <div>
+                <h3>弹幕治理</h3>
+                <p>按规则、时间感知、语义分类、聚类、小模型和人工复核六层处理弹幕。</p>
+              </div>
+              <div>
+                <button id="runDanmakuGovernance" class="ghost-button" type="button">运行治理</button>
+                <button id="reloadDanmakuReview" class="primary-button" type="button">刷新列表</button>
+              </div>
+            </div>
+            <div class="danmaku-review-toolbar">
+              <select id="danmakuReviewStatusFilter" class="episode-select">
+                <option value="needs_review">需要复核</option>
+                <option value="approved">已通过</option>
+                <option value="hidden">已隐藏</option>
+                <option value="all">全部</option>
+              </select>
+              <select id="danmakuReviewModeFilter" class="episode-select">
+                <option value="all">全部模式</option>
+                <option value="light">轻聊</option>
+                <option value="carnival">狂欢</option>
+                <option value="curated">精选</option>
+                <option value="seed">种子</option>
+              </select>
+              <input id="danmakuReviewSearch" class="episode-select" maxlength="40" placeholder="搜索弹幕或原因" />
+            </div>
+            <div id="danmakuReviewPanel" class="danmaku-review-panel"></div>
           </section>
           <section class="review-section" data-review-section-panel="remix" hidden>
             <div class="experience-head">
@@ -494,6 +527,6 @@
       </div>
     </div>
 
-    <script defer src="/app.js?v=20260604-chat-center"></script>
+    <script defer src="/app.js?v=20260605-danmaku-chat"></script>
   </body>
 </html>

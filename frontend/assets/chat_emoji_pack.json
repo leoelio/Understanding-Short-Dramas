@@ -1,0 +1,217 @@
+{
+  "version": 1,
+  "source": "圈选剧前5集弹幕.csv",
+  "packs": [
+    {
+      "id": "csv-hot",
+      "title": "弹幕常用",
+      "items": [
+        {
+          "id": "csv-捂脸",
+          "label": "捂脸",
+          "icon": "🤦",
+          "text": "🤦 捂脸",
+          "source_count": 26251
+        },
+        {
+          "id": "csv-笑哭",
+          "label": "笑哭",
+          "icon": "😂",
+          "text": "😂 笑哭",
+          "source_count": 17657
+        },
+        {
+          "id": "csv-爱慕",
+          "label": "爱慕",
+          "icon": "😍",
+          "text": "😍 爱慕",
+          "source_count": 8095
+        },
+        {
+          "id": "csv-偷笑",
+          "label": "偷笑",
+          "icon": "🤭",
+          "text": "🤭 偷笑",
+          "source_count": 7966
+        },
+        {
+          "id": "csv-送花",
+          "label": "送花",
+          "icon": "🌸",
+          "text": "🌸 送花",
+          "source_count": 5753
+        },
+        {
+          "id": "csv-没看够",
+          "label": "没看够",
+          "icon": "👀",
+          "text": "👀 没看够",
+          "source_count": 5232
+        },
+        {
+          "id": "csv-鼓掌",
+          "label": "鼓掌",
+          "icon": "👏",
+          "text": "👏 鼓掌",
+          "source_count": 3589
+        },
+        {
+          "id": "csv-赞",
+          "label": "赞",
+          "icon": "👍",
+          "text": "👍 赞",
+          "source_count": 3188
+        },
+        {
+          "id": "csv-爽",
+          "label": "爽",
+          "icon": "🔥",
+          "text": "🔥 爽",
+          "source_count": 3052
+        },
+        {
+          "id": "csv-笑",
+          "label": "笑",
+          "icon": "😄",
+          "text": "😄 笑",
+          "source_count": 1205
+        },
+        {
+          "id": "csv-哭",
+          "label": "哭",
+          "icon": "😭",
+          "text": "😭 哭",
+          "source_count": 1135
+        },
+        {
+          "id": "csv-大笑",
+          "label": "大笑",
+          "icon": "😆",
+          "text": "😆 大笑",
+          "source_count": 552
+        },
+        {
+          "id": "csv-送心",
+          "label": "送心",
+          "icon": "💗",
+          "text": "💗 送心",
+          "source_count": 371
+        }
+      ]
+    },
+    {
+      "id": "hot",
+      "title": "追剧热梗",
+      "items": [
+        {
+          "id": "laugh",
+          "label": "大笑",
+          "icon": "😆",
+          "text": "😆 哈哈哈"
+        },
+        {
+          "id": "shock",
+          "label": "震惊",
+          "icon": "😱",
+          "text": "😱 这也太突然了"
+        },
+        {
+          "id": "heart",
+          "label": "送心",
+          "icon": "💗",
+          "text": "💗 磕到了"
+        },
+        {
+          "id": "cover-face",
+          "label": "捂脸",
+          "icon": "🤦",
+          "text": "🤦 救命太真实了"
+        },
+        {
+          "id": "question",
+          "label": "疑问",
+          "icon": "❓",
+          "text": "❓ 到底怎么回事"
+        },
+        {
+          "id": "strong",
+          "label": "加油",
+          "icon": "💪",
+          "text": "💪 冲啊"
+        }
+      ]
+    },
+    {
+      "id": "mood",
+      "title": "情绪表达",
+      "items": [
+        {
+          "id": "hurt",
+          "label": "心疼",
+          "icon": "🥲",
+          "text": "🥲 心疼了"
+        },
+        {
+          "id": "cry",
+          "label": "破防",
+          "icon": "😭",
+          "text": "😭 破防了"
+        },
+        {
+          "id": "sweet",
+          "label": "心动",
+          "icon": "😍",
+          "text": "😍 有点心动"
+        },
+        {
+          "id": "angry",
+          "label": "生气",
+          "icon": "😤",
+          "text": "😤 气到了"
+        },
+        {
+          "id": "wow",
+          "label": "哇塞",
+          "icon": "✨",
+          "text": "✨ 哇塞"
+        },
+        {
+          "id": "applause",
+          "label": "鼓掌",
+          "icon": "👏",
+          "text": "👏 这段可以"
+        }
+      ]
+    },
+    {
+      "id": "kaomoji",
+      "title": "颜文字",
+      "items": [
+        {
+          "id": "kao-happy",
+          "label": "开心",
+          "icon": "(*≧▽≦)",
+          "text": "(*≧▽≦)"
+        },
+        {
+          "id": "kao-love",
+          "label": "喜欢",
+          "icon": "(｡･ω･｡)ﾉ♡",
+          "text": "(｡･ω･｡)ﾉ♡"
+        },
+        {
+          "id": "kao-cry",
+          "label": "哭哭",
+          "icon": "QAQ",
+          "text": "QAQ"
+        },
+        {
+          "id": "kao-go",
+          "label": "冲",
+          "icon": "(ง •̀_•́)ง",
+          "text": "(ง •̀_•́)ง 冲"
+        }
+      ]
+    }
+  ]
+}

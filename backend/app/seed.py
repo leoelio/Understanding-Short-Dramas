@@ -6,6 +6,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from .config import SEED_EPISODES_PER_DRAMA, VIDEO_LIBRARY_PATH
+from .danmaku_governance import apply_governance_to_episode
 from .models import DanmakuComment, Drama, Episode, EpisodeExperienceConfig, Highlight
 
 
@@ -221,10 +222,14 @@ def apply_danmaku_fixtures(db: Session) -> None:
                     episode_id=episode.id,
                     time_sec=float(item["time_sec"]),
                     text=item["text"],
+                    original_text=item.get("original_text", item["text"]),
+                    source_like_count=int(item.get("source_like_count", 0)),
+                    review_status=item.get("review_status", "approved"),
                     mode=item.get("mode", "curated"),
                     session_id="fixture",
                 )
             )
+    apply_governance_to_episode(db)
 
 
 def apply_experience_fixtures(db: Session) -> None:
@@ -261,6 +266,7 @@ def seed_from_video_library(db: Session) -> None:
         apply_danmaku_fixtures(db)
         apply_experience_fixtures(db)
         seed_demo_danmaku(db)
+        apply_governance_to_episode(db)
         db.commit()
         return
 
@@ -294,4 +300,5 @@ def seed_from_video_library(db: Session) -> None:
     seed_demo_danmaku(db)
     apply_danmaku_fixtures(db)
     apply_experience_fixtures(db)
+    apply_governance_to_episode(db)
     db.commit()

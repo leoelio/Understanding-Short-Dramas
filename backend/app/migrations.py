@@ -11,7 +11,22 @@ SQLITE_HIGHLIGHT_COLUMNS = {
 SQLITE_EXTRA_COLUMNS = {
     "users": {"avatar_url": "TEXT DEFAULT ''"},
     "interactions": {"user_id": "INTEGER"},
-    "danmaku_comments": {"user_id": "INTEGER"},
+    "danmaku_comments": {
+        "user_id": "INTEGER",
+        "original_text": "TEXT DEFAULT ''",
+        "source_like_count": "INTEGER DEFAULT 0",
+        "review_status": "TEXT DEFAULT 'approved'",
+        "risk_score": "FLOAT DEFAULT 0",
+        "quality_score": "FLOAT DEFAULT 0.7",
+        "spoiler_score": "FLOAT DEFAULT 0",
+        "relevance_score": "FLOAT DEFAULT 0.7",
+        "cluster_key": "TEXT DEFAULT ''",
+        "cluster_size": "INTEGER DEFAULT 1",
+        "suggested_time_sec": "FLOAT",
+        "moderation_model_version": "TEXT DEFAULT ''",
+        "moderation_layers_json": "TEXT DEFAULT '{}'",
+        "moderation_reason": "TEXT DEFAULT ''",
+    },
     "episode_ai_remixes": {"featured_order": "INTEGER DEFAULT 0 NOT NULL"},
 }
 

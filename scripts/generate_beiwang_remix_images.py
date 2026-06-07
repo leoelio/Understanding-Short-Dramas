@@ -33,6 +33,10 @@ LEAD_REFERENCES = {
     "li_shixin_scene_body": 95,
 }
 
+OPTIONAL_CORE_REFERENCES = [
+    "motorcycle_departure_reference.png",
+]
+
 
 def slot_name(choice_key: str, variant: dict) -> str:
     return f"beiwang_ep1_{choice_key}_{variant['variant_key']}"
@@ -64,32 +68,48 @@ def story_scene_guidance(choice_key: str, variant: dict) -> str:
     if choice_key == "ticket_home":
         return "Use a medium or wide transport story composition, not a close-up portrait. The station, train, coach bus, ticket, or crowded carriage must be clearly visible; any paper text must be blank or unreadable."
     if variant_key == "wuling_van":
-        return "Use a medium or wide roadside story composition. A white Wuling-style minivan must be clearly visible, with both leads helping near the van or getting into it."
+        return "Use a medium or wide roadside story composition. A white Wuling Hongguang-style minivan must be clearly visible, with a small red Wuling-like grille badge shape or badge position visible, but no readable license plate or readable text."
     if variant_key == "audi_sedan":
-        return "Use a medium or wide roadside story composition. A dark sedan must be clearly visible, with both leads near the car, luggage, or passenger door."
-    if variant_key == "convertible":
-        return "Use a medium or wide road-trip story composition. A colorful convertible sports car must be clearly visible, with both leads preparing to ride north."
+        return "Use a medium or wide roadside story composition. A dark Audi-style luxury sedan must be clearly visible, with a subtle four-ring-like grille badge position visible, but no readable license plate or readable text."
+    if variant_key == "range_rover_suv":
+        return "Use a medium or wide snowy roadside rescue composition. A dark Range Rover-style luxury SUV must be clearly visible, with a boxy premium silhouette, rectangular grille, and a non-readable hood badge area, but no readable license plate or readable lettering."
     return ""
 
 
 def build_prompt(choice_key: str, variant: dict, shot_index: int, shot: dict) -> str:
     storyboard = variant["storyboard"][shot_index - 1]
+    timeline_rule = ""
+    if choice_key == "road_breakdown" and shot_index == 1:
+        timeline_rule = "This shot happens before the drink purchase. Do not show any drink can, bottle, beverage, soda, water bottle, or cup in this image."
+    if choice_key != "road_breakdown":
+        timeline_rule = "This branch is not a drink branch. Do not show any drink can, bottle, beverage, soda, water bottle, or cup in this image."
+    if choice_key == "ticket_home" and variant["variant_key"] == "green_train" and shot_index == 2:
+        timeline_rule += " The father and little girl are separate passerby passengers in the waiting area. Do not make either male lead the child's father, and do not place the child between the two leads as their companion; the two male leads should observe nearby and be emotionally moved."
+    if choice_key == "kindness_ride" and shot_index in {2, 3}:
+        timeline_rule += " The old motorcycles are already missing in this part of the story. Do not show the old motorcycle itself, its handlebar, wheel, mirror, seat, headlight, or any parked motorcycle anywhere in the foreground or background. Show only an empty snowy spot, drag marks, loose ropes, luggage, and the helped vehicle nearby."
     return "\n".join(
         [
             "Edit the uploaded episode stills into one vertical 9:16 cinematic still for a Chinese short drama extension.",
+            "Create one single continuous cinematic scene, not a collage, not a split-screen, not a comic panel, not a storyboard sheet, and not multiple stacked frames.",
             "Use the uploaded stills as character and scene references, not as exact screenshots.",
+            "Uploaded reference stills may contain subtitles, storefront signs, road signs, or frame text; ignore all text in the references and do not reproduce it.",
+            "Story continuity begins from the episode ending: both male leads riding their own old motorcycles on an open road. If a two-rider motorcycle departure still is uploaded, treat it as the highest-priority reference for the two leads, the two motorcycles, luggage positions, road depth, and departure mood. Only show the motorcycles in shots where the story logically still includes them.",
             "The image must feature the two correct male leads as the primary characters: Pi Desheng, a young man with messy black hair, blue-gray overshirt and red inner shirt; and Li Shixin, a young man with short black hair, clearly visible beige plaid/checkered overshirt and gray tee.",
             "Keep both male leads visually consistent with the episode references, with natural Chinese short-drama realism.",
             "Do not replace either lead with the early debt-collector character in a burgundy striped polo.",
             "Leave a clean lower-third safe area for app subtitle and voice-caption overlay.",
-            "Do not draw any subtitles, text, logos, watermarks, road-sign words, UI, or captions inside the image.",
+            "Do not draw any subtitles, readable text, watermarks, road-sign words, UI, or captions inside the image.",
             "Any papers, tickets, phone screens, signs, labels, plates, and route boards must be blank or unreadable.",
+            "All drink cans and bottles must be completely plain solid-color props: no readable words, no brand marks, no fake logos, no decorative graphics, no barcode, no nutrition panel, no illustrations, and no patterned label. If the drink surface is visible, it must be a clean blank surface.",
+            "Only show the selected drink in shots where the shot caption or visual explicitly mentions buying, drinking, holding, placing, or carrying that drink; do not foreshadow the drink in earlier breakdown shots.",
+            timeline_rule,
+            "For vehicle-brand variants, show the selected vehicle through silhouette, grille shape, badge position, and brand-like emblem geometry; do not rely on readable brand words or readable license plates.",
             "Use realistic lighting, grounded emotion, and mobile-drama composition.",
             story_scene_guidance(choice_key, variant),
             f"Story direction: {image_safe_text(variant['label'])} / {image_safe_text(variant['variable_label'])}.",
             f"Shot: {image_safe_text(shot.get('caption') or storyboard.get('shot'))}.",
             f"Visual: {image_safe_text(shot.get('video_prompt') or storyboard.get('visual'))}.",
-            f"Voice subtitle to reserve space for, but not draw: {image_safe_text(storyboard.get('subtitle', ''))}",
+            "Reserve empty lower-third space for app-rendered dialogue later, but do not draw any dialogue text in the image.",
             f"Sound mood reference: {image_safe_text(shot.get('sound') or storyboard.get('sound', ''))}.",
         ]
     )
@@ -159,11 +179,19 @@ def reference_images(choice_key: str, shot_index: int) -> list[Path]:
     starts = CHOICE_CLIP_STARTS[choice_key]
     scene_second = starts[min(shot_index - 1, len(starts) - 1)]
     refs = [
+        REFERENCE_DIR / name
+        for name in OPTIONAL_CORE_REFERENCES
+        if (REFERENCE_DIR / name).exists()
+    ]
+    refs.extend(
         extract_frame(second, REFERENCE_DIR / f"{name}.png")
         for name, second in LEAD_REFERENCES.items()
-    ]
-    if choice_key != "kindness_ride":
-        refs.append(extract_frame(scene_second, REFERENCE_DIR / f"{choice_key}_scene_{shot_index}.png"))
+    )
+    scene_ref = REFERENCE_DIR / f"{choice_key}_scene_{shot_index}.png"
+    if scene_ref.exists():
+        refs.append(scene_ref)
+    else:
+        refs.append(extract_frame(scene_second, scene_ref))
     return refs
 
 
