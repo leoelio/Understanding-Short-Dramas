@@ -1149,3 +1149,16 @@
 - 下一步：
   - 提交并推送 main，再创建并推送 tag v0.9.0-webview-baseline
   - 用户确认后从该 tag 新建原生 Android 试验分支
+
+## 2026-06-07 22:33:29
+
+- 目标：原生 Android 迁移阶段 0：分支和迁移计划已建立
+- Git：`e443275` / `native-android-migration`
+- 数据：10 部短剧，20 集，65 个高光，4 集已复核，1281 条弹幕，4 条体验配置，53 条片尾 AI 二创，2 条社交动态，22 条好友申请，13 条聊天消息。
+- 变更：
+  - 从 v0.9.0-webview-baseline 创建 native-android-migration 分支
+  - 新增 docs/NATIVE_ANDROID_MIGRATION_PLAN.md，明确原生迁移目标、接口清单、阶段计划和暂不迁移内容
+  - 确认第一版采用 Android 原生客户端 + 电脑 FastAPI 服务端，旧 Capacitor 壳保留为回退方案
+- 下一步：
+  - 阶段 1 创建 mobile/banju-native-android 原生工程，并优先验证 /api/health 联通
+  - 真机联调前确认使用 USB adb reverse、局域网 IP 或 Cloudflare HTTPS 隧道中的一种
