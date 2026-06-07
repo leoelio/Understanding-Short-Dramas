@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.MediaController;
@@ -48,15 +49,30 @@ public class MainActivity extends Activity {
     private TextView messageText;
     private Button loginButton;
     private LinearLayout dramaList;
+    private int activeEpisodeId;
     private VideoView activeVideoView;
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
     private Runnable progressRunnable;
+    private Runnable danmakuRunnable;
+    private Runnable remixRunnable;
     private LinearLayout activeHighlightPanel;
+    private LinearLayout activeDanmakuOverlay;
+    private LinearLayout activeRemixPanel;
     private TextView activePlayerStatus;
+    private TextView activeDanmakuStatus;
+    private Button lightDanmakuButton;
+    private Button carnivalDanmakuButton;
+    private Button immersiveDanmakuButton;
+    private Button activeRemixEntryButton;
     private boolean videoPrepared;
     private JSONArray highlightTimeline = new JSONArray();
+    private JSONArray danmakuTimeline = new JSONArray();
+    private JSONObject remixOptionsPayload;
     private int nextHighlightIndex;
+    private int nextDanmakuIndex;
     private int activeHighlightId = -1;
+    private boolean remixEntryShown;
+    private String activeDanmakuMode = "light";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -303,6 +319,7 @@ public class MainActivity extends Activity {
     private void showNativePlayer(String dramaTitle, int firstEpisodeId) {
         stopActiveVideo();
         resetHighlightState();
+        activeEpisodeId = firstEpisodeId;
         ScrollView scrollView = newPage();
         LinearLayout root = pageRoot(scrollView);
 
@@ -338,6 +355,42 @@ public class MainActivity extends Activity {
         backParams.topMargin = dp(14);
         header.addView(backButton, backParams);
 
+        activeDanmakuStatus = text("弹幕轨道准备中", 12, Color.rgb(184, 197, 222), Typeface.NORMAL);
+        activeDanmakuStatus.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams danmakuStatusParams = matchWrap();
+        danmakuStatusParams.topMargin = dp(12);
+        header.addView(activeDanmakuStatus, danmakuStatusParams);
+
+        LinearLayout modeRow = new LinearLayout(this);
+        modeRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams modeRowParams = matchWrap();
+        modeRowParams.topMargin = dp(8);
+        header.addView(modeRow, modeRowParams);
+
+        lightDanmakuButton = secondaryButton("轻聊");
+        lightDanmakuButton.setOnClickListener(v -> setDanmakuMode("light"));
+        modeRow.addView(lightDanmakuButton, weightHeight(1, dp(40)));
+
+        carnivalDanmakuButton = secondaryButton("狂欢");
+        carnivalDanmakuButton.setOnClickListener(v -> setDanmakuMode("carnival"));
+        LinearLayout.LayoutParams carnivalParams = weightHeight(1, dp(40));
+        carnivalParams.leftMargin = dp(8);
+        modeRow.addView(carnivalDanmakuButton, carnivalParams);
+
+        immersiveDanmakuButton = secondaryButton("沉浸");
+        immersiveDanmakuButton.setOnClickListener(v -> setDanmakuMode("immersive"));
+        LinearLayout.LayoutParams immersiveParams = weightHeight(1, dp(40));
+        immersiveParams.leftMargin = dp(8);
+        modeRow.addView(immersiveDanmakuButton, immersiveParams);
+        updateDanmakuModeButtons();
+
+        activeRemixEntryButton = secondaryButton("片尾 AI 二创");
+        activeRemixEntryButton.setEnabled(false);
+        activeRemixEntryButton.setOnClickListener(v -> showRemixEntry(false));
+        LinearLayout.LayoutParams remixButtonParams = matchHeight(dp(42));
+        remixButtonParams.topMargin = dp(10);
+        header.addView(activeRemixEntryButton, remixButtonParams);
+
         VideoView videoView = new VideoView(this);
         videoView.setBackgroundColor(Color.BLACK);
         activeVideoView = videoView;
@@ -352,23 +405,47 @@ public class MainActivity extends Activity {
             videoView.setBackgroundColor(Color.TRANSPARENT);
             videoView.start();
             scheduleNextHighlight();
+            scheduleDanmakuTrack();
+            scheduleRemixEntry();
         });
         videoView.setOnErrorListener((mediaPlayer, what, extra) -> {
             status.setText("视频播放失败，请确认服务端和 adb reverse 已连接。");
             return true;
         });
+        FrameLayout playerFrame = new FrameLayout(this);
         LinearLayout.LayoutParams videoParams = matchHeight(videoHeight());
         videoParams.topMargin = dp(16);
-        root.addView(videoView, videoParams);
+        root.addView(playerFrame, videoParams);
+        playerFrame.addView(videoView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+        ));
+
+        activeDanmakuOverlay = new LinearLayout(this);
+        activeDanmakuOverlay.setOrientation(LinearLayout.VERTICAL);
+        activeDanmakuOverlay.setPadding(dp(10), dp(10), dp(10), 0);
+        FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP
+        );
+        playerFrame.addView(activeDanmakuOverlay, overlayParams);
 
         activeHighlightPanel = buildHighlightPanel();
         LinearLayout.LayoutParams highlightParams = matchWrap();
         highlightParams.topMargin = dp(14);
         header.addView(activeHighlightPanel, highlightParams);
 
+        activeRemixPanel = buildHighlightPanel();
+        LinearLayout.LayoutParams remixParams = matchWrap();
+        remixParams.topMargin = dp(14);
+        header.addView(activeRemixPanel, remixParams);
+
         setContentView(scrollView);
         videoView.requestFocus();
         fetchEpisodeHighlights(firstEpisodeId, status);
+        fetchEpisodeDanmaku(firstEpisodeId);
+        fetchRemixOptions(firstEpisodeId);
     }
 
     @Override
@@ -387,6 +464,8 @@ public class MainActivity extends Activity {
 
     private void stopActiveVideo() {
         stopProgressWatcher();
+        stopDanmakuWatcher();
+        stopRemixWatcher();
         if (activeVideoView != null) {
             activeVideoView.stopPlayback();
             activeVideoView = null;
@@ -459,14 +538,41 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void stopDanmakuWatcher() {
+        if (danmakuRunnable != null) {
+            progressHandler.removeCallbacks(danmakuRunnable);
+            danmakuRunnable = null;
+        }
+    }
+
+    private void stopRemixWatcher() {
+        if (remixRunnable != null) {
+            progressHandler.removeCallbacks(remixRunnable);
+            remixRunnable = null;
+        }
+    }
+
     private void resetHighlightState() {
         stopProgressWatcher();
+        stopDanmakuWatcher();
+        stopRemixWatcher();
         videoPrepared = false;
         highlightTimeline = new JSONArray();
+        danmakuTimeline = new JSONArray();
+        remixOptionsPayload = null;
         nextHighlightIndex = 0;
+        nextDanmakuIndex = 0;
         activeHighlightId = -1;
+        remixEntryShown = false;
         activeHighlightPanel = null;
+        activeDanmakuOverlay = null;
+        activeRemixPanel = null;
         activePlayerStatus = null;
+        activeDanmakuStatus = null;
+        lightDanmakuButton = null;
+        carnivalDanmakuButton = null;
+        immersiveDanmakuButton = null;
+        activeRemixEntryButton = null;
     }
 
     private void updatePlayerStatus() {
@@ -487,6 +593,392 @@ public class MainActivity extends Activity {
             return null;
         }
         return highlightTimeline.optJSONObject(nextHighlightIndex);
+    }
+
+    private void fetchEpisodeDanmaku(int episodeId) {
+        new Thread(() -> {
+            try {
+                String body = httpGet(loadBaseUrl() + "/api/episodes/" + episodeId + "/danmaku", loadToken());
+                JSONArray rows = new JSONArray(body);
+                runOnUiThread(() -> {
+                    danmakuTimeline = rows;
+                    nextDanmakuIndex = 0;
+                    updateDanmakuStatus();
+                    scheduleDanmakuTrack();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    if (activeDanmakuStatus != null) {
+                        activeDanmakuStatus.setText("弹幕加载失败：" + error.getMessage());
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void setDanmakuMode(String mode) {
+        activeDanmakuMode = mode;
+        if (activeDanmakuOverlay != null) {
+            activeDanmakuOverlay.removeAllViews();
+        }
+        resetDanmakuIndexToCurrent();
+        updateDanmakuModeButtons();
+        updateDanmakuStatus();
+        scheduleDanmakuTrack();
+    }
+
+    private void resetDanmakuIndexToCurrent() {
+        int positionMs = activeVideoView == null ? 0 : Math.max(0, activeVideoView.getCurrentPosition());
+        int startIndex = 0;
+        for (int i = 0; i < danmakuTimeline.length(); i++) {
+            JSONObject comment = danmakuTimeline.optJSONObject(i);
+            if (comment == null) {
+                continue;
+            }
+            int timeMs = (int) Math.round(comment.optDouble("time_sec", 0) * 1000);
+            if (timeMs >= positionMs - 2000) {
+                startIndex = i;
+                break;
+            }
+        }
+        nextDanmakuIndex = startIndex;
+    }
+
+    private void updateDanmakuModeButtons() {
+        if (lightDanmakuButton == null || carnivalDanmakuButton == null || immersiveDanmakuButton == null) {
+            return;
+        }
+        lightDanmakuButton.setBackground("light".equals(activeDanmakuMode) ? buttonBackground() : secondaryButtonBackground());
+        lightDanmakuButton.setTextColor("light".equals(activeDanmakuMode) ? Color.WHITE : Color.rgb(28, 45, 76));
+        carnivalDanmakuButton.setBackground("carnival".equals(activeDanmakuMode) ? buttonBackground() : secondaryButtonBackground());
+        carnivalDanmakuButton.setTextColor("carnival".equals(activeDanmakuMode) ? Color.WHITE : Color.rgb(28, 45, 76));
+        immersiveDanmakuButton.setBackground("immersive".equals(activeDanmakuMode) ? buttonBackground() : secondaryButtonBackground());
+        immersiveDanmakuButton.setTextColor("immersive".equals(activeDanmakuMode) ? Color.WHITE : Color.rgb(28, 45, 76));
+    }
+
+    private void updateDanmakuStatus() {
+        if (activeDanmakuStatus == null) {
+            return;
+        }
+        if ("immersive".equals(activeDanmakuMode)) {
+            activeDanmakuStatus.setText("沉浸模式：弹幕已隐藏");
+        } else if ("carnival".equals(activeDanmakuMode)) {
+            activeDanmakuStatus.setText("狂欢模式：已加载 " + danmakuTimeline.length() + " 条弹幕");
+        } else {
+            activeDanmakuStatus.setText("轻聊模式：筛选低打扰弹幕");
+        }
+    }
+
+    private void scheduleDanmakuTrack() {
+        if (!videoPrepared || activeVideoView == null || activeDanmakuOverlay == null || danmakuTimeline.length() == 0) {
+            return;
+        }
+        stopDanmakuWatcher();
+        danmakuRunnable = () -> {
+            if (!videoPrepared || activeVideoView == null || activeDanmakuOverlay == null) {
+                return;
+            }
+            if ("immersive".equals(activeDanmakuMode)) {
+                activeDanmakuOverlay.removeAllViews();
+                progressHandler.postDelayed(danmakuRunnable, 1000);
+                return;
+            }
+            int positionMs = Math.max(0, activeVideoView.getCurrentPosition());
+            while (nextDanmakuIndex < danmakuTimeline.length()) {
+                JSONObject comment = danmakuTimeline.optJSONObject(nextDanmakuIndex);
+                if (comment == null) {
+                    nextDanmakuIndex++;
+                    continue;
+                }
+                int timeMs = (int) Math.round(comment.optDouble("time_sec", 0) * 1000);
+                if (timeMs < positionMs - 2500) {
+                    nextDanmakuIndex++;
+                    continue;
+                }
+                if (timeMs <= positionMs + 350) {
+                    nextDanmakuIndex++;
+                    if (shouldShowDanmaku(comment)) {
+                        showDanmakuBubble(comment);
+                        progressHandler.postDelayed(danmakuRunnable, danmakuIntervalMs());
+                        return;
+                    }
+                    continue;
+                }
+                progressHandler.postDelayed(danmakuRunnable, 400);
+                return;
+            }
+        };
+        progressHandler.post(danmakuRunnable);
+    }
+
+    private boolean shouldShowDanmaku(JSONObject comment) {
+        if ("immersive".equals(activeDanmakuMode)) {
+            return false;
+        }
+        String mode = comment.optString("mode", "light");
+        if ("carnival".equals(activeDanmakuMode)) {
+            return true;
+        }
+        return "light".equals(mode);
+    }
+
+    private int danmakuIntervalMs() {
+        return "carnival".equals(activeDanmakuMode) ? 520 : 1200;
+    }
+
+    private void showDanmakuBubble(JSONObject comment) {
+        if (activeDanmakuOverlay == null) {
+            return;
+        }
+        JSONObject user = comment.optJSONObject("user");
+        String nickname = user == null ? "观众" : user.optString("nickname", "观众");
+        String text = comment.optString("text", "");
+        if (text.isEmpty()) {
+            return;
+        }
+        if (!"carnival".equals(activeDanmakuMode)) {
+            activeDanmakuOverlay.removeAllViews();
+        }
+        while (activeDanmakuOverlay.getChildCount() >= ("carnival".equals(activeDanmakuMode) ? 3 : 1)) {
+            activeDanmakuOverlay.removeViewAt(0);
+        }
+        TextView bubble = text(nickname + "：" + text, "carnival".equals(activeDanmakuMode) ? 13 : 12, Color.WHITE, Typeface.BOLD);
+        bubble.setSingleLine(true);
+        bubble.setPadding(dp(12), dp(7), dp(12), dp(7));
+        bubble.setBackground(danmakuBubbleBackground());
+        LinearLayout.LayoutParams params = matchWrap();
+        params.bottomMargin = dp(6);
+        params.rightMargin = "carnival".equals(activeDanmakuMode) ? dp(22) : dp(90);
+        activeDanmakuOverlay.addView(bubble, params);
+        progressHandler.postDelayed(() -> {
+            if (activeDanmakuOverlay != null) {
+                activeDanmakuOverlay.removeView(bubble);
+            }
+        }, "carnival".equals(activeDanmakuMode) ? 2800 : 4200);
+    }
+
+    private void fetchRemixOptions(int episodeId) {
+        new Thread(() -> {
+            try {
+                String body = httpGet(loadBaseUrl() + "/api/episodes/" + episodeId + "/remix-options", loadToken());
+                JSONObject payload = new JSONObject(body);
+                JSONArray options = payload.optJSONArray("options");
+                runOnUiThread(() -> {
+                    remixOptionsPayload = payload;
+                    if (activeRemixEntryButton != null) {
+                        activeRemixEntryButton.setEnabled(options != null && options.length() > 0);
+                        activeRemixEntryButton.setText(options != null && options.length() > 0 ? "片尾 AI 二创" : "暂无片尾二创");
+                    }
+                    scheduleRemixEntry();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    if (activeRemixEntryButton != null) {
+                        activeRemixEntryButton.setText("二创入口加载失败");
+                        activeRemixEntryButton.setEnabled(false);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void scheduleRemixEntry() {
+        if (!videoPrepared || activeVideoView == null || remixOptionsPayload == null || remixEntryShown) {
+            return;
+        }
+        stopRemixWatcher();
+        double triggerSec = remixOptionsPayload.optDouble("trigger_time_sec", -1);
+        if (triggerSec < 0) {
+            return;
+        }
+        remixRunnable = () -> {
+            if (!videoPrepared || activeVideoView == null || remixOptionsPayload == null || remixEntryShown) {
+                return;
+            }
+            int positionMs = Math.max(0, activeVideoView.getCurrentPosition());
+            if (positionMs >= (int) Math.round(triggerSec * 1000)) {
+                showRemixEntry(true);
+                return;
+            }
+            progressHandler.postDelayed(remixRunnable, 1000);
+        };
+        progressHandler.post(remixRunnable);
+    }
+
+    private void showRemixEntry(boolean autoTriggered) {
+        if (activeRemixPanel == null) {
+            return;
+        }
+        remixEntryShown = true;
+        activeRemixPanel.removeAllViews();
+        activeRemixPanel.setVisibility(View.VISIBLE);
+
+        TextView badge = text(autoTriggered ? "片尾已到达" : "提前体验", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        activeRemixPanel.addView(badge, matchWrap());
+
+        TextView title = text("AI 猜下一段剧情", 20, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(6);
+        activeRemixPanel.addView(title, titleParams);
+
+        String disclaimer = remixOptionsPayload == null ? "AI 猜测剧情，非正片内容" : remixOptionsPayload.optString("disclaimer", "AI 猜测剧情，非正片内容");
+        TextView desc = text(disclaimer + "。选择一个方向，生成三镜头分镜。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        desc.setLineSpacing(dp(2), 1.0f);
+        LinearLayout.LayoutParams descParams = matchWrap();
+        descParams.topMargin = dp(8);
+        activeRemixPanel.addView(desc, descParams);
+
+        JSONArray options = remixOptionsPayload == null ? null : remixOptionsPayload.optJSONArray("options");
+        if (options == null || options.length() == 0) {
+            TextView empty = text("本集暂未配置片尾二创。", 14, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            LinearLayout.LayoutParams emptyParams = matchWrap();
+            emptyParams.topMargin = dp(12);
+            activeRemixPanel.addView(empty, emptyParams);
+            return;
+        }
+        for (int i = 0; i < options.length(); i++) {
+            JSONObject option = options.optJSONObject(i);
+            if (option == null) {
+                continue;
+            }
+            String label = option.optString("label", "二创方向");
+            Button optionButton = primaryButton(label);
+            optionButton.setTextSize(14);
+            optionButton.setOnClickListener(v -> showRemixVariants(option));
+            LinearLayout.LayoutParams optionParams = matchHeight(dp(44));
+            optionParams.topMargin = dp(10);
+            activeRemixPanel.addView(optionButton, optionParams);
+        }
+    }
+
+    private void showRemixVariants(JSONObject option) {
+        if (activeRemixPanel == null) {
+            return;
+        }
+        activeRemixPanel.removeAllViews();
+        String choiceLabel = option.optString("label", "二创方向");
+        String choiceDescription = option.optString("description", "");
+        TextView title = text(choiceLabel, 20, Color.rgb(18, 20, 26), Typeface.BOLD);
+        activeRemixPanel.addView(title, matchWrap());
+
+        TextView desc = text(choiceDescription, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        desc.setLineSpacing(dp(2), 1.0f);
+        LinearLayout.LayoutParams descParams = matchWrap();
+        descParams.topMargin = dp(8);
+        activeRemixPanel.addView(desc, descParams);
+
+        String choiceKey = option.optString("key", "");
+        JSONArray variants = option.optJSONArray("variants");
+        if (variants == null || variants.length() == 0) {
+            Button generateButton = primaryButton("生成分镜");
+            generateButton.setOnClickListener(v -> createRemix(choiceKey, "", choiceLabel));
+            LinearLayout.LayoutParams generateParams = matchHeight(dp(44));
+            generateParams.topMargin = dp(12);
+            activeRemixPanel.addView(generateButton, generateParams);
+        } else {
+            for (int i = 0; i < variants.length(); i++) {
+                JSONObject variant = variants.optJSONObject(i);
+                if (variant == null) {
+                    continue;
+                }
+                String variantKey = variant.optString("variant_key", "");
+                String label = variant.optString("label", "个性版本");
+                Button variantButton = primaryButton(label);
+                variantButton.setTextSize(14);
+                variantButton.setOnClickListener(v -> createRemix(choiceKey, variantKey, label));
+                LinearLayout.LayoutParams variantParams = matchHeight(dp(44));
+                variantParams.topMargin = dp(10);
+                activeRemixPanel.addView(variantButton, variantParams);
+            }
+        }
+
+        Button backButton = secondaryButton("返回二创方向");
+        backButton.setOnClickListener(v -> showRemixEntry(false));
+        LinearLayout.LayoutParams backParams = matchHeight(dp(40));
+        backParams.topMargin = dp(12);
+        activeRemixPanel.addView(backButton, backParams);
+    }
+
+    private void createRemix(String choiceKey, String variantKey, String label) {
+        if (activeRemixPanel == null || choiceKey.isEmpty()) {
+            return;
+        }
+        activeRemixPanel.removeAllViews();
+        TextView loading = text("正在生成：" + label, 17, Color.rgb(18, 20, 26), Typeface.BOLD);
+        loading.setGravity(Gravity.CENTER);
+        activeRemixPanel.addView(loading, matchWrap());
+
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("choice_key", choiceKey);
+                if (!variantKey.isEmpty()) {
+                    payload.put("variant_key", variantKey);
+                }
+                payload.put("session_id", loadSessionId());
+                String body = httpPost(loadBaseUrl() + "/api/episodes/" + activeEpisodeId + "/ai-remix", payload.toString(), loadToken());
+                JSONObject result = new JSONObject(body);
+                runOnUiThread(() -> renderRemixResult(result));
+            } catch (Exception error) {
+                runOnUiThread(() -> renderRemixError(error.getMessage()));
+            }
+        }).start();
+    }
+
+    private void renderRemixResult(JSONObject result) {
+        if (activeRemixPanel == null) {
+            return;
+        }
+        activeRemixPanel.removeAllViews();
+        TextView badge = text(result.optString("source", "AI 二创"), 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        activeRemixPanel.addView(badge, matchWrap());
+
+        JSONObject choice = result.optJSONObject("choice");
+        String titleText = choice == null ? "AI 分镜已生成" : choice.optString("label", "AI 分镜已生成");
+        TextView title = text(titleText, 20, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(6);
+        activeRemixPanel.addView(title, titleParams);
+
+        TextView story = text(result.optString("story_text", "已生成剧情预测。"), 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        story.setLineSpacing(dp(2), 1.0f);
+        LinearLayout.LayoutParams storyParams = matchWrap();
+        storyParams.topMargin = dp(8);
+        activeRemixPanel.addView(story, storyParams);
+
+        JSONArray storyboard = result.optJSONArray("storyboard");
+        if (storyboard != null) {
+            for (int i = 0; i < storyboard.length() && i < 3; i++) {
+                JSONObject shot = storyboard.optJSONObject(i);
+                if (shot == null) {
+                    continue;
+                }
+                TextView shotView = text("镜头 " + (i + 1) + "：" + shot.optString("subtitle", shot.optString("shot", "")), 13, Color.rgb(28, 45, 76), Typeface.BOLD);
+                LinearLayout.LayoutParams shotParams = matchWrap();
+                shotParams.topMargin = dp(8);
+                activeRemixPanel.addView(shotView, shotParams);
+            }
+        }
+
+        Button againButton = secondaryButton("重新选择");
+        againButton.setOnClickListener(v -> showRemixEntry(false));
+        LinearLayout.LayoutParams againParams = matchHeight(dp(40));
+        againParams.topMargin = dp(12);
+        activeRemixPanel.addView(againButton, againParams);
+    }
+
+    private void renderRemixError(String message) {
+        if (activeRemixPanel == null) {
+            return;
+        }
+        activeRemixPanel.removeAllViews();
+        TextView error = text("二创生成失败：" + message, 14, Color.rgb(210, 54, 70), Typeface.BOLD);
+        activeRemixPanel.addView(error, matchWrap());
+        Button backButton = secondaryButton("返回二创方向");
+        backButton.setOnClickListener(v -> showRemixEntry(false));
+        LinearLayout.LayoutParams backParams = matchHeight(dp(40));
+        backParams.topMargin = dp(12);
+        activeRemixPanel.addView(backButton, backParams);
     }
 
     private LinearLayout buildHighlightPanel() {
@@ -888,6 +1380,19 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(22));
         drawable.setStroke(dp(1), Color.argb(70, 20, 26, 38));
+        return drawable;
+    }
+
+    private GradientDrawable danmakuBubbleBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(210, 8, 15, 30),
+                        Color.argb(184, 28, 45, 76)
+                }
+        );
+        drawable.setCornerRadius(dp(18));
+        drawable.setStroke(dp(1), Color.argb(88, 255, 255, 255));
         return drawable;
     }
 

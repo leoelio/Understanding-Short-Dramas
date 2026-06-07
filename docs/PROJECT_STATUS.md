@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-08 01:54:43
+更新时间：2026-06-08 02:10:56
 
 ## 当前目标
 
-原生 Android 播放页已从第一条高光扩展为整集高光时间轴，并接入互动上报闭环。
+原生 Android 播放页已接入弹幕轨道三档模式，并打通片尾 AI 二创入口到分镜结果展示。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`95de51e`
+- 最新提交：`912c0b7`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -25,7 +25,7 @@
 - 互动记录：71
 - 弹幕记录：1281
 - 体验配置：4
-- 片尾 AI 二创：53
+- 片尾 AI 二创：54
 - 社交动态：2
 - 社交评论：1
 - 社交通知：28
@@ -52,16 +52,16 @@
 
 ## 本次变更摘要
 
-- 原生端加载 /api/episodes/{episode_id} 的 highlights 数组，按 start_time_sec 依次触发整集多个高光。
-- 高光触发改为跟随 VideoView 当前播放进度轮询，避免暂停、缓冲或真机卡顿造成时间错位。
-- 每条高光支持选项点击、暂不互动、10 秒自动收起，并在收起后继续排下一条高光。
-- 点击互动选项会 POST /api/interactions，上报 highlight_id、option_key、session_id。
-- 真机验证：北往第一集首个高光 16s 正常弹出，点击欠薪得还后 highlight_id=70 的互动数从 14 增至 15；继续等待后状态显示下一高光 198s，证明 112s 高光已被时间轴推进。
+- 原生端拉取 /api/episodes/{episode_id}/danmaku，按播放进度在视频上方叠加弹幕气泡。
+- 新增轻聊、狂欢、沉浸三档弹幕模式：轻聊只显示低打扰弹幕，狂欢显示多条弹幕，沉浸隐藏弹幕。
+- 原生播放页拉取 /api/episodes/{episode_id}/remix-options，提供片尾 AI 二创入口，并可手动提前打开。
+- 二创入口支持选择主分支和个性版本，调用 /api/episodes/{episode_id}/ai-remix，展示剧情正文和三镜头分镜文案。
+- 真机验证：北往第一集轻聊模式显示真实弹幕；切到狂欢模式显示 3 条弹幕；片尾 AI 二创可展开并生成 cached_images 来源的分镜结果。
 
 ## 下一步建议
 
-- 下一步建议接入原生弹幕轨道：先拉取 /api/episodes/{episode_id}/danmaku，按轻聊/狂欢/沉浸三档显示。
-- 再下一步接片尾 AI 二创入口：先复用 Web 已缓存的图片分镜与语音资产，保证 Android 演示闭环。
+- 下一步建议优化原生播放页布局：减少头部占用，把高光、弹幕模式、二创入口收敛成更适合手机观看的悬浮控制。
+- 随后接入原生二创图片浏览：复用 image_plan 中的缓存图片，做点击翻页和原版/用户声音入口。
 
 ## 安全提醒
 
