@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-08 02:10:56
+更新时间：2026-06-08 02:36:24
 
 ## 当前目标
 
-原生 Android 播放页已接入弹幕轨道三档模式，并打通片尾 AI 二创入口到分镜结果展示。
+原生 Android 播放页完成第一轮手机化视觉重构：从网页式堆叠布局改为视频主画面 + 覆盖式交互层。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`912c0b7`
+- 最新提交：`0810a61`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -52,16 +52,18 @@
 
 ## 本次变更摘要
 
-- 原生端拉取 /api/episodes/{episode_id}/danmaku，按播放进度在视频上方叠加弹幕气泡。
-- 新增轻聊、狂欢、沉浸三档弹幕模式：轻聊只显示低打扰弹幕，狂欢显示多条弹幕，沉浸隐藏弹幕。
-- 原生播放页拉取 /api/episodes/{episode_id}/remix-options，提供片尾 AI 二创入口，并可手动提前打开。
-- 二创入口支持选择主分支和个性版本，调用 /api/episodes/{episode_id}/ai-remix，展示剧情正文和三镜头分镜文案。
-- 真机验证：北往第一集轻聊模式显示真实弹幕；切到狂欢模式显示 3 条弹幕；片尾 AI 二创可展开并生成 cached_images 来源的分镜结果。
+- 评估 Tencent/QMUI_Android：该库适合完整 Android UI 体系，但当前原生壳是轻量 Java Activity，短期接入会引入主题和依赖迁移成本；本轮先用原生 View 完成播放页结构修复。
+- 播放页从 ScrollView 卡片堆叠改为全屏 FrameLayout，视频占据主体区域。
+- 顶部改为轻量暗色渐隐栏，只保留返回按钮、剧名和小状态，不再把大段内容压在视频前。
+- 底部改为磨砂控制条，放置轻聊、狂欢、沉浸三档弹幕按钮和片尾 AI 二创入口。
+- 高光互动和片尾 AI 二创改为覆盖在视频上方的浮层，避免跳到长页面里打断观看。
+- 新增弹幕气泡淡入滑入、弹层上滑淡入、玻璃按钮和胶囊按钮样式。
+- 本轮因手机没电未做真机视觉复核；Android debug APK 已构建成功。
 
 ## 下一步建议
 
-- 下一步建议优化原生播放页布局：减少头部占用，把高光、弹幕模式、二创入口收敛成更适合手机观看的悬浮控制。
-- 随后接入原生二创图片浏览：复用 image_plan 中的缓存图片，做点击翻页和原版/用户声音入口。
+- 手机恢复后优先真机复核播放页：视频是否铺满、底部控制是否遮挡、二创浮层是否过高、弹幕是否影响观看。
+- 如果原生 View 的视觉仍不达标，再单独评估接入 Material Components 或 QMUI，不和业务迁移混在同一轮。
 
 ## 安全提醒
 
