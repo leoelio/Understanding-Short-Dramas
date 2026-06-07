@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-08 00:31:53
+更新时间：2026-06-08 00:52:22
 
 ## 当前目标
 
-原生 Android Stage 2：完成登录、token 保存、真实短剧首页和北往占位播放页最小闭环。
+原生 Android Stage 3：接入北往第一集原生视频播放页。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`72d490b`
+- 最新提交：`dfbd7f3`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -52,14 +52,14 @@
 
 ## 本次变更摘要
 
-- 原生 App 默认使用 http://127.0.0.1:8000，配合 adb reverse 连接电脑 FastAPI 服务端。
-- 新增 user_demo 登录、SharedPreferences token 持久化、/api/dramas 拉取和真实短剧卡片渲染。
-- 点击北往进入原生播放占位页，保留 first_episode_id 供下一阶段接入播放器。
+- 将北往占位页替换为系统 VideoView 播放页，使用 baseUrl + /media/episodes/{first_episode_id} 播放真实视频。
+- 播放页进入后自动准备并播放视频，显示播放状态；返回首页时停止当前视频，Activity 暂停/销毁时暂停或停止播放。
+- 真机 ADB 验证 /media/episodes/3 可播放，UI 显示北往 · 第1集、视频已准备正在播放、返回选剧首页。
 
 ## 下一步建议
 
-- 下一阶段接入原生视频播放页：先播放 /media/episodes/3，再逐步接高光、弹幕和片尾 AI 二创。
-- 公网演示时将登录页服务端地址替换为新的 HTTPS 隧道地址。
+- 下一步在原生播放页拉取 /api/episodes/3/highlights 或 /api/episodes/3，按播放进度触发第一个高光弹层。
+- 随后逐步接入弹幕轨道、片尾 AI 二创入口和声音资产播放。
 
 ## 安全提醒
 

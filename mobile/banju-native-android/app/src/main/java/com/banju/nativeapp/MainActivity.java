@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
@@ -14,8 +15,10 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.MediaController;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.VideoView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -41,6 +44,7 @@ public class MainActivity extends Activity {
     private TextView messageText;
     private Button loginButton;
     private LinearLayout dramaList;
+    private VideoView activeVideoView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +64,7 @@ public class MainActivity extends Activity {
     }
 
     private void showLoginScreen(String message) {
+        stopActiveVideo();
         ScrollView scrollView = newPage();
         LinearLayout root = pageRoot(scrollView);
 
@@ -162,6 +167,7 @@ public class MainActivity extends Activity {
     }
 
     private void showHomeScreen(String message) {
+        stopActiveVideo();
         ScrollView scrollView = newPage();
         LinearLayout root = pageRoot(scrollView);
         root.setGravity(Gravity.NO_GRAVITY);
@@ -238,7 +244,7 @@ public class MainActivity extends Activity {
 
     private void renderDramas(JSONArray dramas) {
         dramaList.removeAllViews();
-        setMessage("已加载 " + dramas.length() + " 部短剧。点击“北往”进入占位播放页。", true);
+        setMessage("已加载 " + dramas.length() + " 部短剧。点击“北往”进入播放页。", true);
         for (int i = 0; i < dramas.length(); i++) {
             JSONObject drama = dramas.optJSONObject(i);
             if (drama != null) {
@@ -275,55 +281,93 @@ public class MainActivity extends Activity {
         descParams.topMargin = dp(8);
         card.addView(desc, descParams);
 
-        Button enterButton = primaryButton(title.contains("北往") ? "进入北往占位播放页" : "查看占位页");
-        enterButton.setOnClickListener(v -> showPlayerPlaceholder(title, firstEpisodeId));
+        Button enterButton = primaryButton(title.contains("北往") ? "播放北往第一集" : "播放第一集");
+        enterButton.setOnClickListener(v -> showNativePlayer(title, firstEpisodeId));
         LinearLayout.LayoutParams buttonParams = matchHeight(dp(46));
         buttonParams.topMargin = dp(14);
         card.addView(enterButton, buttonParams);
     }
 
-    private void showPlayerPlaceholder(String dramaTitle, int firstEpisodeId) {
+    private void showNativePlayer(String dramaTitle, int firstEpisodeId) {
+        stopActiveVideo();
         ScrollView scrollView = newPage();
         LinearLayout root = pageRoot(scrollView);
 
-        LinearLayout player = new LinearLayout(this);
-        player.setOrientation(LinearLayout.VERTICAL);
-        player.setGravity(Gravity.CENTER);
-        player.setPadding(dp(22), dp(28), dp(22), dp(28));
-        player.setBackground(darkCardBackground());
-        root.addView(player, matchWrap());
+        String videoUrl = loadBaseUrl() + "/media/episodes/" + firstEpisodeId;
 
-        TextView label = text("Native Player Placeholder", 12, Color.rgb(122, 164, 255), Typeface.BOLD);
-        label.setGravity(Gravity.CENTER);
-        player.addView(label, matchWrap());
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setGravity(Gravity.CENTER);
+        header.setBackground(darkCardBackground());
+        header.setPadding(dp(18), dp(26), dp(18), dp(22));
+        root.addView(header, matchWrap());
 
-        TextView title = text(dramaTitle + " · 原生播放页占位", 26, Color.WHITE, Typeface.BOLD);
+        View topSpacer = new View(this);
+        header.addView(topSpacer, matchHeight(dp(8)));
+
+        TextView title = text(dramaTitle + " · 第1集", 23, Color.WHITE, Typeface.BOLD);
         title.setGravity(Gravity.CENTER);
         title.setLineSpacing(dp(2), 1.0f);
         LinearLayout.LayoutParams titleParams = matchWrap();
         titleParams.topMargin = dp(10);
-        player.addView(title, titleParams);
+        header.addView(title, titleParams);
 
-        TextView body = text("下一阶段接入视频播放器、高光弹层、弹幕和片尾 AI 二创。当前页先验证从选剧首页进入播放场景的原生链路。", 14, Color.rgb(214, 222, 238), Typeface.NORMAL);
-        body.setGravity(Gravity.CENTER);
-        body.setLineSpacing(dp(3), 1.0f);
-        LinearLayout.LayoutParams bodyParams = matchWrap();
-        bodyParams.topMargin = dp(16);
-        player.addView(body, bodyParams);
+        TextView status = text("正在准备视频...", 14, Color.rgb(214, 222, 238), Typeface.NORMAL);
+        status.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams statusParams = matchWrap();
+        statusParams.topMargin = dp(10);
+        header.addView(status, statusParams);
 
-        TextView episode = text("first_episode_id: " + firstEpisodeId, 13, Color.rgb(156, 168, 190), Typeface.NORMAL);
-        episode.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams episodeParams = matchWrap();
-        episodeParams.topMargin = dp(14);
-        player.addView(episode, episodeParams);
-
-        Button backButton = primaryButton("返回选剧首页");
+        Button backButton = secondaryButton("返回选剧首页");
         backButton.setOnClickListener(v -> showHomeScreen("已返回短剧首页。"));
-        LinearLayout.LayoutParams backParams = matchHeight(dp(52));
-        backParams.topMargin = dp(22);
-        root.addView(backButton, backParams);
+        LinearLayout.LayoutParams backParams = matchHeight(dp(46));
+        backParams.topMargin = dp(14);
+        header.addView(backButton, backParams);
+
+        VideoView videoView = new VideoView(this);
+        videoView.setBackgroundColor(Color.BLACK);
+        activeVideoView = videoView;
+        MediaController controller = new MediaController(this);
+        controller.setAnchorView(videoView);
+        videoView.setMediaController(controller);
+        videoView.setVideoURI(Uri.parse(videoUrl));
+        videoView.setOnPreparedListener(mediaPlayer -> {
+            mediaPlayer.setLooping(false);
+            status.setText("视频已准备，正在播放。");
+            videoView.setBackgroundColor(Color.TRANSPARENT);
+            videoView.start();
+        });
+        videoView.setOnErrorListener((mediaPlayer, what, extra) -> {
+            status.setText("视频播放失败，请确认服务端和 adb reverse 已连接。");
+            return true;
+        });
+        LinearLayout.LayoutParams videoParams = matchHeight(videoHeight());
+        videoParams.topMargin = dp(16);
+        root.addView(videoView, videoParams);
 
         setContentView(scrollView);
+        videoView.requestFocus();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (activeVideoView != null && activeVideoView.isPlaying()) {
+            activeVideoView.pause();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        stopActiveVideo();
+        super.onDestroy();
+    }
+
+    private void stopActiveVideo() {
+        if (activeVideoView != null) {
+            activeVideoView.stopPlayback();
+            activeVideoView = null;
+        }
     }
 
     private String httpGet(String urlString, String token) throws Exception {
@@ -517,6 +561,12 @@ public class MainActivity extends Activity {
         return new LinearLayout.LayoutParams(0, height, weight);
     }
 
+    private int videoHeight() {
+        int width = getResources().getDisplayMetrics().widthPixels - dp(44);
+        int height = width * 16 / 9;
+        return Math.min(height, dp(640));
+    }
+
     private GradientDrawable pageBackground() {
         return new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
@@ -537,7 +587,7 @@ public class MainActivity extends Activity {
     }
 
     private GradientDrawable darkCardBackground() {
-        return new GradientDrawable(
+        GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 new int[]{
                         Color.rgb(10, 16, 28),
@@ -545,6 +595,8 @@ public class MainActivity extends Activity {
                         Color.rgb(18, 20, 26)
                 }
         );
+        drawable.setCornerRadius(dp(18));
+        return drawable;
     }
 
     private GradientDrawable inputBackground() {
