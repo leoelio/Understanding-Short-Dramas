@@ -7,6 +7,8 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -45,6 +47,18 @@ public class MainActivity extends Activity {
     private Button loginButton;
     private LinearLayout dramaList;
     private VideoView activeVideoView;
+    private final Handler progressHandler = new Handler(Looper.getMainLooper());
+    private Runnable progressRunnable;
+    private LinearLayout activeHighlightPanel;
+    private TextView activePlayerStatus;
+    private boolean firstHighlightTriggered;
+    private boolean videoPrepared;
+    private int firstHighlightStartMs = -1;
+    private String firstHighlightTitle = "";
+    private String firstHighlightDescription = "";
+    private String firstHighlightType = "";
+    private String firstHighlightEmotion = "";
+    private JSONArray firstHighlightOptions = new JSONArray();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -290,6 +304,7 @@ public class MainActivity extends Activity {
 
     private void showNativePlayer(String dramaTitle, int firstEpisodeId) {
         stopActiveVideo();
+        resetHighlightState();
         ScrollView scrollView = newPage();
         LinearLayout root = pageRoot(scrollView);
 
@@ -313,6 +328,7 @@ public class MainActivity extends Activity {
         header.addView(title, titleParams);
 
         TextView status = text("正在准备视频...", 14, Color.rgb(214, 222, 238), Typeface.NORMAL);
+        activePlayerStatus = status;
         status.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams statusParams = matchWrap();
         statusParams.topMargin = dp(10);
@@ -332,10 +348,12 @@ public class MainActivity extends Activity {
         videoView.setMediaController(controller);
         videoView.setVideoURI(Uri.parse(videoUrl));
         videoView.setOnPreparedListener(mediaPlayer -> {
+            videoPrepared = true;
             mediaPlayer.setLooping(false);
-            status.setText("视频已准备，正在播放。");
+            updatePlayerStatus();
             videoView.setBackgroundColor(Color.TRANSPARENT);
             videoView.start();
+            scheduleFirstHighlight();
         });
         videoView.setOnErrorListener((mediaPlayer, what, extra) -> {
             status.setText("视频播放失败，请确认服务端和 adb reverse 已连接。");
@@ -345,8 +363,14 @@ public class MainActivity extends Activity {
         videoParams.topMargin = dp(16);
         root.addView(videoView, videoParams);
 
+        activeHighlightPanel = buildHighlightPanel();
+        LinearLayout.LayoutParams highlightParams = matchWrap();
+        highlightParams.topMargin = dp(14);
+        header.addView(activeHighlightPanel, highlightParams);
+
         setContentView(scrollView);
         videoView.requestFocus();
+        fetchFirstHighlight(firstEpisodeId, status);
     }
 
     @Override
@@ -364,9 +388,182 @@ public class MainActivity extends Activity {
     }
 
     private void stopActiveVideo() {
+        stopProgressWatcher();
         if (activeVideoView != null) {
             activeVideoView.stopPlayback();
             activeVideoView = null;
+        }
+    }
+
+    private void fetchFirstHighlight(int episodeId, TextView status) {
+        new Thread(() -> {
+            try {
+                String body = httpGet(loadBaseUrl() + "/api/episodes/" + episodeId, loadToken());
+                JSONObject episode = new JSONObject(body);
+                JSONArray highlights = episode.optJSONArray("highlights");
+                if (highlights == null || highlights.length() == 0) {
+                    runOnUiThread(() -> status.setText("视频已准备，暂无高光配置。"));
+                    return;
+                }
+
+                JSONObject first = highlights.optJSONObject(0);
+                if (first == null) {
+                    runOnUiThread(() -> status.setText("视频已准备，高光数据为空。"));
+                    return;
+                }
+
+                int startMs = (int) Math.round(first.optDouble("start_time_sec", -1) * 1000);
+                JSONArray options = first.optJSONArray("options");
+                runOnUiThread(() -> {
+                    firstHighlightStartMs = startMs;
+                    firstHighlightTitle = first.optString("title", "剧情高光");
+                    firstHighlightDescription = first.optString("description", "");
+                    firstHighlightType = first.optString("highlight_type", "高光");
+                    firstHighlightEmotion = first.optString("emotion", "情绪");
+                    firstHighlightOptions = options == null ? new JSONArray() : options;
+                    updatePlayerStatus();
+                    scheduleFirstHighlight();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> status.setText("视频已准备，高光加载失败：" + error.getMessage()));
+            }
+        }).start();
+    }
+
+    private void scheduleFirstHighlight() {
+        if (!videoPrepared || activeVideoView == null || firstHighlightStartMs < 0 || firstHighlightTriggered) {
+            return;
+        }
+        stopProgressWatcher();
+        int positionMs = Math.max(0, activeVideoView.getCurrentPosition());
+        long delayMs = Math.max(300, firstHighlightStartMs - positionMs);
+        progressRunnable = () -> {
+            if (activeVideoView != null && !firstHighlightTriggered) {
+                firstHighlightTriggered = true;
+                if (activePlayerStatus != null) {
+                    activePlayerStatus.setText("高光已触发，选择你的反应。");
+                }
+                showFirstHighlight();
+            }
+        };
+        progressHandler.postDelayed(progressRunnable, delayMs);
+        if (activeHighlightPanel != null) {
+            activeHighlightPanel.postDelayed(progressRunnable, delayMs);
+        }
+        if (activePlayerStatus != null) {
+            activePlayerStatus.postDelayed(progressRunnable, delayMs);
+        }
+    }
+
+    private void stopProgressWatcher() {
+        if (progressRunnable != null) {
+            progressHandler.removeCallbacks(progressRunnable);
+            if (activeHighlightPanel != null) {
+                activeHighlightPanel.removeCallbacks(progressRunnable);
+            }
+            if (activePlayerStatus != null) {
+                activePlayerStatus.removeCallbacks(progressRunnable);
+            }
+            progressRunnable = null;
+        }
+    }
+
+    private void resetHighlightState() {
+        stopProgressWatcher();
+        firstHighlightTriggered = false;
+        videoPrepared = false;
+        firstHighlightStartMs = -1;
+        firstHighlightTitle = "";
+        firstHighlightDescription = "";
+        firstHighlightType = "";
+        firstHighlightEmotion = "";
+        firstHighlightOptions = new JSONArray();
+        activeHighlightPanel = null;
+        activePlayerStatus = null;
+    }
+
+    private void updatePlayerStatus() {
+        if (activePlayerStatus == null) {
+            return;
+        }
+        if (firstHighlightStartMs >= 0) {
+            activePlayerStatus.setText("视频已准备，首个高光将在 " + Math.max(0, firstHighlightStartMs / 1000) + "s 触发。");
+        } else {
+            activePlayerStatus.setText("视频已准备，正在播放。");
+        }
+    }
+
+    private LinearLayout buildHighlightPanel() {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(18), dp(16), dp(18), dp(16));
+        panel.setBackground(highlightBackground());
+        panel.setVisibility(View.GONE);
+        return panel;
+    }
+
+    private void showFirstHighlight() {
+        if (activeHighlightPanel == null) {
+            return;
+        }
+        activeHighlightPanel.removeAllViews();
+
+        TextView badge = text(firstHighlightType + " · " + firstHighlightEmotion, 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        activeHighlightPanel.addView(badge, matchWrap());
+
+        TextView title = text(firstHighlightTitle, 20, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(6);
+        activeHighlightPanel.addView(title, titleParams);
+
+        TextView description = text(firstHighlightDescription, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        description.setLineSpacing(dp(2), 1.0f);
+        description.setMaxLines(3);
+        LinearLayout.LayoutParams descParams = matchWrap();
+        descParams.topMargin = dp(8);
+        activeHighlightPanel.addView(description, descParams);
+
+        LinearLayout optionsRow = new LinearLayout(this);
+        optionsRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams rowParams = matchWrap();
+        rowParams.topMargin = dp(12);
+        activeHighlightPanel.addView(optionsRow, rowParams);
+
+        int count = Math.max(1, firstHighlightOptions.length());
+        for (int i = 0; i < count; i++) {
+            JSONObject option = firstHighlightOptions.optJSONObject(i);
+            String label = option == null ? "我有话说" : option.optString("label", "我有话说");
+            Button optionButton = primaryButton(label);
+            optionButton.setTextSize(13);
+            optionButton.setOnClickListener(v -> {
+                activeHighlightPanel.removeAllViews();
+                TextView feedback = text("已选择：" + label, 18, Color.rgb(10, 132, 80), Typeface.BOLD);
+                feedback.setGravity(Gravity.CENTER);
+                activeHighlightPanel.addView(feedback, matchWrap());
+                progressHandler.postDelayed(() -> {
+                    if (activeHighlightPanel != null) {
+                        activeHighlightPanel.setVisibility(View.GONE);
+                    }
+                }, 1500);
+            });
+            LinearLayout.LayoutParams optionParams = weightHeight(1, dp(42));
+            if (i > 0) {
+                optionParams.leftMargin = dp(8);
+            }
+            optionsRow.addView(optionButton, optionParams);
+        }
+
+        Button dismissButton = secondaryButton("暂不互动");
+        dismissButton.setOnClickListener(v -> activeHighlightPanel.setVisibility(View.GONE));
+        LinearLayout.LayoutParams dismissParams = matchHeight(dp(40));
+        dismissParams.topMargin = dp(10);
+        activeHighlightPanel.addView(dismissButton, dismissParams);
+
+        activeHighlightPanel.setVisibility(View.VISIBLE);
+        activeHighlightPanel.bringToFront();
+        activeHighlightPanel.requestLayout();
+        if (activeHighlightPanel.getParent() instanceof View) {
+            ((View) activeHighlightPanel.getParent()).requestLayout();
         }
     }
 
@@ -621,6 +818,20 @@ public class MainActivity extends Activity {
         drawable.setColor(Color.argb(200, 255, 255, 255));
         drawable.setCornerRadius(dp(18));
         drawable.setStroke(dp(1), Color.argb(54, 20, 26, 38));
+        return drawable;
+    }
+
+    private GradientDrawable highlightBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.rgb(255, 255, 255),
+                        Color.rgb(242, 248, 255),
+                        Color.rgb(255, 247, 238)
+                }
+        );
+        drawable.setCornerRadius(dp(22));
+        drawable.setStroke(dp(1), Color.argb(70, 20, 26, 38));
         return drawable;
     }
 

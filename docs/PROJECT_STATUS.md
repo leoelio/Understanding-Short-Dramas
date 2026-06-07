@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-08 00:52:22
+更新时间：2026-06-08 01:22:02
 
 ## 当前目标
 
-原生 Android Stage 3：接入北往第一集原生视频播放页。
+原生 Android Stage 4：北往第一集接入首个高光按时触发弹层。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`dfbd7f3`
+- 最新提交：`f7ac2c3`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -52,14 +52,14 @@
 
 ## 本次变更摘要
 
-- 将北往占位页替换为系统 VideoView 播放页，使用 baseUrl + /media/episodes/{first_episode_id} 播放真实视频。
-- 播放页进入后自动准备并播放视频，显示播放状态；返回首页时停止当前视频，Activity 暂停/销毁时暂停或停止播放。
-- 真机 ADB 验证 /media/episodes/3 可播放，UI 显示北往 · 第1集、视频已准备正在播放、返回选剧首页。
+- 原生播放页请求 /api/episodes/{episode_id}，读取第一条 highlights 数据作为首个互动高光。
+- 视频准备完成后按 start_time_sec 定时触发高光卡片，展示高光类型、情绪、标题、描述和三个互动选项。
+- 真机验证第一个高光在北往第一集触发，UI 出现冲突对抗/愤怒、工友开头上门要债、欠薪得还/站工友/别拖了/暂不互动。
 
 ## 下一步建议
 
-- 下一步在原生播放页拉取 /api/episodes/3/highlights 或 /api/episodes/3，按播放进度触发第一个高光弹层。
-- 随后逐步接入弹幕轨道、片尾 AI 二创入口和声音资产播放。
+- 下一步将高光触发从第一条扩展为整集时间轴，并加入防打扰、触发后消失、互动上报。
+- 随后接入原生弹幕轨道和片尾 AI 二创入口。
 
 ## 安全提醒
 
