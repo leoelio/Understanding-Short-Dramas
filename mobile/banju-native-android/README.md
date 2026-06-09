@@ -28,6 +28,14 @@ mobile\banju-native-android\app\build\outputs\apk\debug\app-debug.apk
 .\scripts\install_banju_native_android_debug.ps1
 ```
 
+## 真机回归验证
+
+完整验证步骤见：
+
+```text
+..\..\docs\ANDROID_NATIVE_QA_CHECKLIST.md
+```
+
 ## 手机访问服务端
 
 开发期有三种方式：
