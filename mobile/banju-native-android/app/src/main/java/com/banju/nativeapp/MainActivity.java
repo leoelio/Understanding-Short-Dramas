@@ -3941,8 +3941,9 @@ public class MainActivity extends Activity {
 
     private void addRemixChoiceCard(LinearLayout parent, String kicker, String titleText, String description, View.OnClickListener listener) {
         LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(13), dp(16), dp(13));
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(14), dp(13), dp(12), dp(13));
         card.setBackground(remixChoiceBackground());
         card.setClickable(true);
         card.setOnClickListener(listener);
@@ -3950,21 +3951,34 @@ public class MainActivity extends Activity {
         cardParams.topMargin = dp(10);
         parent.addView(card, cardParams);
 
-        TextView kickerView = text(kicker, 11, Color.rgb(83, 103, 160), Typeface.BOLD);
-        card.addView(kickerView, matchWrap());
+        TextView badge = text(kicker, 11, Color.WHITE, Typeface.BOLD);
+        badge.setGravity(Gravity.CENTER);
+        badge.setSingleLine(true);
+        badge.setPadding(dp(8), 0, dp(8), 0);
+        badge.setBackground(remixBadgeBackground());
+        card.addView(badge, new LinearLayout.LayoutParams(dp(78), dp(36)));
 
-        TextView title = text(titleText, 18, Color.rgb(18, 20, 26), Typeface.BOLD);
-        LinearLayout.LayoutParams titleParams = matchWrap();
-        titleParams.topMargin = dp(4);
-        card.addView(title, titleParams);
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        copyParams.leftMargin = dp(12);
+        card.addView(copy, copyParams);
+
+        TextView title = text(titleText, 17, Color.rgb(18, 20, 26), Typeface.BOLD);
+        title.setMaxLines(2);
+        copy.addView(title, matchWrap());
 
         if (description != null && !description.trim().isEmpty()) {
             TextView desc = text(description, 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
             desc.setMaxLines(2);
             LinearLayout.LayoutParams descParams = matchWrap();
-            descParams.topMargin = dp(5);
-            card.addView(desc, descParams);
+            descParams.topMargin = dp(4);
+            copy.addView(desc, descParams);
         }
+
+        TextView arrow = text(">", 22, Color.rgb(83, 103, 160), Typeface.BOLD);
+        arrow.setGravity(Gravity.CENTER);
+        card.addView(arrow, new LinearLayout.LayoutParams(dp(28), dp(42)));
     }
 
     private void scheduleRemixEntry() {
@@ -4154,6 +4168,9 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams orbitParams = matchWrap();
         orbitParams.topMargin = dp(22);
         activeRemixPanel.addView(orbit, orbitParams);
+        orbit.animate().translationX(dp(18)).alpha(0.42f).setDuration(520)
+                .withEndAction(() -> orbit.animate().translationX(-dp(18)).alpha(1f).setDuration(520).start())
+                .start();
         animatePanel(activeRemixPanel);
 
         new Thread(() -> {
@@ -4263,16 +4280,51 @@ public class MainActivity extends Activity {
                 v -> dismissRemixPanel()
         );
 
-        ImageView image = new ImageView(this);
-        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        image.setBackground(imagePlaceholderBackground());
-        image.setOnClickListener(v -> goNextRemixShot(result, imagePlan, shots, safeIndex, sceneChoiceResolved));
+        FrameLayout stage = new FrameLayout(this);
+        stage.setBackground(remixStageBackground());
+        stage.setClipToPadding(true);
+        stage.setClickable(true);
+        stage.setOnClickListener(v -> goNextRemixShot(result, imagePlan, shots, safeIndex, sceneChoiceResolved));
         LinearLayout.LayoutParams imageParams = matchHeight(remixImageHeight());
         imageParams.topMargin = dp(12);
-        activeRemixPanel.addView(image, imageParams);
+        activeRemixPanel.addView(stage, imageParams);
+
+        ImageView image = new ImageView(this);
+        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        stage.addView(image, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+        ));
         loadImageInto(image, shotImageUrl(shot));
 
-        TextView pageHint = text(remixShotDots(safeIndex, shots.length()) + "  轻点图片切换下一镜头", 12, Color.rgb(88, 98, 118), Typeface.BOLD);
+        TextView shotBadge = text("镜头 " + (safeIndex + 1) + " / " + shots.length(), 12, Color.WHITE, Typeface.BOLD);
+        shotBadge.setGravity(Gravity.CENTER);
+        shotBadge.setPadding(dp(10), 0, dp(10), 0);
+        shotBadge.setBackground(remixFloatingBadgeBackground());
+        FrameLayout.LayoutParams badgeParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                dp(32),
+                Gravity.TOP | Gravity.LEFT
+        );
+        badgeParams.leftMargin = dp(12);
+        badgeParams.topMargin = dp(12);
+        stage.addView(shotBadge, badgeParams);
+
+        TextView caption = text(subtitle.isEmpty() ? "轻点图片切换下一镜头" : subtitle, 15, Color.WHITE, Typeface.BOLD);
+        caption.setMaxLines(3);
+        caption.setPadding(dp(14), dp(10), dp(14), dp(10));
+        caption.setBackground(remixCaptionBackground());
+        FrameLayout.LayoutParams captionParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM
+        );
+        captionParams.leftMargin = dp(12);
+        captionParams.rightMargin = dp(12);
+        captionParams.bottomMargin = dp(12);
+        stage.addView(caption, captionParams);
+
+        TextView pageHint = text(remixShotDots(safeIndex, shots.length()), 16, Color.rgb(83, 103, 160), Typeface.BOLD);
         pageHint.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams pageHintParams = matchWrap();
         pageHintParams.topMargin = dp(8);
@@ -4517,7 +4569,7 @@ public class MainActivity extends Activity {
 
     private int remixImageHeight() {
         int screenHeight = getResources().getDisplayMetrics().heightPixels;
-        return Math.max(dp(230), Math.min(dp(360), screenHeight - dp(470)));
+        return Math.max(dp(300), Math.min(dp(500), screenHeight - dp(390)));
     }
 
     private String remixShotDots(int activeIndex, int total) {
@@ -5698,6 +5750,59 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(20));
         drawable.setStroke(dp(1), Color.argb(54, 20, 26, 38));
+        return drawable;
+    }
+
+    private GradientDrawable remixBadgeBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.rgb(10, 102, 255),
+                        Color.rgb(255, 126, 67)
+                }
+        );
+        drawable.setCornerRadius(dp(18));
+        drawable.setStroke(dp(1), Color.argb(92, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable remixStageBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.rgb(9, 13, 24),
+                        Color.rgb(28, 45, 76),
+                        Color.rgb(255, 244, 232)
+                }
+        );
+        drawable.setCornerRadius(dp(28));
+        drawable.setStroke(dp(1), Color.argb(120, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable remixFloatingBadgeBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(225, 8, 15, 30),
+                        Color.argb(210, 40, 61, 98)
+                }
+        );
+        drawable.setCornerRadius(dp(16));
+        drawable.setStroke(dp(1), Color.argb(96, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable remixCaptionBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(218, 8, 15, 30),
+                        Color.argb(198, 28, 45, 76)
+                }
+        );
+        drawable.setCornerRadius(dp(18));
+        drawable.setStroke(dp(1), Color.argb(80, 255, 255, 255));
         return drawable;
     }
 
