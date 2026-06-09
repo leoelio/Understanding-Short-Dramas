@@ -1637,3 +1637,15 @@
   - 已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
 - 下一步：
   - 下一步继续补齐原生端最近观看/续播展示，或连接真机后验证播放进度能在服务端 watch-history 中正确更新。
+
+## 2026-06-10 05:15:23
+
+- 目标：Android 原生迁移继续推进：接入首页最近观看和续播能力，把上轮保存的 watch-history 进度回流到原生选剧首页。
+- Git：`3035d1e` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - 原生首页 fetchDramas 同步读取 /api/users/me/watch-history，并在剧库列表前展示最近观看卡片。
+  - 最近观看卡片支持点击继续观看，播放器可从保存秒数 seek 续播，并按续播位置跳过已过高光。
+  - 已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
+- 下一步：
+  - 下一步可继续迁移 Web 首页封面/剧集海报视觉，或连接真机验证最近观看、续播、高光跳过是否按预期工作。

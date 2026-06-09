@@ -2361,7 +2361,14 @@ public class MainActivity extends Activity {
             try {
                 String body = httpGet(loadBaseUrl() + "/api/dramas", loadToken());
                 JSONArray dramas = new JSONArray(body);
-                runOnUiThread(() -> renderDramas(dramas));
+                JSONArray watchHistory;
+                try {
+                    watchHistory = new JSONArray(httpGet(loadBaseUrl() + "/api/users/me/watch-history", loadToken()));
+                } catch (Exception ignored) {
+                    watchHistory = new JSONArray();
+                }
+                JSONArray finalWatchHistory = watchHistory;
+                runOnUiThread(() -> renderHomeContent(dramas, finalWatchHistory));
             } catch (Exception error) {
                 runOnUiThread(() -> setMessage("短剧列表加载失败：" + error.getMessage(), false));
             }
@@ -2369,14 +2376,91 @@ public class MainActivity extends Activity {
     }
 
     private void renderDramas(JSONArray dramas) {
+        renderHomeContent(dramas, new JSONArray());
+    }
+
+    private void renderHomeContent(JSONArray dramas, JSONArray watchHistory) {
         dramaList.removeAllViews();
-        setMessage("已加载 " + dramas.length() + " 部短剧。点击“北往”进入播放页。", true);
+        setMessage("已加载 " + dramas.length() + " 部短剧，最近观看 " + watchHistory.length() + " 条。", true);
+        addWatchHistorySection(watchHistory);
         for (int i = 0; i < dramas.length(); i++) {
             JSONObject drama = dramas.optJSONObject(i);
             if (drama != null) {
                 addDramaCard(drama);
             }
         }
+    }
+
+    private void addWatchHistorySection(JSONArray rows) {
+        if (rows == null || rows.length() == 0) {
+            return;
+        }
+        LinearLayout section = card();
+        section.setGravity(Gravity.NO_GRAVITY);
+        section.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams sectionParams = matchWrap();
+        sectionParams.bottomMargin = dp(12);
+        dramaList.addView(section, sectionParams);
+
+        section.addView(text("最近观看", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        TextView title = text("继续刚才的剧情", 21, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(4);
+        section.addView(title, titleParams);
+
+        int count = Math.min(3, rows.length());
+        for (int i = 0; i < count; i++) {
+            JSONObject row = rows.optJSONObject(i);
+            if (row != null) {
+                addWatchHistoryCard(section, row, i == 0);
+            }
+        }
+    }
+
+    private void addWatchHistoryCard(LinearLayout parent, JSONObject row, boolean first) {
+        JSONObject drama = row.optJSONObject("drama");
+        String dramaTitle = drama == null ? "短剧" : drama.optString("title", "短剧");
+        String episodeTitle = row.optString("episode_title", "第 " + row.optInt("episode_no", 1) + " 集");
+        int episodeId = row.optInt("episode_id", 0);
+        int progressSec = (int) Math.round(row.optDouble("progress_sec", 0));
+        int durationSec = (int) Math.round(row.optDouble("duration_sec", 0));
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(14), dp(14), dp(14));
+        card.setBackground(inputBackground());
+        LinearLayout.LayoutParams cardParams = matchWrap();
+        cardParams.topMargin = first ? dp(14) : dp(10);
+        parent.addView(card, cardParams);
+
+        TextView name = text(dramaTitle + " · " + episodeTitle, 16, Color.rgb(18, 20, 26), Typeface.BOLD);
+        name.setSingleLine(true);
+        card.addView(name, matchWrap());
+
+        TextView progress = text("已看到 " + formatDuration(progressSec) + progressSuffix(progressSec, durationSec), 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams progressParams = matchWrap();
+        progressParams.topMargin = dp(5);
+        card.addView(progress, progressParams);
+
+        Button continueButton = primaryButton("继续观看");
+        continueButton.setEnabled(episodeId > 0);
+        continueButton.setOnClickListener(v -> showNativePlayer(dramaTitle, episodeId, "", progressSec));
+        LinearLayout.LayoutParams buttonParams = matchHeight(dp(42));
+        buttonParams.topMargin = dp(10);
+        card.addView(continueButton, buttonParams);
+    }
+
+    private String progressSuffix(int progressSec, int durationSec) {
+        if (durationSec <= 0) {
+            return "";
+        }
+        int percent = Math.max(0, Math.min(100, Math.round(progressSec * 100f / durationSec)));
+        return " · " + percent + "%";
+    }
+
+    private String formatDuration(int sec) {
+        int safe = Math.max(0, sec);
+        return (safe / 60) + ":" + String.format("%02d", safe % 60);
     }
 
     private void addDramaCard(JSONObject drama) {
@@ -2419,6 +2503,10 @@ public class MainActivity extends Activity {
     }
 
     private void showNativePlayer(String dramaTitle, int firstEpisodeId, String roomCode) {
+        showNativePlayer(dramaTitle, firstEpisodeId, roomCode, 0);
+    }
+
+    private void showNativePlayer(String dramaTitle, int firstEpisodeId, String roomCode, int resumeSec) {
         stopActiveVideo();
         resetHighlightState();
         activeEpisodeId = firstEpisodeId;
@@ -2443,6 +2531,10 @@ public class MainActivity extends Activity {
         videoView.setOnPreparedListener(mediaPlayer -> {
             videoPrepared = true;
             mediaPlayer.setLooping(false);
+            if (resumeSec > 1) {
+                videoView.seekTo(resumeSec * 1000);
+                resetHighlightIndexForPosition(resumeSec * 1000);
+            }
             updatePlayerStatus();
             videoView.setBackgroundColor(Color.TRANSPARENT);
             videoView.start();
@@ -2682,7 +2774,7 @@ public class MainActivity extends Activity {
 
                 runOnUiThread(() -> {
                     highlightTimeline = highlights;
-                    nextHighlightIndex = 0;
+                    resetHighlightIndexToCurrent();
                     updatePlayerStatus();
                     scheduleNextHighlight();
                 });
@@ -2936,6 +3028,27 @@ public class MainActivity extends Activity {
             return null;
         }
         return highlightTimeline.optJSONObject(nextHighlightIndex);
+    }
+
+    private void resetHighlightIndexToCurrent() {
+        int positionMs = activeVideoView == null ? 0 : Math.max(0, activeVideoView.getCurrentPosition());
+        resetHighlightIndexForPosition(positionMs);
+    }
+
+    private void resetHighlightIndexForPosition(int positionMs) {
+        int startIndex = highlightTimeline.length();
+        for (int i = 0; i < highlightTimeline.length(); i++) {
+            JSONObject highlight = highlightTimeline.optJSONObject(i);
+            if (highlight == null) {
+                continue;
+            }
+            int startMs = (int) Math.round(highlight.optDouble("start_time_sec", 0) * 1000);
+            if (startMs >= positionMs - 500) {
+                startIndex = i;
+                break;
+            }
+        }
+        nextHighlightIndex = startIndex;
     }
 
     private void fetchEpisodeDanmaku(int episodeId) {
