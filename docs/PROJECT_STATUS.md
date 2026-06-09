@@ -1,17 +1,18 @@
 # Project Status
 
-更新时间：2026-06-10 04:18:56
+更新时间：2026-06-10 04:26:43
 
 ## 当前目标
 
-Android 原生迁移继续推进：我的页声音资产管理接入文件选择上传、试听生成和缓存声音播放。
+Android 原生迁移继续推进：我的页声音资产管理新增麦克风直录，支持授权文本朗读后停止上传。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`41559f9`
+- 最新提交：`b8d4cf4`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
+- `M mobile/banju-native-android/app/src/main/AndroidManifest.xml`
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
 
 ## 数据状态
@@ -51,12 +52,12 @@ Android 原生迁移继续推进：我的页声音资产管理接入文件选择
 
 ## 本次变更摘要
 
-- 原生我的页声音资产卡新增授权文本、上传样本、生成试听和最近缓存声音播放入口。
-- Android 新增 multipart 上传 /api/users/me/voice-profile，并复用 /api/users/me/voice-clips 生成用户声音试听。
+- Android Manifest 新增 RECORD_AUDIO 权限，原生端增加运行时权限申请。
+- 我的页声音资产卡新增麦克风直录/停止上传按钮，MediaRecorder 录制 m4a 后复用现有 voice-profile multipart 接口上传。
 
 ## 下一步建议
 
-- 下一步建议迁移麦克风直录，补齐原生端无需文件选择即可朗读授权文本并上传声音样本。
+- 下一步建议进行真机验证：麦克风授权、录音停止上传、声音样本生成试听、片尾二创我的声音播放。
 
 ## 安全提醒
 

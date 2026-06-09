@@ -1571,3 +1571,14 @@
   - Android 新增 multipart 上传 /api/users/me/voice-profile，并复用 /api/users/me/voice-clips 生成用户声音试听。
 - 下一步：
   - 下一步建议迁移麦克风直录，补齐原生端无需文件选择即可朗读授权文本并上传声音样本。
+
+## 2026-06-10 04:26:43
+
+- 目标：Android 原生迁移继续推进：我的页声音资产管理新增麦克风直录，支持授权文本朗读后停止上传。
+- Git：`b8d4cf4` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - Android Manifest 新增 RECORD_AUDIO 权限，原生端增加运行时权限申请。
+  - 我的页声音资产卡新增麦克风直录/停止上传按钮，MediaRecorder 录制 m4a 后复用现有 voice-profile multipart 接口上传。
+- 下一步：
+  - 下一步建议进行真机验证：麦克风授权、录音停止上传、声音样本生成试听、片尾二创我的声音播放。

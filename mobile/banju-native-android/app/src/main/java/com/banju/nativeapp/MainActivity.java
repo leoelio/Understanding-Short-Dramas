@@ -1,8 +1,10 @@
 package com.banju.nativeapp;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -10,6 +12,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaPlayer;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -34,6 +37,8 @@ import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -50,6 +55,7 @@ public class MainActivity extends Activity {
     private static final String KEY_SESSION_ID = "session_id";
     private static final String DEFAULT_BASE_URL = "http://127.0.0.1:8000";
     private static final int REQUEST_VOICE_SAMPLE = 4301;
+    private static final int REQUEST_RECORD_AUDIO = 4302;
     private static final String VOICE_CONSENT_TEXT = "同意利用录入声音生成音频";
     private static final String VOICE_PREVIEW_TEXT = "片尾拓展已开启，我会用你的声音陪你猜下一段剧情。";
 
@@ -61,6 +67,10 @@ public class MainActivity extends Activity {
     private LinearLayout dramaList;
     private LinearLayout profileContent;
     private TextView voiceActionStatus;
+    private Button voiceRecordButton;
+    private MediaRecorder voiceRecorder;
+    private File voiceRecordFile;
+    private boolean voiceRecording;
     private LinearLayout chatContent;
     private LinearLayout chatMessagesContent;
     private EditText chatMessageInput;
@@ -120,6 +130,21 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_VOICE_SAMPLE && resultCode == RESULT_OK && data != null && data.getData() != null) {
             uploadVoiceSample(data.getData());
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_RECORD_AUDIO) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startVoiceRecording();
+            } else {
+                setMessage("未授予麦克风权限，无法录音。", false);
+                if (voiceActionStatus != null) {
+                    voiceActionStatus.setText("未授予麦克风权限。");
+                }
+            }
         }
     }
 
@@ -904,12 +929,18 @@ public class MainActivity extends Activity {
         uploadButton.setOnClickListener(v -> chooseVoiceSampleFile());
         voiceActions.addView(uploadButton, weightHeight(1, dp(44)));
 
+        voiceRecordButton = secondaryButton(voiceRecording ? "停止上传" : "麦克风直录");
+        voiceRecordButton.setOnClickListener(v -> toggleVoiceRecording());
+        LinearLayout.LayoutParams recordParams = weightHeight(1, dp(44));
+        recordParams.leftMargin = dp(8);
+        voiceActions.addView(voiceRecordButton, recordParams);
+
         Button previewButton = secondaryButton(generationReady ? "生成试听" : "服务未启用");
         previewButton.setEnabled(profile != null && generationReady);
         previewButton.setOnClickListener(v -> createVoicePreviewClip());
-        LinearLayout.LayoutParams previewParams = weightHeight(1, dp(44));
-        previewParams.leftMargin = dp(8);
-        voiceActions.addView(previewButton, previewParams);
+        LinearLayout.LayoutParams previewParams = matchHeight(dp(44));
+        previewParams.topMargin = dp(8);
+        voiceCard.addView(previewButton, previewParams);
 
         voiceActionStatus = text("请上传朗读授权文本的 3-8 秒音频；试听会缓存到声音资产。", 12, Color.rgb(104, 112, 130), Typeface.NORMAL);
         LinearLayout.LayoutParams voiceStatusParams = matchWrap();
@@ -972,6 +1003,95 @@ public class MainActivity extends Activity {
         startActivityForResult(intent, REQUEST_VOICE_SAMPLE);
     }
 
+    private void toggleVoiceRecording() {
+        if (voiceRecording) {
+            stopVoiceRecordingAndUpload();
+            return;
+        }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO);
+            if (voiceActionStatus != null) {
+                voiceActionStatus.setText("正在请求麦克风权限...");
+            }
+            return;
+        }
+        startVoiceRecording();
+    }
+
+    private void startVoiceRecording() {
+        try {
+            stopVoiceRecorderOnly();
+            voiceRecordFile = new File(getCacheDir(), "banju_voice_record_" + System.currentTimeMillis() + ".m4a");
+            voiceRecorder = new MediaRecorder();
+            voiceRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            voiceRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            voiceRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            voiceRecorder.setAudioEncodingBitRate(128000);
+            voiceRecorder.setAudioSamplingRate(44100);
+            voiceRecorder.setOutputFile(voiceRecordFile.getAbsolutePath());
+            voiceRecorder.prepare();
+            voiceRecorder.start();
+            voiceRecording = true;
+            updateVoiceRecordButton();
+            setMessage("正在录音，请朗读授权文本。", true);
+            if (voiceActionStatus != null) {
+                voiceActionStatus.setText("正在录音：请朗读“" + VOICE_CONSENT_TEXT + "”，完成后点停止上传。");
+            }
+        } catch (Exception error) {
+            voiceRecording = false;
+            stopVoiceRecorderOnly();
+            updateVoiceRecordButton();
+            setMessage("录音启动失败：" + error.getMessage(), false);
+            if (voiceActionStatus != null) {
+                voiceActionStatus.setText("录音启动失败：" + error.getMessage());
+            }
+        }
+    }
+
+    private void stopVoiceRecordingAndUpload() {
+        File recorded = voiceRecordFile;
+        try {
+            if (voiceRecorder != null) {
+                voiceRecorder.stop();
+            }
+        } catch (RuntimeException error) {
+            if (recorded != null) {
+                recorded.delete();
+            }
+            setMessage("录音太短或失败，请重新录制。", false);
+            if (voiceActionStatus != null) {
+                voiceActionStatus.setText("录音太短或失败，请重新录制。");
+            }
+            return;
+        } finally {
+            stopVoiceRecorderOnly();
+            voiceRecording = false;
+            updateVoiceRecordButton();
+        }
+        if (recorded == null || !recorded.exists() || recorded.length() == 0) {
+            setMessage("录音文件为空，请重新录制。", false);
+            return;
+        }
+        uploadVoiceSampleFile(recorded, "voice_record.m4a", "audio/mp4", true);
+    }
+
+    private void updateVoiceRecordButton() {
+        if (voiceRecordButton != null) {
+            voiceRecordButton.setText(voiceRecording ? "停止上传" : "麦克风直录");
+        }
+    }
+
+    private void stopVoiceRecorderOnly() {
+        if (voiceRecorder != null) {
+            try {
+                voiceRecorder.release();
+            } catch (Exception ignored) {
+                // 忽略释放失败，下一次录音会重新创建 recorder。
+            }
+            voiceRecorder = null;
+        }
+    }
+
     private void uploadVoiceSample(Uri uri) {
         if (uri == null) {
             return;
@@ -988,11 +1108,7 @@ public class MainActivity extends Activity {
                 if (contentType == null || contentType.isEmpty()) {
                     contentType = "audio/wav";
                 }
-                httpMultipartVoiceProfile(loadBaseUrl() + "/api/users/me/voice-profile", loadToken(), fileName, contentType, fileData);
-                runOnUiThread(() -> {
-                    setMessage("声音样本已上传。", true);
-                    fetchProfileSummary();
-                });
+                uploadVoiceSampleBytes(fileData, fileName, contentType, false);
             } catch (Exception error) {
                 runOnUiThread(() -> {
                     setMessage("声音样本上传失败：" + error.getMessage(), false);
@@ -1002,6 +1118,38 @@ public class MainActivity extends Activity {
                 });
             }
         }).start();
+    }
+
+    private void uploadVoiceSampleFile(File file, String fileName, String contentType, boolean deleteAfterUpload) {
+        if (voiceActionStatus != null) {
+            voiceActionStatus.setText("正在上传录音样本...");
+        }
+        setMessage("正在上传录音样本...", true);
+        new Thread(() -> {
+            try {
+                byte[] data = readFileBytes(file);
+                uploadVoiceSampleBytes(data, fileName, contentType, deleteAfterUpload);
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    setMessage("录音样本上传失败：" + error.getMessage(), false);
+                    if (voiceActionStatus != null) {
+                        voiceActionStatus.setText("录音上传失败：" + error.getMessage());
+                    }
+                });
+            } finally {
+                if (deleteAfterUpload && file != null) {
+                    file.delete();
+                }
+            }
+        }).start();
+    }
+
+    private void uploadVoiceSampleBytes(byte[] fileData, String fileName, String contentType, boolean recorded) throws Exception {
+        httpMultipartVoiceProfile(loadBaseUrl() + "/api/users/me/voice-profile", loadToken(), fileName, contentType, fileData);
+        runOnUiThread(() -> {
+            setMessage(recorded ? "录音样本已上传。" : "声音样本已上传。", true);
+            fetchProfileSummary();
+        });
     }
 
     private void createVoicePreviewClip() {
@@ -2164,6 +2312,12 @@ public class MainActivity extends Activity {
         stopWatchRoomSync();
         stopWatchRoomEvents();
         stopRemixAudio();
+        if (voiceRecording && voiceRecordFile != null) {
+            voiceRecordFile.delete();
+        }
+        voiceRecording = false;
+        stopVoiceRecorderOnly();
+        updateVoiceRecordButton();
         if (activeVideoView != null) {
             activeVideoView.stopPlayback();
             activeVideoView = null;
@@ -3444,6 +3598,18 @@ public class MainActivity extends Activity {
         if (stream == null) {
             throw new IllegalStateException("无法读取音频文件");
         }
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[8192];
+        int read;
+        while ((read = stream.read(chunk)) != -1) {
+            buffer.write(chunk, 0, read);
+        }
+        stream.close();
+        return buffer.toByteArray();
+    }
+
+    private byte[] readFileBytes(File file) throws Exception {
+        InputStream stream = new FileInputStream(file);
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         byte[] chunk = new byte[8192];
         int read;
