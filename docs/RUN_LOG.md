@@ -1649,3 +1649,15 @@
   - 已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
 - 下一步：
   - 下一步可继续迁移 Web 首页封面/剧集海报视觉，或连接真机验证最近观看、续播、高光跳过是否按预期工作。
+
+## 2026-06-10 05:21:29
+
+- 目标：Android 原生迁移继续推进：原生首页接入 Web 同源短剧海报资源，提升选剧和最近观看模块的视觉完成度。
+- Git：`c973c3b` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - 原生首页短剧卡片根据剧名映射 /assets/drama_posters/generated/*_card.jpg 并展示大海报。
+  - 最近观看卡片根据剧名映射 /assets/drama_posters/generated/*_history.jpg，并改为左图右文的续播卡片。
+  - 未改后端 /api/dramas 接口，Android 端复用 Web 静态海报资源路径；已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
+- 下一步：
+  - 下一步可继续增强原生播放页视觉，重点把高光弹层、弹幕操作和片尾二创入口向 Web 端沉浸式体验靠拢。

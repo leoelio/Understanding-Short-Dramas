@@ -2426,28 +2426,44 @@ public class MainActivity extends Activity {
         int durationSec = (int) Math.round(row.optDouble("duration_sec", 0));
 
         LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
         card.setPadding(dp(14), dp(14), dp(14), dp(14));
         card.setBackground(inputBackground());
         LinearLayout.LayoutParams cardParams = matchWrap();
         cardParams.topMargin = first ? dp(14) : dp(10);
         parent.addView(card, cardParams);
 
+        String historyPosterUrl = dramaPosterUrl(dramaTitle, true);
+        if (!historyPosterUrl.isEmpty()) {
+            ImageView poster = new ImageView(this);
+            poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            poster.setBackground(imagePlaceholderBackground());
+            card.addView(poster, new LinearLayout.LayoutParams(dp(76), dp(76)));
+            loadImageInto(poster, historyPosterUrl);
+        }
+
+        LinearLayout info = new LinearLayout(this);
+        info.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        infoParams.leftMargin = historyPosterUrl.isEmpty() ? 0 : dp(12);
+        card.addView(info, infoParams);
+
         TextView name = text(dramaTitle + " · " + episodeTitle, 16, Color.rgb(18, 20, 26), Typeface.BOLD);
         name.setSingleLine(true);
-        card.addView(name, matchWrap());
+        info.addView(name, matchWrap());
 
         TextView progress = text("已看到 " + formatDuration(progressSec) + progressSuffix(progressSec, durationSec), 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
         LinearLayout.LayoutParams progressParams = matchWrap();
         progressParams.topMargin = dp(5);
-        card.addView(progress, progressParams);
+        info.addView(progress, progressParams);
 
         Button continueButton = primaryButton("继续观看");
         continueButton.setEnabled(episodeId > 0);
         continueButton.setOnClickListener(v -> showNativePlayer(dramaTitle, episodeId, "", progressSec));
         LinearLayout.LayoutParams buttonParams = matchHeight(dp(42));
         buttonParams.topMargin = dp(10);
-        card.addView(continueButton, buttonParams);
+        info.addView(continueButton, buttonParams);
     }
 
     private String progressSuffix(int progressSec, int durationSec) {
@@ -2463,6 +2479,29 @@ public class MainActivity extends Activity {
         return (safe / 60) + ":" + String.format("%02d", safe % 60);
     }
 
+    private String dramaPosterUrl(String title, boolean history) {
+        String slug = dramaPosterSlug(title);
+        if (slug.isEmpty()) {
+            return "";
+        }
+        return absoluteUrl("/assets/drama_posters/generated/" + slug + (history ? "_history.jpg" : "_card.jpg"));
+    }
+
+    private String dramaPosterSlug(String title) {
+        String value = title == null ? "" : title;
+        if (value.contains("北派寻宝")) return "beipai_xunbao";
+        if (value.contains("云渺")) return "yunmiao";
+        if (value.contains("那年冬至") || value.contains("冬至")) return "winter_solstice";
+        if (value.contains("北往")) return "beiwang";
+        if (value.contains("天下第一纨绔") || value.contains("纨绔")) return "diyi_wanku";
+        if (value.contains("十八岁太奶") || value.contains("太奶")) return "eighteen_grandma";
+        if (value.contains("幸得相遇离婚时") || value.contains("幸福相遇离婚时") || value.contains("离婚时")) return "lucky_divorce";
+        if (value.contains("荒年全村") || value.contains("满仓肉")) return "famine_village";
+        if (value.contains("家里家外")) return "home_inside_out";
+        if (value.contains("撕夜")) return "siye";
+        return "";
+    }
+
     private void addDramaCard(JSONObject drama) {
         String title = drama.optString("title", "未命名短剧");
         String genre = drama.optString("genre", "未分类");
@@ -2476,6 +2515,17 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams cardParams = matchWrap();
         cardParams.bottomMargin = dp(12);
         dramaList.addView(card, cardParams);
+
+        String posterUrl = dramaPosterUrl(title, false);
+        if (!posterUrl.isEmpty()) {
+            ImageView poster = new ImageView(this);
+            poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            poster.setBackground(imagePlaceholderBackground());
+            LinearLayout.LayoutParams posterParams = matchHeight(dp(188));
+            posterParams.bottomMargin = dp(14);
+            card.addView(poster, posterParams);
+            loadImageInto(poster, posterUrl);
+        }
 
         TextView titleView = text(title, 21, Color.rgb(18, 20, 26), Typeface.BOLD);
         card.addView(titleView, matchWrap());

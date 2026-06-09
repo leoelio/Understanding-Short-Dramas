@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 05:15:23
+更新时间：2026-06-10 05:21:29
 
 ## 当前目标
 
-Android 原生迁移继续推进：接入首页最近观看和续播能力，把上轮保存的 watch-history 进度回流到原生选剧首页。
+Android 原生迁移继续推进：原生首页接入 Web 同源短剧海报资源，提升选剧和最近观看模块的视觉完成度。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`3035d1e`
+- 最新提交：`c973c3b`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,13 +51,13 @@ Android 原生迁移继续推进：接入首页最近观看和续播能力，把
 
 ## 本次变更摘要
 
-- 原生首页 fetchDramas 同步读取 /api/users/me/watch-history，并在剧库列表前展示最近观看卡片。
-- 最近观看卡片支持点击继续观看，播放器可从保存秒数 seek 续播，并按续播位置跳过已过高光。
-- 已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
+- 原生首页短剧卡片根据剧名映射 /assets/drama_posters/generated/*_card.jpg 并展示大海报。
+- 最近观看卡片根据剧名映射 /assets/drama_posters/generated/*_history.jpg，并改为左图右文的续播卡片。
+- 未改后端 /api/dramas 接口，Android 端复用 Web 静态海报资源路径；已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
 
 ## 下一步建议
 
-- 下一步可继续迁移 Web 首页封面/剧集海报视觉，或连接真机验证最近观看、续播、高光跳过是否按预期工作。
+- 下一步可继续增强原生播放页视觉，重点把高光弹层、弹幕操作和片尾二创入口向 Web 端沉浸式体验靠拢。
 
 ## 安全提醒
 
