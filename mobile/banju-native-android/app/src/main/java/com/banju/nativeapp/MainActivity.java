@@ -105,6 +105,7 @@ public class MainActivity extends Activity {
     private Runnable roomEventsRunnable;
     private LinearLayout activeHighlightPanel;
     private LinearLayout activeDanmakuOverlay;
+    private FrameLayout activeHighlightEffectLayer;
     private LinearLayout activeRemixPanel;
     private LinearLayout activeWatchRoomStrip;
     private LinearLayout activeWatchRoomAvatars;
@@ -126,6 +127,7 @@ public class MainActivity extends Activity {
     private int nextDanmakuIndex;
     private int lastRoomEventId;
     private int activeHighlightId = -1;
+    private int highlightEffectSeed;
     private boolean remixEntryShown;
     private String activeDanmakuMode = "light";
     private final Map<String, Integer> activeRoomChoiceCounts = new HashMap<>();
@@ -2932,6 +2934,14 @@ public class MainActivity extends Activity {
         );
         playerFrame.addView(activeDanmakuOverlay, overlayParams);
 
+        activeHighlightEffectLayer = new FrameLayout(this);
+        activeHighlightEffectLayer.setClipChildren(false);
+        activeHighlightEffectLayer.setClipToPadding(false);
+        playerFrame.addView(activeHighlightEffectLayer, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+        ));
+
         LinearLayout bottomControls = new LinearLayout(this);
         bottomControls.setOrientation(LinearLayout.VERTICAL);
         bottomControls.setPadding(dp(14), dp(14), dp(14), dp(18));
@@ -3482,9 +3492,11 @@ public class MainActivity extends Activity {
         nextDanmakuIndex = 0;
         lastRoomEventId = 0;
         activeHighlightId = -1;
+        highlightEffectSeed = 0;
         remixEntryShown = false;
         activeHighlightPanel = null;
         activeDanmakuOverlay = null;
+        activeHighlightEffectLayer = null;
         activeRemixPanel = null;
         activeWatchRoomStrip = null;
         activeWatchRoomAvatars = null;
@@ -4808,6 +4820,105 @@ public class MainActivity extends Activity {
                 .start();
     }
 
+    private void showHighlightStickers(String highlightType, String mainText, String emotion, boolean burst) {
+        if (activeHighlightEffectLayer == null) {
+            return;
+        }
+        String[] stickers = highlightStickerTexts(highlightType, mainText, emotion, burst);
+        int count = burst ? Math.min(5, stickers.length) : Math.min(3, stickers.length);
+        for (int i = 0; i < count; i++) {
+            addHighlightSticker(stickers[i], highlightType, i, burst);
+        }
+        highlightEffectSeed++;
+    }
+
+    private void addHighlightSticker(String value, String highlightType, int index, boolean burst) {
+        if (activeHighlightEffectLayer == null || value == null || value.trim().isEmpty()) {
+            return;
+        }
+        TextView sticker = text(value, burst ? 17 : 15, Color.WHITE, Typeface.BOLD);
+        sticker.setSingleLine(true);
+        sticker.setGravity(Gravity.CENTER);
+        sticker.setPadding(dp(13), 0, dp(13), 0);
+        sticker.setBackground(highlightStickerBackground(highlightType, burst, index));
+        sticker.setRotation(highlightStickerRotation(index));
+        sticker.setAlpha(0f);
+        sticker.setScaleX(0.82f);
+        sticker.setScaleY(0.82f);
+
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                dp(burst ? 42 : 38)
+        );
+        params.leftMargin = highlightStickerLeft(index);
+        params.topMargin = highlightStickerTop(index, burst);
+        activeHighlightEffectLayer.addView(sticker, params);
+
+        sticker.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationYBy(-dp(burst ? 18 : 12))
+                .setDuration(180)
+                .withEndAction(() -> sticker.animate()
+                        .alpha(0f)
+                        .translationYBy(-dp(burst ? 62 : 44))
+                        .setStartDelay(burst ? 650 : 1150)
+                        .setDuration(420)
+                        .withEndAction(() -> {
+                            if (activeHighlightEffectLayer != null) {
+                                activeHighlightEffectLayer.removeView(sticker);
+                            }
+                        })
+                        .start())
+                .start();
+    }
+
+    private String[] highlightStickerTexts(String highlightType, String mainText, String emotion, boolean burst) {
+        String glyph = highlightGlyph(highlightType);
+        String compactMain = shortText(mainText == null ? "" : mainText.trim(), 8);
+        String compactEmotion = shortText(emotion == null ? "" : emotion.trim(), 6);
+        if (burst) {
+            return new String[]{"+1", compactMain, glyph + "感", "已同步", "热度上升"};
+        }
+        if (highlightType != null && (highlightType.contains("甜") || highlightType.contains("爱情") || highlightType.contains("心动"))) {
+            return new String[]{"心动", compactMain, "甜度上升", compactEmotion, "名场面"};
+        }
+        if (highlightType != null && (highlightType.contains("悲") || highlightType.contains("虐") || highlightType.contains("感动"))) {
+            return new String[]{"破防", compactMain, "抱抱", compactEmotion, "情绪到了"};
+        }
+        if (highlightType != null && (highlightType.contains("反转") || highlightType.contains("悬疑") || highlightType.contains("悬念"))) {
+            return new String[]{"?", compactMain, "等等", compactEmotion, "反转预警"};
+        }
+        if (highlightType != null && (highlightType.contains("搞笑") || highlightType.contains("好笑"))) {
+            return new String[]{"笑点", compactMain, "绷不住", compactEmotion, "再来"};
+        }
+        if (highlightType != null && (highlightType.contains("冲突") || highlightType.contains("高能") || highlightType.contains("爽"))) {
+            return new String[]{"冲", compactMain, "燃起来", compactEmotion, "高能"};
+        }
+        return new String[]{glyph, compactMain, compactEmotion, "高光", "上头"};
+    }
+
+    private int highlightStickerLeft(int index) {
+        int width = Math.max(dp(320), getResources().getDisplayMetrics().widthPixels);
+        int laneWidth = Math.max(dp(56), (width - dp(108)) / 4);
+        int lane = Math.abs(highlightEffectSeed + index * 2) % 4;
+        return dp(18) + lane * laneWidth;
+    }
+
+    private int highlightStickerTop(int index, boolean burst) {
+        int height = Math.max(dp(620), getResources().getDisplayMetrics().heightPixels);
+        int topStart = burst ? dp(190) : dp(132);
+        int usable = Math.max(dp(180), height - dp(burst ? 430 : 460));
+        int lane = Math.abs(highlightEffectSeed * 2 + index * 3) % 5;
+        return topStart + lane * Math.max(dp(38), usable / 5);
+    }
+
+    private float highlightStickerRotation(int index) {
+        int value = (highlightEffectSeed + index) % 5;
+        return new float[]{-7f, 5f, -3f, 8f, -5f}[value];
+    }
+
     private void showHighlight(JSONObject highlight) {
         if (activeHighlightPanel == null) {
             return;
@@ -4821,6 +4932,7 @@ public class MainActivity extends Activity {
         JSONArray options = highlight.optJSONArray("options");
         prepareInteractionPanel();
         activeHighlightPanel.setBackground(highlightBackground(highlightType));
+        showHighlightStickers(highlightType, titleText, emotion, false);
 
         addHighlightHeader(
                 activeHighlightPanel,
@@ -4847,6 +4959,7 @@ public class MainActivity extends Activity {
             Button optionButton = highlightOptionButton(label, highlightType, i);
             optionButton.setOnClickListener(v -> {
                 animateTap(v);
+                showHighlightStickers(highlightType, label, emotion, true);
                 submitInteraction(highlightId, optionKey, label);
             });
             LinearLayout.LayoutParams optionParams = matchHeight(dp(48));
@@ -5496,6 +5609,22 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(22));
         drawable.setStroke(dp(1), success ? Color.argb(80, 10, 132, 80) : Color.argb(90, 210, 54, 70));
+        return drawable;
+    }
+
+    private GradientDrawable highlightStickerBackground(String highlightType, boolean burst, int index) {
+        int first = burst ? Color.rgb(18, 20, 26) : highlightAccentColor(highlightType, true);
+        int second = highlightAccentColor(highlightType, false);
+        if (!burst && index % 2 == 1) {
+            first = Color.rgb(30, 38, 58);
+        }
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Color.argb(burst ? 235 : 225, Color.red(first), Color.green(first), Color.blue(first)),
+                        Color.argb(218, Color.red(second), Color.green(second), Color.blue(second))}
+        );
+        drawable.setCornerRadius(dp(19));
+        drawable.setStroke(dp(1), Color.argb(112, 255, 255, 255));
         return drawable;
     }
 
