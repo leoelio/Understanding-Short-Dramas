@@ -1697,3 +1697,15 @@
   - 播放页同步 /api/watch-rooms/{code}/sync 后解析返回 room payload 并刷新状态条；已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
 - 下一步：
   - 下一步可继续迁移播放页内房间成员头像/称号展示，或连接真机验证同看状态条与房间动态气泡是否稳定。
+
+## 2026-06-10 05:48:23
+
+- 目标：Android 原生迁移继续推进：播放页同看状态条增加成员头像、称号和徽章数量展示，强化同看社交感。
+- Git：`384dac5` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - 原生播放页同看状态条新增成员头像叠放区域，使用 room payload 中 host/guest 的 avatar_url 加载头像。
+  - 状态条第二行展示 growth_title 和 badge_count，并保留房间码、成员、播放状态、同步进度和最近同步用户。
+  - 头像容器使用圆形背景和 clipToOutline；已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
+- 下一步：
+  - 下一步可继续迁移播放页内同看互动榜/答题结果展示，或连接真机验证头像、称号和房间状态条的实际观感。

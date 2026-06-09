@@ -105,6 +105,7 @@ public class MainActivity extends Activity {
     private LinearLayout activeDanmakuOverlay;
     private LinearLayout activeRemixPanel;
     private LinearLayout activeWatchRoomStrip;
+    private LinearLayout activeWatchRoomAvatars;
     private TextView activePlayerStatus;
     private TextView activeDanmakuStatus;
     private TextView activeWatchRoomStatus;
@@ -2666,9 +2667,18 @@ public class MainActivity extends Activity {
             roomStripParams.topMargin = dp(96);
             playerFrame.addView(activeWatchRoomStrip, roomStripParams);
 
+            activeWatchRoomAvatars = new LinearLayout(this);
+            activeWatchRoomAvatars.setOrientation(LinearLayout.HORIZONTAL);
+            activeWatchRoomAvatars.setGravity(Gravity.CENTER_VERTICAL);
+            activeWatchRoomStrip.addView(activeWatchRoomAvatars, new LinearLayout.LayoutParams(dp(78), dp(40)));
+            addPlayerRoomAvatar(activeWatchRoomAvatars, null, true);
+            addPlayerRoomAvatar(activeWatchRoomAvatars, null, false);
+
             activeWatchRoomStatus = text("同看房间 " + activePlayerRoomCode + " · 正在同步", 12, Color.WHITE, Typeface.BOLD);
             activeWatchRoomStatus.setSingleLine(true);
-            activeWatchRoomStrip.addView(activeWatchRoomStatus, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            LinearLayout.LayoutParams statusInlineParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+            statusInlineParams.leftMargin = dp(8);
+            activeWatchRoomStrip.addView(activeWatchRoomStatus, statusInlineParams);
 
             Button roomButton = glassButton("房间");
             roomButton.setTextSize(12);
@@ -2992,7 +3002,59 @@ public class MainActivity extends Activity {
                 : userName(host) + " · 等待好友";
         String stateText = "playing".equals(state) ? "播放中" : "已暂停";
         String updater = updatedBy == null ? "" : " · " + userName(updatedBy) + "同步";
-        activeWatchRoomStatus.setText("同看 " + roomCode + " · " + memberText + " · " + stateText + " " + formatDuration(progressSec) + updater);
+        String titleText = roomUserTitle(host);
+        if (guest != null) {
+            titleText = titleText + " / " + roomUserTitle(guest);
+        }
+        activeWatchRoomStatus.setText("同看 " + roomCode + " · " + memberText + "\n" + titleText + " · " + stateText + " " + formatDuration(progressSec) + updater);
+        activeWatchRoomStatus.setSingleLine(false);
+        updatePlayerRoomAvatars(host, guest);
+    }
+
+    private String roomUserTitle(JSONObject user) {
+        if (user == null) {
+            return "等待加入";
+        }
+        String title = user.optString("growth_title", "剧情新人");
+        int badgeCount = user.optInt("badge_count", 0);
+        return badgeCount > 0 ? title + " · " + badgeCount + "枚" : title;
+    }
+
+    private void updatePlayerRoomAvatars(JSONObject host, JSONObject guest) {
+        if (activeWatchRoomAvatars == null) {
+            return;
+        }
+        activeWatchRoomAvatars.removeAllViews();
+        addPlayerRoomAvatar(activeWatchRoomAvatars, host, true);
+        addPlayerRoomAvatar(activeWatchRoomAvatars, guest, false);
+    }
+
+    private void addPlayerRoomAvatar(LinearLayout parent, JSONObject user, boolean first) {
+        FrameLayout avatarShell = new FrameLayout(this);
+        GradientDrawable shellBackground = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.argb(220, 255, 255, 255), Color.argb(190, 228, 238, 255)}
+        );
+        shellBackground.setShape(GradientDrawable.OVAL);
+        shellBackground.setStroke(dp(1), Color.argb(135, 255, 255, 255));
+        avatarShell.setBackground(shellBackground);
+        avatarShell.setClipToOutline(true);
+        LinearLayout.LayoutParams shellParams = new LinearLayout.LayoutParams(dp(36), dp(36));
+        shellParams.leftMargin = first ? 0 : -dp(8);
+        parent.addView(avatarShell, shellParams);
+
+        String avatarUrl = user == null ? "" : absoluteUrl(user.optString("avatar_url", ""));
+        if (!avatarUrl.isEmpty()) {
+            ImageView image = new ImageView(this);
+            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            avatarShell.addView(image, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            loadImageInto(image, avatarUrl);
+        } else {
+            String initial = user == null ? "+" : userName(user).substring(0, Math.min(1, userName(user).length()));
+            TextView fallback = text(initial, 15, Color.rgb(28, 45, 76), Typeface.BOLD);
+            fallback.setGravity(Gravity.CENTER);
+            avatarShell.addView(fallback, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        }
     }
 
     private void scheduleWatchRoomEvents() {
@@ -3106,6 +3168,7 @@ public class MainActivity extends Activity {
         activeDanmakuOverlay = null;
         activeRemixPanel = null;
         activeWatchRoomStrip = null;
+        activeWatchRoomAvatars = null;
         activePlayerStatus = null;
         activeDanmakuStatus = null;
         activeWatchRoomStatus = null;
