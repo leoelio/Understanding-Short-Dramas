@@ -3860,6 +3860,12 @@ public class MainActivity extends Activity {
 
         String choiceKey = option.optString("key", "");
         JSONArray variants = option.optJSONArray("variants");
+        if (shouldUseRemixSceneChoice(choiceKey) && variants != null && variants.length() > 0) {
+            JSONObject defaultVariant = variants.optJSONObject(0);
+            String defaultVariantKey = defaultVariant == null ? "" : defaultVariant.optString("variant_key", "");
+            createRemix(choiceKey, defaultVariantKey, choiceLabel, 0, false);
+            return;
+        }
         if (variants == null || variants.length() == 0) {
             Button generateButton = primaryButton("生成分镜");
             generateButton.setOnClickListener(v -> createRemix(choiceKey, "", choiceLabel));
@@ -3894,6 +3900,10 @@ public class MainActivity extends Activity {
     }
 
     private void createRemix(String choiceKey, String variantKey, String label) {
+        createRemix(choiceKey, variantKey, label, 0, true);
+    }
+
+    private void createRemix(String choiceKey, String variantKey, String label, int startIndex, boolean sceneChoiceResolved) {
         if (activeRemixPanel == null || choiceKey.isEmpty()) {
             return;
         }
@@ -3924,7 +3934,7 @@ public class MainActivity extends Activity {
                 payload.put("session_id", loadSessionId());
                 String body = httpPost(loadBaseUrl() + "/api/episodes/" + activeEpisodeId + "/ai-remix", payload.toString(), loadToken());
                 JSONObject result = new JSONObject(body);
-                runOnUiThread(() -> renderRemixResult(result));
+                runOnUiThread(() -> renderRemixResult(result, startIndex, sceneChoiceResolved));
             } catch (Exception error) {
                 runOnUiThread(() -> renderRemixError(error.getMessage()));
             }
@@ -3932,6 +3942,10 @@ public class MainActivity extends Activity {
     }
 
     private void renderRemixResult(JSONObject result) {
+        renderRemixResult(result, 0, true);
+    }
+
+    private void renderRemixResult(JSONObject result, int startIndex, boolean sceneChoiceResolved) {
         if (activeRemixPanel == null) {
             return;
         }
@@ -3939,7 +3953,7 @@ public class MainActivity extends Activity {
         JSONObject imagePlan = result.optJSONObject("image_plan");
         JSONArray shots = imagePlan == null ? null : imagePlan.optJSONArray("shots");
         if (shots != null && shots.length() > 0) {
-            renderRemixShot(result, imagePlan, shots, 0);
+            renderRemixShot(result, imagePlan, shots, startIndex, sceneChoiceResolved);
             return;
         }
 
@@ -3985,11 +3999,20 @@ public class MainActivity extends Activity {
     }
 
     private void renderRemixShot(JSONObject result, JSONObject imagePlan, JSONArray shots, int shotIndex) {
+        renderRemixShot(result, imagePlan, shots, shotIndex, true);
+    }
+
+    private void renderRemixShot(JSONObject result, JSONObject imagePlan, JSONArray shots, int shotIndex, boolean sceneChoiceResolved) {
         if (activeRemixPanel == null) {
             return;
         }
         enterRemixOverlay();
         int safeIndex = Math.max(0, Math.min(shotIndex, shots.length() - 1));
+        String choiceKey = imagePlan == null ? "" : imagePlan.optString("choice_key", "");
+        if (!sceneChoiceResolved && isImmediateRemixSceneChoice(choiceKey)) {
+            showRemixSceneChoice(result, imagePlan, shots, safeIndex);
+            return;
+        }
         JSONObject shot = shots.optJSONObject(safeIndex);
         if (shot == null) {
             renderRemixError("二创图片数据异常");
@@ -4011,7 +4034,7 @@ public class MainActivity extends Activity {
         ImageView image = new ImageView(this);
         image.setScaleType(ImageView.ScaleType.CENTER_CROP);
         image.setBackground(imagePlaceholderBackground());
-        image.setOnClickListener(v -> renderRemixShot(result, imagePlan, shots, (safeIndex + 1) % shots.length()));
+        image.setOnClickListener(v -> goNextRemixShot(result, imagePlan, shots, safeIndex, sceneChoiceResolved));
         LinearLayout.LayoutParams imageParams = matchHeight(remixImageHeight());
         imageParams.topMargin = dp(12);
         activeRemixPanel.addView(image, imageParams);
@@ -4030,11 +4053,11 @@ public class MainActivity extends Activity {
         activeRemixPanel.addView(navRow, navParams);
 
         Button previousButton = secondaryButton("上一张");
-        previousButton.setOnClickListener(v -> renderRemixShot(result, imagePlan, shots, safeIndex == 0 ? shots.length() - 1 : safeIndex - 1));
+        previousButton.setOnClickListener(v -> renderRemixShot(result, imagePlan, shots, safeIndex == 0 ? shots.length() - 1 : safeIndex - 1, sceneChoiceResolved));
         navRow.addView(previousButton, weightHeight(1, dp(40)));
 
         Button nextButton = primaryButton(safeIndex >= shots.length() - 1 ? "回到第一张" : "下一张");
-        nextButton.setOnClickListener(v -> renderRemixShot(result, imagePlan, shots, (safeIndex + 1) % shots.length()));
+        nextButton.setOnClickListener(v -> goNextRemixShot(result, imagePlan, shots, safeIndex, sceneChoiceResolved));
         LinearLayout.LayoutParams nextParams = weightHeight(1, dp(40));
         nextParams.leftMargin = dp(8);
         navRow.addView(nextButton, nextParams);
@@ -4087,6 +4110,136 @@ public class MainActivity extends Activity {
         againParams.topMargin = dp(8);
         activeRemixPanel.addView(againButton, againParams);
         animatePanel(activeRemixPanel);
+    }
+
+    private void goNextRemixShot(JSONObject result, JSONObject imagePlan, JSONArray shots, int safeIndex, boolean sceneChoiceResolved) {
+        if (shouldPauseForRemixSceneChoice(imagePlan, safeIndex, sceneChoiceResolved)) {
+            showRemixSceneChoice(result, imagePlan, shots, safeIndex);
+            return;
+        }
+        renderRemixShot(result, imagePlan, shots, (safeIndex + 1) % shots.length(), sceneChoiceResolved);
+    }
+
+    private boolean shouldPauseForRemixSceneChoice(JSONObject imagePlan, int safeIndex, boolean sceneChoiceResolved) {
+        if (sceneChoiceResolved || imagePlan == null || safeIndex != 0) {
+            return false;
+        }
+        String choiceKey = imagePlan.optString("choice_key", "");
+        return shouldUseRemixSceneChoice(choiceKey) && !isImmediateRemixSceneChoice(choiceKey);
+    }
+
+    private void showRemixSceneChoice(JSONObject result, JSONObject imagePlan, JSONArray shots, int currentIndex) {
+        if (activeRemixPanel == null || imagePlan == null || shots == null || shots.length() == 0) {
+            return;
+        }
+        enterRemixOverlay();
+        activeRemixPanel.removeAllViews();
+        String choiceKey = imagePlan.optString("choice_key", "");
+        addPanelHeader(
+                activeRemixPanel,
+                remixSceneEyebrow(choiceKey),
+                remixSceneTitle(choiceKey),
+                remixSceneSubtitle(choiceKey),
+                v -> dismissRemixPanel()
+        );
+
+        JSONArray variants = remixVariantsForChoice(choiceKey);
+        if (variants != null) {
+            for (int i = 0; i < variants.length(); i++) {
+                JSONObject variant = variants.optJSONObject(i);
+                if (variant == null) {
+                    continue;
+                }
+                String variantKey = variant.optString("variant_key", "");
+                String label = variant.optString("label", "个性版本");
+                String variable = variant.optString("variable_label", "选择 " + (i + 1));
+                String summary = variant.optString("summary", "");
+                addRemixChoiceCard(
+                        activeRemixPanel,
+                        variable,
+                        label,
+                        summary,
+                        v -> createRemix(choiceKey, variantKey, label, remixSceneChoiceStartIndexAfterChoice(choiceKey), true)
+                );
+            }
+        }
+
+        int continueIndex = isImmediateRemixSceneChoice(choiceKey)
+                ? currentIndex
+                : Math.min(shots.length() - 1, currentIndex + 1);
+        Button keepButton = secondaryButton("继续当前版本");
+        keepButton.setOnClickListener(v -> renderRemixShot(result, imagePlan, shots, continueIndex, true));
+        LinearLayout.LayoutParams keepParams = matchHeight(dp(40));
+        keepParams.topMargin = dp(12);
+        activeRemixPanel.addView(keepButton, keepParams);
+        animatePanel(activeRemixPanel);
+    }
+
+    private boolean shouldUseRemixSceneChoice(String choiceKey) {
+        return "road_breakdown".equals(choiceKey)
+                || "ticket_home".equals(choiceKey)
+                || "kindness_ride".equals(choiceKey);
+    }
+
+    private boolean isImmediateRemixSceneChoice(String choiceKey) {
+        return "kindness_ride".equals(choiceKey);
+    }
+
+    private int remixSceneChoiceStartIndexAfterChoice(String choiceKey) {
+        return isImmediateRemixSceneChoice(choiceKey) ? 0 : 1;
+    }
+
+    private JSONArray remixVariantsForChoice(String choiceKey) {
+        JSONArray options = remixOptionsPayload == null ? null : remixOptionsPayload.optJSONArray("options");
+        if (options == null) {
+            return null;
+        }
+        for (int i = 0; i < options.length(); i++) {
+            JSONObject option = options.optJSONObject(i);
+            if (option != null && choiceKey.equals(option.optString("key", ""))) {
+                return option.optJSONArray("variants");
+            }
+        }
+        return null;
+    }
+
+    private String remixSceneEyebrow(String choiceKey) {
+        if ("road_breakdown".equals(choiceKey)) {
+            return "年三十返乡补给站";
+        }
+        if ("ticket_home".equals(choiceKey)) {
+            return "返乡售票口";
+        }
+        if ("kindness_ride".equals(choiceKey)) {
+            return "雪夜顺风车";
+        }
+        return "片尾选择";
+    }
+
+    private String remixSceneTitle(String choiceKey) {
+        if ("road_breakdown".equals(choiceKey)) {
+            return "他们买什么撑过这一段？";
+        }
+        if ("ticket_home".equals(choiceKey)) {
+            return "他买哪张票继续回家？";
+        }
+        if ("kindness_ride".equals(choiceKey)) {
+            return "哪辆车载他们继续往北？";
+        }
+        return "选择一个细节";
+    }
+
+    private String remixSceneSubtitle(String choiceKey) {
+        if ("road_breakdown".equals(choiceKey)) {
+            return "轮胎刚补上，下一口补给会决定他们怎么继续往北走。";
+        }
+        if ("ticket_home".equals(choiceKey)) {
+            return "风雪和体力把摩托路逼到尽头，换一种交通方式也要赶回年夜饭。";
+        }
+        if ("kindness_ride".equals(choiceKey)) {
+            return "帮人脱困后摩托不见了，这次善意会把他们送上另一条回家路。";
+        }
+        return "这个选择会改变后续分镜和声音。";
     }
 
     private void publishRemixAssetPost(JSONObject result, JSONObject imagePlan, JSONObject shot, String sourceType) {
