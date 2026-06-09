@@ -3816,12 +3816,19 @@ public class MainActivity extends Activity {
                 v -> dismissRemixPanel()
         );
 
+        if (featuredCount > 0) {
+            addFeaturedRemixCards(featured);
+        }
+
         JSONArray options = remixOptionsPayload == null ? null : remixOptionsPayload.optJSONArray("options");
         if (options == null || options.length() == 0) {
-            TextView empty = text("本集暂未配置片尾二创。", 14, Color.rgb(88, 98, 118), Typeface.NORMAL);
-            LinearLayout.LayoutParams emptyParams = matchWrap();
-            emptyParams.topMargin = dp(12);
-            activeRemixPanel.addView(empty, emptyParams);
+            if (featuredCount == 0) {
+                TextView empty = text("本集暂未配置片尾二创。", 14, Color.rgb(88, 98, 118), Typeface.NORMAL);
+                LinearLayout.LayoutParams emptyParams = matchWrap();
+                emptyParams.topMargin = dp(12);
+                activeRemixPanel.addView(empty, emptyParams);
+            }
+            animatePanel(activeRemixPanel);
             return;
         }
         for (int i = 0; i < options.length(); i++) {
@@ -3840,6 +3847,35 @@ public class MainActivity extends Activity {
             );
         }
         animatePanel(activeRemixPanel);
+    }
+
+    private void addFeaturedRemixCards(JSONArray featured) {
+        if (activeRemixPanel == null || featured == null || featured.length() == 0) {
+            return;
+        }
+        TextView title = text("精选二创", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(14);
+        activeRemixPanel.addView(title, titleParams);
+
+        for (int i = 0; i < featured.length(); i++) {
+            JSONObject item = featured.optJSONObject(i);
+            if (item == null) {
+                continue;
+            }
+            final JSONObject remix = item;
+            JSONObject choice = remix.optJSONObject("choice");
+            String choiceLabel = remix.optString("choice_label", choice == null ? "AI 二创" : choice.optString("label", "AI 二创"));
+            String titleText = remix.optString("title", choiceLabel);
+            String detail = remix.optString("logline", remix.optString("share_copy", remix.optString("story_text", "")));
+            addRemixChoiceCard(
+                    activeRemixPanel,
+                    "精选 · " + choiceLabel,
+                    titleText,
+                    shortText(detail, 64),
+                    v -> renderRemixResult(remix)
+            );
+        }
     }
 
     private void showRemixVariants(JSONObject option) {
