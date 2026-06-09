@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 04:35:52
+更新时间：2026-06-10 04:43:01
 
 ## 当前目标
 
-Android 原生迁移继续推进：我的页头像管理接入当前头像展示、图片选择、中心裁切和上传。
+Android 原生迁移继续推进：我的页头像管理新增预设头像和头像池推荐选择。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`581a677`
+- 最新提交：`f30b34a`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,12 +51,12 @@ Android 原生迁移继续推进：我的页头像管理接入当前头像展示
 
 ## 本次变更摘要
 
-- 原生我的页新增头像管理卡，加载 /api/auth/me 的 avatar_url 并展示媒体头像。
-- Android 支持选择图片后中心裁切为 512x512 JPEG，通过 /api/users/me/avatar 上传并刷新个人资料。
+- 原生我的页加载 /api/avatar-pool，展示 4 个预设头像入口和 6 个头像池推荐，支持换一批。
+- Android 新增 PATCH JSON 请求能力，切换头像时调用 /api/users/me/profile 更新 avatar_url 并刷新个人资料。
 
 ## 下一步建议
 
-- 下一步建议迁移头像池筛选和预设头像选择，补齐 Web 我的页头像风格筛选能力。
+- 下一步建议迁移资料昵称编辑，补齐 Web 我的页中昵称和头像一起管理的个人资料能力。
 
 ## 安全提醒
 

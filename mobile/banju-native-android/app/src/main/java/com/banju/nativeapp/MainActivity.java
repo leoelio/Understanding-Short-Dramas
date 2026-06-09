@@ -68,6 +68,8 @@ public class MainActivity extends Activity {
     private LinearLayout dramaList;
     private LinearLayout profileContent;
     private TextView avatarActionStatus;
+    private JSONArray avatarPool = new JSONArray();
+    private int avatarPoolPage;
     private TextView voiceActionStatus;
     private Button voiceRecordButton;
     private MediaRecorder voiceRecorder;
@@ -851,17 +853,19 @@ public class MainActivity extends Activity {
                 JSONObject me = new JSONObject(httpGet(loadBaseUrl() + "/api/auth/me", loadToken()));
                 JSONObject rewards = new JSONObject(httpGet(loadBaseUrl() + "/api/users/me/rewards", loadToken()));
                 JSONObject voice = new JSONObject(httpGet(loadBaseUrl() + "/api/users/me/voice-profile", loadToken()));
-                runOnUiThread(() -> renderProfileSummary(me.optJSONObject("user"), rewards, voice));
+                JSONObject avatars = new JSONObject(httpGet(loadBaseUrl() + "/api/avatar-pool", loadToken()));
+                runOnUiThread(() -> renderProfileSummary(me.optJSONObject("user"), rewards, voice, avatars.optJSONArray("avatars")));
             } catch (Exception error) {
                 runOnUiThread(() -> setMessage("账号状态加载失败：" + error.getMessage(), false));
             }
         }).start();
     }
 
-    private void renderProfileSummary(JSONObject userProfile, JSONObject rewards, JSONObject voice) {
+    private void renderProfileSummary(JSONObject userProfile, JSONObject rewards, JSONObject voice, JSONArray avatars) {
         if (profileContent == null) {
             return;
         }
+        avatarPool = avatars == null ? new JSONArray() : avatars;
         profileContent.removeAllViews();
         setMessage("账号状态已同步。", true);
 
@@ -1006,10 +1010,139 @@ public class MainActivity extends Activity {
         chooseParams.topMargin = dp(12);
         avatarCard.addView(chooseButton, chooseParams);
 
+        addAvatarPresetChoices(avatarCard);
+        addAvatarPoolChoices(avatarCard);
+
         avatarActionStatus = text("图片会自动中心裁切为正方形头像，上传后同步到好友、同看和逛逛。", 12, Color.rgb(104, 112, 130), Typeface.NORMAL);
         LinearLayout.LayoutParams statusParams = matchWrap();
         statusParams.topMargin = dp(10);
         avatarCard.addView(avatarActionStatus, statusParams);
+    }
+
+    private void addAvatarPresetChoices(LinearLayout parent) {
+        TextView title = text("预设风格", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(14);
+        parent.addView(title, titleParams);
+
+        LinearLayout firstRow = new LinearLayout(this);
+        firstRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams firstParams = matchWrap();
+        firstParams.topMargin = dp(8);
+        parent.addView(firstRow, firstParams);
+        addPresetButton(firstRow, "返乡", "preset:road", true);
+        addPresetButton(firstRow, "寻宝", "preset:treasure", false);
+
+        LinearLayout secondRow = new LinearLayout(this);
+        secondRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams secondParams = matchWrap();
+        secondParams.topMargin = dp(8);
+        parent.addView(secondRow, secondParams);
+        addPresetButton(secondRow, "冬至", "preset:winter", true);
+        addPresetButton(secondRow, "高光", "preset:stage", false);
+    }
+
+    private void addPresetButton(LinearLayout row, String label, String avatarUrl, boolean first) {
+        Button button = secondaryButton(label);
+        button.setOnClickListener(v -> updateProfileAvatar(avatarUrl));
+        LinearLayout.LayoutParams params = weightHeight(1, dp(38));
+        if (!first) {
+            params.leftMargin = dp(8);
+        }
+        row.addView(button, params);
+    }
+
+    private void addAvatarPoolChoices(LinearLayout parent) {
+        if (avatarPool.length() == 0) {
+            return;
+        }
+        TextView title = text("头像池推荐", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(14);
+        parent.addView(title, titleParams);
+
+        int visible = Math.min(6, avatarPool.length());
+        int start = avatarPool.length() == 0 ? 0 : (avatarPoolPage * visible) % avatarPool.length();
+        for (int rowIndex = 0; rowIndex < 3 && rowIndex * 2 < visible; rowIndex++) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams rowParams = matchWrap();
+            rowParams.topMargin = dp(8);
+            parent.addView(row, rowParams);
+            for (int column = 0; column < 2; column++) {
+                int offset = rowIndex * 2 + column;
+                if (offset >= visible) {
+                    break;
+                }
+                JSONObject avatar = avatarPool.optJSONObject((start + offset) % avatarPool.length());
+                if (avatar != null) {
+                    addAvatarPoolButton(row, avatar, column == 0);
+                }
+            }
+        }
+
+        Button nextButton = secondaryButton("换一批推荐头像");
+        nextButton.setOnClickListener(v -> {
+            avatarPoolPage += 1;
+            fetchProfileSummary();
+        });
+        LinearLayout.LayoutParams nextParams = matchHeight(dp(38));
+        nextParams.topMargin = dp(8);
+        parent.addView(nextButton, nextParams);
+    }
+
+    private void addAvatarPoolButton(LinearLayout row, JSONObject avatar, boolean first) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.setPadding(dp(8), dp(8), dp(8), dp(8));
+        item.setBackground(inputBackground());
+        LinearLayout.LayoutParams itemParams = weightHeight(1, dp(112));
+        if (!first) {
+            itemParams.leftMargin = dp(8);
+        }
+        row.addView(item, itemParams);
+
+        String avatarUrl = avatar.optString("url", "");
+        ImageView image = new ImageView(this);
+        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        image.setBackground(imagePlaceholderBackground());
+        item.addView(image, matchHeight(dp(62)));
+        loadImageInto(image, absoluteUrl(avatarUrl));
+
+        Button useButton = secondaryButton("使用");
+        useButton.setTextSize(12);
+        useButton.setOnClickListener(v -> updateProfileAvatar(avatarUrl));
+        LinearLayout.LayoutParams useParams = matchHeight(dp(34));
+        useParams.topMargin = dp(6);
+        item.addView(useButton, useParams);
+    }
+
+    private void updateProfileAvatar(String avatarUrl) {
+        if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
+            return;
+        }
+        if (avatarActionStatus != null) {
+            avatarActionStatus.setText("正在切换头像...");
+        }
+        setMessage("正在切换头像...", true);
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("avatar_url", avatarUrl);
+                httpPatch(loadBaseUrl() + "/api/users/me/profile", payload.toString(), loadToken());
+                runOnUiThread(() -> {
+                    setMessage("头像已切换。", true);
+                    fetchProfileSummary();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    setMessage("头像切换失败：" + error.getMessage(), false);
+                    if (avatarActionStatus != null) {
+                        avatarActionStatus.setText("头像切换失败：" + error.getMessage());
+                    }
+                });
+            }
+        }).start();
     }
 
     private void chooseAvatarImage() {
@@ -3656,6 +3789,25 @@ public class MainActivity extends Activity {
     private String httpPost(String urlString, String jsonBody, String token) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(urlString).openConnection();
         connection.setRequestMethod("POST");
+        connection.setConnectTimeout(8000);
+        connection.setReadTimeout(8000);
+        connection.setDoOutput(true);
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+        if (!token.isEmpty()) {
+            connection.setRequestProperty("Authorization", "Bearer " + token);
+        }
+        byte[] data = jsonBody.getBytes(StandardCharsets.UTF_8);
+        connection.setFixedLengthStreamingMode(data.length);
+        OutputStream output = connection.getOutputStream();
+        output.write(data);
+        output.close();
+        return readResponse(connection);
+    }
+
+    private String httpPatch(String urlString, String jsonBody, String token) throws Exception {
+        HttpURLConnection connection = (HttpURLConnection) new URL(urlString).openConnection();
+        connection.setRequestMethod("PATCH");
         connection.setConnectTimeout(8000);
         connection.setReadTimeout(8000);
         connection.setDoOutput(true);
