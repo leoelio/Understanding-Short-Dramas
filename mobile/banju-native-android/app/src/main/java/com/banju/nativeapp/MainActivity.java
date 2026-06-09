@@ -2252,6 +2252,9 @@ public class MainActivity extends Activity {
     }
 
     private void addMessageBubble(JSONObject message) {
+        if (isWatchLinkMessage(message) && addWatchLinkMessageCard(message)) {
+            return;
+        }
         boolean outgoing = "outgoing".equals(message.optString("direction", ""));
         LinearLayout row = new LinearLayout(this);
         row.setGravity(outgoing ? Gravity.RIGHT : Gravity.LEFT);
@@ -2263,6 +2266,79 @@ public class MainActivity extends Activity {
         bubble.setPadding(dp(14), dp(10), dp(14), dp(10));
         bubble.setBackground(chatBubbleBackground(outgoing));
         row.addView(bubble, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+    }
+
+    private boolean isWatchLinkMessage(JSONObject message) {
+        String type = message.optString("message_type", message.optString("type", ""));
+        return "watch_link".equals(type);
+    }
+
+    private boolean addWatchLinkMessageCard(JSONObject message) {
+        JSONObject payload = message.optJSONObject("payload");
+        if (payload == null) {
+            String rawPayload = message.optString("payload", "");
+            if (!rawPayload.isEmpty()) {
+                try {
+                    payload = new JSONObject(rawPayload);
+                } catch (Exception ignored) {
+                    payload = null;
+                }
+            }
+        }
+        if (payload == null) {
+            return false;
+        }
+        final String roomCode = payload.optString("room_code", "").trim().toUpperCase();
+        final int episodeId = payload.optInt("episode_id", 0);
+        if (roomCode.isEmpty()) {
+            return false;
+        }
+
+        boolean outgoing = "outgoing".equals(message.optString("direction", ""));
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(outgoing ? Gravity.RIGHT : Gravity.LEFT);
+        LinearLayout.LayoutParams rowParams = matchWrap();
+        rowParams.topMargin = dp(10);
+        chatMessagesContent.addView(row, rowParams);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setBackground(highlightBackground());
+        row.addView(card, matchWrap());
+
+        String kicker = outgoing ? "已发送同看邀请" : "同看邀请";
+        card.addView(text(kicker, 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+
+        TextView title = text(message.optString("text", "邀请你加入同看房间 " + roomCode), 17, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(5);
+        card.addView(title, titleParams);
+
+        String detail = "房间 " + roomCode + (episodeId > 0 ? " · 剧集 " + episodeId : "");
+        TextView desc = text(detail, 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams descParams = matchWrap();
+        descParams.topMargin = dp(5);
+        card.addView(desc, descParams);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionsParams = matchWrap();
+        actionsParams.topMargin = dp(12);
+        card.addView(actions, actionsParams);
+
+        Button roomButton = secondaryButton("进房间");
+        roomButton.setOnClickListener(v -> showWatchRoomScreen(roomCode, "已打开同看房间。"));
+        actions.addView(roomButton, weightHeight(1, dp(42)));
+
+        if (episodeId > 0) {
+            Button playButton = primaryButton("直接同看");
+            playButton.setOnClickListener(v -> showNativePlayer("同看房间 " + roomCode, episodeId, roomCode));
+            LinearLayout.LayoutParams playParams = weightHeight(1, dp(42));
+            playParams.leftMargin = dp(10);
+            actions.addView(playButton, playParams);
+        }
+        return true;
     }
 
     private void sendChatMessage(JSONObject friend) {

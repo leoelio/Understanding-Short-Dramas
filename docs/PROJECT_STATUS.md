@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 05:53:43
+更新时间：2026-06-10 06:00:32
 
 ## 当前目标
 
-Android 原生迁移继续推进：播放页同看新增互动榜，聚合同看高光选择、弹幕点赞/回复和房间发言。
+Android 原生迁移继续推进聊聊与同看闭环：同看邀请消息已从普通文本升级为可点击邀请卡。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`e1c0d42`
+- 最新提交：`20081a5`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,13 +51,11 @@ Android 原生迁移继续推进：播放页同看新增互动榜，聚合同看
 
 ## 本次变更摘要
 
-- 原生同看播放页新增互动榜状态行，展示热门高光选择和最新同伴动作。
-- 房间事件轮询时聚合 interaction、danmaku_like、danmaku_reply、danmaku 四类事件，持续刷新播放页内榜单。
-- 同看模式下弹幕区域继续下移，避免遮挡成员状态条和互动榜；已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
+- 原生聊天会话识别 watch_link 消息，展示同看邀请卡，支持进房间和直接进入同看播放页，普通文本消息保持原逻辑。
 
 ## 下一步建议
 
-- 下一步可继续迁移原生好友/聊聊页面的聊天细节，或连接真机验证同看成员条、互动榜和房间动态气泡的实际展示。
+- 继续迁移聊天内表情/资产分享，或进入原生片尾 AI 二创与播放页覆盖层的手机端体验打磨。
 
 ## 安全提醒
 
