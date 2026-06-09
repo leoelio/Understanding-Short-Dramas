@@ -58,6 +58,10 @@ public class MainActivity extends Activity {
     private EditText chatMessageInput;
     private LinearLayout socialFeedContent;
     private String activeSocialScope = "all";
+    private String socialPublishVisibility = "public";
+    private EditText socialTitleInput;
+    private EditText socialTextInput;
+    private EditText socialTopicInput;
     private LinearLayout watchRoomContent;
     private LinearLayout watchRoomEventsContent;
     private EditText watchRoomEventInput;
@@ -353,6 +357,8 @@ public class MainActivity extends Activity {
         mineParams.leftMargin = dp(8);
         scopeRow.addView(mineButton, mineParams);
 
+        addSocialPublishComposer(header);
+
         messageText = text(message, 13, Color.rgb(104, 112, 130), Typeface.NORMAL);
         LinearLayout.LayoutParams messageParams = matchWrap();
         messageParams.topMargin = dp(18);
@@ -552,6 +558,106 @@ public class MainActivity extends Activity {
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> setMessage("评论失败：" + error.getMessage(), false));
+            }
+        }).start();
+    }
+
+    private void addSocialPublishComposer(LinearLayout parent) {
+        LinearLayout composer = new LinearLayout(this);
+        composer.setOrientation(LinearLayout.VERTICAL);
+        composer.setGravity(Gravity.NO_GRAVITY);
+        composer.setPadding(dp(16), dp(16), dp(16), dp(16));
+        composer.setBackground(inputBackground());
+        LinearLayout.LayoutParams composerParams = matchWrap();
+        composerParams.topMargin = dp(14);
+        parent.addView(composer, composerParams);
+
+        composer.addView(text("发布一条感受", 14, Color.rgb(28, 45, 76), Typeface.BOLD), matchWrap());
+
+        socialTitleInput = input("", "标题");
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(10);
+        composer.addView(socialTitleInput, titleParams);
+
+        socialTextInput = input("", "写下这一刻想分享的话");
+        LinearLayout.LayoutParams textParams = matchWrap();
+        textParams.topMargin = dp(8);
+        composer.addView(socialTextInput, textParams);
+
+        socialTopicInput = input("", "话题，可不填");
+        LinearLayout.LayoutParams topicParams = matchWrap();
+        topicParams.topMargin = dp(8);
+        composer.addView(socialTopicInput, topicParams);
+
+        LinearLayout visibilityRow = new LinearLayout(this);
+        visibilityRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams visibilityParams = matchWrap();
+        visibilityParams.topMargin = dp(10);
+        composer.addView(visibilityRow, visibilityParams);
+
+        Button publicButton = secondaryButton("公开");
+        Button friendsButton = secondaryButton("好友");
+        Button privateButton = secondaryButton("仅自己");
+        publicButton.setOnClickListener(v -> setSocialPublishVisibility("public", publicButton, friendsButton, privateButton));
+        friendsButton.setOnClickListener(v -> setSocialPublishVisibility("friends", publicButton, friendsButton, privateButton));
+        privateButton.setOnClickListener(v -> setSocialPublishVisibility("private", publicButton, friendsButton, privateButton));
+        visibilityRow.addView(publicButton, weightHeight(1, dp(40)));
+        LinearLayout.LayoutParams friendsParams = weightHeight(1, dp(40));
+        friendsParams.leftMargin = dp(8);
+        visibilityRow.addView(friendsButton, friendsParams);
+        LinearLayout.LayoutParams privateParams = weightHeight(1, dp(40));
+        privateParams.leftMargin = dp(8);
+        visibilityRow.addView(privateButton, privateParams);
+        setSocialPublishVisibility(socialPublishVisibility, publicButton, friendsButton, privateButton);
+
+        Button publishButton = primaryButton("发布动态");
+        publishButton.setOnClickListener(v -> publishSocialPost());
+        LinearLayout.LayoutParams publishParams = matchWrap();
+        publishParams.topMargin = dp(10);
+        composer.addView(publishButton, publishParams);
+    }
+
+    private void setSocialPublishVisibility(String visibility, Button publicButton, Button friendsButton, Button privateButton) {
+        socialPublishVisibility = visibility;
+        applyToggleButton(publicButton, "public".equals(visibility));
+        applyToggleButton(friendsButton, "friends".equals(visibility));
+        applyToggleButton(privateButton, "private".equals(visibility));
+    }
+
+    private void applyToggleButton(Button button, boolean selected) {
+        button.setTextColor(selected ? Color.WHITE : Color.rgb(28, 45, 76));
+        button.setBackground(selected ? buttonBackground() : secondaryButtonBackground());
+    }
+
+    private void publishSocialPost() {
+        String title = socialTitleInput == null ? "" : socialTitleInput.getText().toString().trim();
+        String body = socialTextInput == null ? "" : socialTextInput.getText().toString().trim();
+        String topic = socialTopicInput == null ? "" : socialTopicInput.getText().toString().trim();
+        if (title.isEmpty()) {
+            setMessage("标题不能为空。", false);
+            return;
+        }
+        setMessage("正在发布动态...", true);
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("visibility", socialPublishVisibility);
+                payload.put("source_type", "thought");
+                payload.put("title", title);
+                payload.put("text", body);
+                payload.put("asset_kind", "text");
+                payload.put("asset_url", "");
+                payload.put("asset_payload", new JSONObject());
+                payload.put("topic", topic);
+                httpPost(loadBaseUrl() + "/api/social/posts", payload.toString(), loadToken());
+                runOnUiThread(() -> {
+                    socialTitleInput.setText("");
+                    socialTextInput.setText("");
+                    socialTopicInput.setText("");
+                    fetchSocialFeed("mine");
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("发布失败：" + error.getMessage(), false));
             }
         }).start();
     }

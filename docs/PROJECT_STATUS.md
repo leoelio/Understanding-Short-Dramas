@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 03:45:56
+更新时间：2026-06-10 03:54:21
 
 ## 当前目标
 
-Android 原生迁移继续推进：逛逛动态卡已支持点赞和快捷评论，消费 Web 主线已有社交互动接口。
+Android 原生迁移继续推进：逛逛页新增动态发布入口，支持文字感受、话题和公开/好友/仅自己可见范围。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`f8a6a21`
+- 最新提交：`f2eebcc`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,12 +51,12 @@ Android 原生迁移继续推进：逛逛动态卡已支持点赞和快捷评论
 
 ## 本次变更摘要
 
-- Android 逛逛页记录当前筛选范围，点赞/评论后自动刷新当前动态流。
-- 动态卡底部新增点赞按钮、短评论输入和发送按钮，仍不新增后端协议。
+- Android 逛逛页顶部新增发布组件，和动态列表分离，刷新动态流不会清空编辑区。
+- 发布调用 Web 主线已有 /api/social/posts 接口，成功后清空输入并切到我的动态刷新。
 
 ## 下一步建议
 
-- 下一步建议迁移原生动态发布入口，支持文字感受和已生成 AI 资产的选择发布。
+- 下一步建议迁移 AI 资产选择发布，把已生成的 AI 声音、图片和剧情卡作为动态来源发布到逛逛。
 
 ## 安全提醒
 
