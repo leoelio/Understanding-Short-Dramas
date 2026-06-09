@@ -1993,6 +1993,9 @@ public class MainActivity extends Activity {
         bubble.setSingleLine(true);
         bubble.setPadding(dp(12), dp(7), dp(12), dp(7));
         bubble.setBackground(danmakuBubbleBackground());
+        if (!activePlayerRoomCode.isEmpty()) {
+            bubble.setOnClickListener(v -> showDanmakuActionPanel(comment));
+        }
         bubble.setAlpha(0f);
         bubble.setTranslationX(dp(34));
         LinearLayout.LayoutParams params = matchWrap();
@@ -2009,6 +2012,92 @@ public class MainActivity extends Activity {
                 }).start();
             }
         }, "carnival".equals(activeDanmakuMode) ? 2800 : 4200);
+    }
+
+    private void showDanmakuActionPanel(JSONObject comment) {
+        if (activeHighlightPanel == null || activePlayerRoomCode.isEmpty()) {
+            return;
+        }
+        JSONObject user = comment.optJSONObject("user");
+        String nickname = user == null ? "观众" : user.optString("nickname", "观众");
+        String text = comment.optString("text", "");
+        activeHighlightPanel.removeAllViews();
+
+        activeHighlightPanel.addView(text("弹幕互动", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        TextView title = text(nickname + " 的弹幕", 18, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(6);
+        activeHighlightPanel.addView(title, titleParams);
+
+        TextView body = text(text, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        body.setMaxLines(2);
+        LinearLayout.LayoutParams bodyParams = matchWrap();
+        bodyParams.topMargin = dp(8);
+        activeHighlightPanel.addView(body, bodyParams);
+
+        LinearLayout firstRow = new LinearLayout(this);
+        firstRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams firstRowParams = matchWrap();
+        firstRowParams.topMargin = dp(12);
+        activeHighlightPanel.addView(firstRow, firstRowParams);
+
+        Button likeButton = primaryButton("点赞");
+        likeButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_like", comment, ""));
+        firstRow.addView(likeButton, weightHeight(1, dp(42)));
+
+        Button agreeButton = primaryButton("同感");
+        agreeButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_reply", comment, "同感"));
+        LinearLayout.LayoutParams agreeParams = weightHeight(1, dp(42));
+        agreeParams.leftMargin = dp(8);
+        firstRow.addView(agreeButton, agreeParams);
+
+        LinearLayout secondRow = new LinearLayout(this);
+        secondRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams secondRowParams = matchWrap();
+        secondRowParams.topMargin = dp(8);
+        activeHighlightPanel.addView(secondRow, secondRowParams);
+
+        Button laughButton = secondaryButton("哈哈哈");
+        laughButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_reply", comment, "哈哈哈"));
+        secondRow.addView(laughButton, weightHeight(1, dp(40)));
+
+        Button closeButton = secondaryButton("关闭");
+        closeButton.setOnClickListener(v -> activeHighlightPanel.setVisibility(View.GONE));
+        LinearLayout.LayoutParams closeParams = weightHeight(1, dp(40));
+        closeParams.leftMargin = dp(8);
+        secondRow.addView(closeButton, closeParams);
+
+        activeHighlightPanel.setVisibility(View.VISIBLE);
+        activeHighlightPanel.bringToFront();
+        animatePanel(activeHighlightPanel);
+    }
+
+    private void submitDanmakuRoomEvent(String eventType, JSONObject comment, String replyText) {
+        if (activePlayerRoomCode.isEmpty()) {
+            return;
+        }
+        String originalText = comment.optString("text", "");
+        int commentId = comment.optInt("id", 0);
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("danmaku_id", commentId);
+                payload.put("danmaku_text", originalText);
+                payload.put("episode_id", activeEpisodeId);
+                payload.put("source", "native_android");
+                if (!replyText.isEmpty()) {
+                    payload.put("text", replyText);
+                }
+                JSONObject body = new JSONObject();
+                body.put("event_type", eventType);
+                body.put("payload", payload);
+                httpPost(loadBaseUrl() + "/api/watch-rooms/" + activePlayerRoomCode + "/events", body.toString(), loadToken());
+                String message = "danmaku_like".equals(eventType) ? "已点赞弹幕。" : "已回复弹幕。";
+                runOnUiThread(() -> showInteractionFeedback(message));
+            } catch (Exception error) {
+                runOnUiThread(() -> showInteractionFeedback("弹幕互动同步失败。"));
+            }
+        }).start();
     }
 
     private void fetchRemixOptions(int episodeId) {

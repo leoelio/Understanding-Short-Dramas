@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 03:29:09
+更新时间：2026-06-10 03:34:48
 
 ## 当前目标
 
-Android 原生迁移继续推进：同看播放页的高光互动会同步为房间 interaction 事件，让对方播放页能看到选择动态。
+Android 原生迁移继续推进：同看播放页的弹幕气泡支持点击、点赞和快捷回复，并同步为房间事件。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`0bd01e6`
+- 最新提交：`5c73bb5`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -52,16 +52,16 @@ Android 原生迁移继续推进：同看播放页的高光互动会同步为房
 ## 本次变更摘要
 
 - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
-- 保留原有 /api/interactions 主上报逻辑不变。
-- 当 activePlayerRoomCode 存在时，互动主上报成功后额外调用 /api/watch-rooms/{code}/events。
-- 房间事件类型为 interaction，payload 包含 highlight_id、option_key、label、episode_id 和 native_android 来源。
-- 房间事件上报失败会被忽略，不影响主互动反馈。
+- 同看播放页中的普通弹幕气泡新增点击入口；只有 activePlayerRoomCode 存在时启用，普通播放不写房间事件。
+- 点击弹幕后弹出轻量弹幕互动面板，提供点赞、同感、哈哈哈和关闭操作。
+- 点赞会 POST /api/watch-rooms/{code}/events，event_type 为 danmaku_like。
+- 快捷回复会 POST /api/watch-rooms/{code}/events，event_type 为 danmaku_reply，payload 带回复文本、danmaku_id、原弹幕文本、episode_id 和 native_android 来源。
 - Android debug APK 编译成功；本轮未做真机验证。
 
 ## 下一步建议
 
-- 手机可用后验证：两账号同看时，一方点击高光选项，另一方播放页是否出现 同看 · 某人：选择了... 气泡。
-- 下一步建议迁移原生房间中的弹幕点赞/回复事件，继续补齐同看社交细节。
+- 手机可用后验证：同看播放中点击弹幕，点赞/回复后对方播放页是否出现同看气泡。
+- 下一步建议迁移原生逛逛/动态流，补齐 Web 端社交发布与浏览能力。
 
 ## 安全提醒
 
