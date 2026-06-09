@@ -4707,6 +4707,50 @@ public class MainActivity extends Activity {
         activeHighlightPanel.removeAllViews();
     }
 
+    private void addHighlightHeader(LinearLayout panel, String highlightType, String emotion, String titleText, String subtitle, View.OnClickListener closeListener) {
+        LinearLayout hero = new LinearLayout(this);
+        hero.setOrientation(LinearLayout.HORIZONTAL);
+        hero.setGravity(Gravity.CENTER_VERTICAL);
+        panel.addView(hero, matchWrap());
+
+        TextView glyph = text(highlightGlyph(highlightType), 18, Color.WHITE, Typeface.BOLD);
+        glyph.setGravity(Gravity.CENTER);
+        glyph.setBackground(highlightGlyphBackground(highlightType));
+        hero.addView(glyph, new LinearLayout.LayoutParams(dp(52), dp(52)));
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        copyParams.leftMargin = dp(12);
+        hero.addView(copy, copyParams);
+
+        TextView kicker = text(highlightType + " · " + emotion, 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        kicker.setSingleLine(true);
+        copy.addView(kicker, matchWrap());
+
+        TextView title = text(titleText, 21, Color.rgb(18, 20, 26), Typeface.BOLD);
+        title.setMaxLines(2);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(3);
+        copy.addView(title, titleParams);
+
+        Button closeButton = secondaryButton("收起");
+        closeButton.setTextSize(12);
+        closeButton.setOnClickListener(closeListener);
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(dp(66), dp(34));
+        closeParams.leftMargin = dp(8);
+        hero.addView(closeButton, closeParams);
+
+        if (subtitle != null && !subtitle.trim().isEmpty()) {
+            TextView desc = text(subtitle, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            desc.setLineSpacing(dp(2), 1.0f);
+            desc.setMaxLines(3);
+            LinearLayout.LayoutParams descParams = matchWrap();
+            descParams.topMargin = dp(10);
+            panel.addView(desc, descParams);
+        }
+    }
+
     private void addPanelHeader(LinearLayout panel, String kicker, String titleText, String subtitle, View.OnClickListener closeListener) {
         LinearLayout topRow = new LinearLayout(this);
         topRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -4755,6 +4799,15 @@ public class MainActivity extends Activity {
         panel.animate().alpha(1f).translationY(0f).setDuration(240).start();
     }
 
+    private void animateTap(View view) {
+        view.animate()
+                .scaleX(0.96f)
+                .scaleY(0.96f)
+                .setDuration(70)
+                .withEndAction(() -> view.animate().scaleX(1f).scaleY(1f).setDuration(120).start())
+                .start();
+    }
+
     private void showHighlight(JSONObject highlight) {
         if (activeHighlightPanel == null) {
             return;
@@ -4767,39 +4820,43 @@ public class MainActivity extends Activity {
         String descriptionText = highlight.optString("description", "");
         JSONArray options = highlight.optJSONArray("options");
         prepareInteractionPanel();
+        activeHighlightPanel.setBackground(highlightBackground(highlightType));
 
-        addPanelHeader(
+        addHighlightHeader(
                 activeHighlightPanel,
-                highlightType + " · " + emotion,
+                highlightType,
+                emotion,
                 titleText,
                 descriptionText,
                 v -> hideHighlightAndScheduleNext()
         );
 
-        addPanelSectionTitle(activeHighlightPanel, "选择你的反应");
+        addPanelSectionTitle(activeHighlightPanel, "选择你的反应，同步到互动榜");
 
-        LinearLayout optionsRow = new LinearLayout(this);
-        optionsRow.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams rowParams = matchWrap();
-        rowParams.topMargin = dp(12);
-        activeHighlightPanel.addView(optionsRow, rowParams);
+        LinearLayout optionsList = new LinearLayout(this);
+        optionsList.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams listParams = matchWrap();
+        listParams.topMargin = dp(8);
+        activeHighlightPanel.addView(optionsList, listParams);
 
         int count = Math.max(1, options == null ? 0 : options.length());
         for (int i = 0; i < count; i++) {
             JSONObject option = options == null ? null : options.optJSONObject(i);
             String label = option == null ? "我有话说" : option.optString("label", "我有话说");
             String optionKey = option == null ? "default" : option.optString("key", "default");
-            Button optionButton = primaryButton(label);
-            optionButton.setTextSize(13);
-            optionButton.setOnClickListener(v -> submitInteraction(highlightId, optionKey, label));
-            LinearLayout.LayoutParams optionParams = weightHeight(1, dp(42));
+            Button optionButton = highlightOptionButton(label, highlightType, i);
+            optionButton.setOnClickListener(v -> {
+                animateTap(v);
+                submitInteraction(highlightId, optionKey, label);
+            });
+            LinearLayout.LayoutParams optionParams = matchHeight(dp(48));
             if (i > 0) {
-                optionParams.leftMargin = dp(8);
+                optionParams.topMargin = dp(8);
             }
-            optionsRow.addView(optionButton, optionParams);
+            optionsList.addView(optionButton, optionParams);
         }
 
-        Button dismissButton = secondaryButton("先看剧情");
+        Button dismissButton = secondaryButton("继续看正片");
         dismissButton.setOnClickListener(v -> hideHighlightAndScheduleNext());
         LinearLayout.LayoutParams dismissParams = matchHeight(dp(40));
         dismissParams.topMargin = dp(10);
@@ -4826,9 +4883,7 @@ public class MainActivity extends Activity {
             return;
         }
         activeHighlightPanel.removeAllViews();
-        TextView feedback = text("已选择：" + label + "，正在上报...", 16, Color.rgb(10, 132, 80), Typeface.BOLD);
-        feedback.setGravity(Gravity.CENTER);
-        activeHighlightPanel.addView(feedback, matchWrap());
+        renderHighlightFeedback("已选择 " + label, "正在同步到互动榜", true);
 
         new Thread(() -> {
             try {
@@ -4870,10 +4925,28 @@ public class MainActivity extends Activity {
             return;
         }
         activeHighlightPanel.removeAllViews();
-        TextView feedback = text(message, 16, Color.rgb(10, 132, 80), Typeface.BOLD);
-        feedback.setGravity(Gravity.CENTER);
-        activeHighlightPanel.addView(feedback, matchWrap());
+        renderHighlightFeedback(message, "同看房间会同步这次互动", true);
         progressHandler.postDelayed(this::hideHighlightAndScheduleNext, 1500);
+    }
+
+    private void renderHighlightFeedback(String titleText, String detailText, boolean success) {
+        activeHighlightPanel.setBackground(highlightFeedbackBackground(success));
+        TextView burst = text(success ? "+1" : "!", 28, success ? Color.rgb(10, 132, 80) : Color.rgb(210, 54, 70), Typeface.BOLD);
+        burst.setGravity(Gravity.CENTER);
+        activeHighlightPanel.addView(burst, matchWrap());
+
+        TextView title = text(titleText, 18, Color.rgb(18, 20, 26), Typeface.BOLD);
+        title.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(4);
+        activeHighlightPanel.addView(title, titleParams);
+
+        TextView detail = text(detailText, 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        detail.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams detailParams = matchWrap();
+        detailParams.topMargin = dp(4);
+        activeHighlightPanel.addView(detail, detailParams);
+        animatePanel(activeHighlightPanel);
     }
 
     private void hideHighlightAndScheduleNext() {
@@ -5227,6 +5300,20 @@ public class MainActivity extends Activity {
         return button;
     }
 
+    private Button highlightOptionButton(String label, String highlightType, int index) {
+        Button button = new Button(this);
+        button.setText((index + 1) + "  " + label);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(15);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setAllCaps(false);
+        button.setMinHeight(0);
+        button.setGravity(Gravity.CENTER_VERTICAL);
+        button.setPadding(dp(18), 0, dp(18), 0);
+        button.setBackground(highlightOptionBackground(highlightType, index));
+        return button;
+    }
+
     private LinearLayout.LayoutParams matchWrap() {
         return new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -5353,17 +5440,109 @@ public class MainActivity extends Activity {
     }
 
     private GradientDrawable highlightBackground() {
+        return highlightBackground("");
+    }
+
+    private GradientDrawable highlightBackground(String highlightType) {
+        int accent = highlightAccentColor(highlightType, false);
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 new int[]{
                         Color.rgb(255, 255, 255),
-                        Color.rgb(242, 248, 255),
-                        Color.rgb(255, 247, 238)
+                        Color.argb(255, 242, 248, 255),
+                        Color.argb(255, Color.red(accent), Color.green(accent), Color.blue(accent))
                 }
         );
         drawable.setCornerRadius(dp(22));
-        drawable.setStroke(dp(1), Color.argb(70, 20, 26, 38));
+        drawable.setStroke(dp(1), Color.argb(78, Color.red(accent), Color.green(accent), Color.blue(accent)));
         return drawable;
+    }
+
+    private GradientDrawable highlightGlyphBackground(String highlightType) {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        highlightAccentColor(highlightType, true),
+                        highlightAccentColor(highlightType, false)
+                }
+        );
+        drawable.setCornerRadius(dp(18));
+        drawable.setStroke(dp(1), Color.argb(118, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable highlightOptionBackground(String highlightType, int index) {
+        int first = highlightAccentColor(highlightType, true);
+        int second = highlightAccentColor(highlightType, false);
+        if (index % 2 == 1) {
+            first = Color.rgb(28, 45, 76);
+            second = highlightAccentColor(highlightType, true);
+        }
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{first, second}
+        );
+        drawable.setCornerRadius(dp(17));
+        drawable.setStroke(dp(1), Color.argb(80, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable highlightFeedbackBackground(boolean success) {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                success
+                        ? new int[]{Color.rgb(255, 255, 255), Color.rgb(235, 252, 243), Color.rgb(239, 247, 255)}
+                        : new int[]{Color.rgb(255, 255, 255), Color.rgb(255, 240, 242), Color.rgb(245, 248, 255)}
+        );
+        drawable.setCornerRadius(dp(22));
+        drawable.setStroke(dp(1), success ? Color.argb(80, 10, 132, 80) : Color.argb(90, 210, 54, 70));
+        return drawable;
+    }
+
+    private int highlightAccentColor(String highlightType, boolean strong) {
+        String type = highlightType == null ? "" : highlightType;
+        if (type.contains("甜") || type.contains("爱情") || type.contains("心动")) {
+            return strong ? Color.rgb(255, 86, 128) : Color.rgb(255, 151, 174);
+        }
+        if (type.contains("悲") || type.contains("虐") || type.contains("感动")) {
+            return strong ? Color.rgb(44, 113, 210) : Color.rgb(105, 162, 233);
+        }
+        if (type.contains("反转") || type.contains("悬疑") || type.contains("悬念")) {
+            return strong ? Color.rgb(94, 71, 214) : Color.rgb(144, 121, 238);
+        }
+        if (type.contains("冲突") || type.contains("高能") || type.contains("爽")) {
+            return strong ? Color.rgb(255, 116, 58) : Color.rgb(255, 161, 83);
+        }
+        if (type.contains("搞笑") || type.contains("好笑")) {
+            return strong ? Color.rgb(247, 178, 34) : Color.rgb(255, 204, 86);
+        }
+        return strong ? Color.rgb(10, 102, 255) : Color.rgb(88, 142, 255);
+    }
+
+    private String highlightGlyph(String highlightType) {
+        String type = highlightType == null ? "" : highlightType;
+        if (type.contains("甜") || type.contains("爱情") || type.contains("心动")) {
+            return "甜";
+        }
+        if (type.contains("悲") || type.contains("虐") || type.contains("感动")) {
+            return "泪";
+        }
+        if (type.contains("反转")) {
+            return "反";
+        }
+        if (type.contains("悬疑") || type.contains("悬念")) {
+            return "?";
+        }
+        if (type.contains("冲突")) {
+            return "冲";
+        }
+        if (type.contains("搞笑") || type.contains("好笑")) {
+            return "笑";
+        }
+        if (type.contains("高能") || type.contains("爽")) {
+            return "燃";
+        }
+        return "高";
     }
 
     private GradientDrawable remixOverlayBackground() {

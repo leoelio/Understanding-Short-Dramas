@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 06:47:35
+更新时间：2026-06-10 06:57:33
 
 ## 当前目标
 
-Android 原生迁移继续强化播放页同看浮层：实时房间事件已头像化。
+Android 原生迁移继续强化播放页观看体验：高光互动弹层已升级为手机端覆盖式卡片。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`b8cbfac`
+- 最新提交：`21bf858`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,11 +51,11 @@ Android 原生迁移继续强化播放页同看浮层：实时房间事件已头
 
 ## 本次变更摘要
 
-- 原生播放页实时同看事件从纯文字气泡升级为轻量头像小卡，包含首字/头像兜底、成员昵称和事件内容；保持原有 watch-room events 轮询和互动榜逻辑不变。
+- 原生播放页高光弹层改为类型化标题区、纵向大选项按钮、按高光类型变化的色彩和点击缩放反馈，选择后显示 +1 同步反馈。
 
 ## 下一步建议
 
-- 继续补齐原生社交动态/AI资产分享卡，或进一步优化播放页高光互动动画与点击反馈。
+- 继续迁移高光贴图/点击特效，或补齐原生片尾 AI 二创的沉浸式视觉细节。
 
 ## 安全提醒
 
