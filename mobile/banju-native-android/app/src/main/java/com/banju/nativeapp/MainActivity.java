@@ -463,10 +463,12 @@ public class MainActivity extends Activity {
 
         JSONObject user = post.optJSONObject("user");
         String sourceType = post.optString("source_type", "thought");
+        String assetKind = post.optString("asset_kind", "text");
         String title = post.optString("title", "动态");
         String body = post.optString("text", "");
         int postId = post.optInt("id", -1);
         postCard.addView(text(sourceLabel(sourceType) + " · " + userName(user), 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        addSocialAssetPreview(postCard, post, assetKind);
         TextView titleView = text(title, 18, Color.rgb(18, 20, 26), Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = matchWrap();
         titleParams.topMargin = dp(6);
@@ -518,6 +520,55 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams commentParams = weightHeight(1, dp(42));
         commentParams.leftMargin = dp(8);
         actionRow.addView(commentButton, commentParams);
+    }
+
+    private void addSocialAssetPreview(LinearLayout parent, JSONObject post, String assetKind) {
+        if ("text".equals(assetKind)) {
+            return;
+        }
+        JSONObject assetPayload = post.optJSONObject("asset_payload");
+        String detail = assetPayload == null ? "" : assetPayload.optString("shot_subtitle", assetPayload.optString("source_hint", ""));
+        TextView assetView = text(assetKindLabel(assetKind) + (detail.isEmpty() ? "" : " · " + shortText(detail, 28)), 12, Color.rgb(28, 45, 76), Typeface.BOLD);
+        assetView.setPadding(dp(12), dp(10), dp(12), dp(10));
+        assetView.setBackground(inputBackground());
+        LinearLayout.LayoutParams assetParams = matchWrap();
+        assetParams.topMargin = dp(8);
+        parent.addView(assetView, assetParams);
+
+        String assetUrl = absoluteUrl(post.optString("asset_url", ""));
+        if (!assetUrl.isEmpty()) {
+            ImageView preview = new ImageView(this);
+            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            preview.setBackground(imagePlaceholderBackground());
+            LinearLayout.LayoutParams previewParams = matchHeight(dp(150));
+            previewParams.topMargin = dp(8);
+            parent.addView(preview, previewParams);
+            loadImageInto(preview, assetUrl);
+        }
+    }
+
+    private String assetKindLabel(String assetKind) {
+        if ("voice".equals(assetKind)) {
+            return "VOICE · AI 声音";
+        }
+        if ("image".equals(assetKind)) {
+            return "IMAGE · AI 图片";
+        }
+        if ("story".equals(assetKind)) {
+            return "STORY · AI 剧情卡";
+        }
+        return "TEXT · 文字";
+    }
+
+    private String shortText(String value, int maxLength) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() <= maxLength) {
+            return trimmed;
+        }
+        return trimmed.substring(0, Math.max(0, maxLength - 1)) + "…";
     }
 
     private void toggleSocialLike(int postId) {
@@ -2786,12 +2837,69 @@ public class MainActivity extends Activity {
         userVoiceParams.leftMargin = dp(8);
         voiceRow.addView(userVoiceButton, userVoiceParams);
 
+        LinearLayout publishRow = new LinearLayout(this);
+        publishRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams publishRowParams = matchWrap();
+        publishRowParams.topMargin = dp(8);
+        activeRemixPanel.addView(publishRow, publishRowParams);
+
+        Button publishStoryButton = primaryButton("发剧情卡");
+        publishStoryButton.setOnClickListener(v -> publishRemixAssetPost(result, imagePlan, shot, "story"));
+        publishRow.addView(publishStoryButton, weightHeight(1, dp(40)));
+
+        Button publishImageButton = secondaryButton("发图片");
+        publishImageButton.setOnClickListener(v -> publishRemixAssetPost(result, imagePlan, shot, "image"));
+        LinearLayout.LayoutParams imagePublishParams = weightHeight(1, dp(40));
+        imagePublishParams.leftMargin = dp(8);
+        publishRow.addView(publishImageButton, imagePublishParams);
+
         Button againButton = secondaryButton("重新选择剧情");
         againButton.setOnClickListener(v -> showRemixEntry(false));
         LinearLayout.LayoutParams againParams = matchHeight(dp(38));
         againParams.topMargin = dp(8);
         activeRemixPanel.addView(againButton, againParams);
         animatePanel(activeRemixPanel);
+    }
+
+    private void publishRemixAssetPost(JSONObject result, JSONObject imagePlan, JSONObject shot, String sourceType) {
+        if (result == null || imagePlan == null || shot == null) {
+            return;
+        }
+        boolean imagePost = "image".equals(sourceType);
+        TextView status = text(imagePost ? "正在发布 AI 图片..." : "正在发布剧情卡...", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        activeRemixPanel.addView(status, matchWrap());
+
+        new Thread(() -> {
+            try {
+                JSONObject choice = result.optJSONObject("choice");
+                String choiceLabel = choice == null ? result.optString("title", "AI 二创") : choice.optString("label", "AI 二创");
+                String subtitle = shot.optString("subtitle", shot.optString("caption", ""));
+                String imageUrl = shotImageUrl(shot);
+                JSONObject assetPayload = new JSONObject();
+                assetPayload.put("source_hint", "native_remix");
+                assetPayload.put("episode_id", activeEpisodeId);
+                assetPayload.put("remix_id", result.optInt("id", 0));
+                assetPayload.put("choice_key", imagePlan.optString("choice_key", ""));
+                assetPayload.put("variant_key", imagePlan.optString("variant_key", ""));
+                assetPayload.put("shot_index", shot.optInt("index", 1));
+                assetPayload.put("shot_subtitle", subtitle);
+                assetPayload.put("image_url", imageUrl);
+
+                JSONObject payload = new JSONObject();
+                payload.put("visibility", "public");
+                payload.put("source_type", imagePost ? "image" : "story");
+                payload.put("title", shortText((imagePost ? "AI 图片：" : "AI 剧情卡：") + choiceLabel, 80));
+                payload.put("text", shortText(subtitle.isEmpty() ? result.optString("share_copy", result.optString("story_text", "分享了一条片尾 AI 二创。")) : subtitle, 220));
+                payload.put("asset_kind", imagePost ? "image" : "story");
+                payload.put("asset_url", imageUrl);
+                payload.put("asset_payload", assetPayload);
+                payload.put("topic", "片尾AI二创");
+                httpPost(loadBaseUrl() + "/api/social/posts", payload.toString(), loadToken());
+                runOnUiThread(() -> status.setText("已发布到逛逛"));
+            } catch (Exception error) {
+                runOnUiThread(() -> status.setText("发布失败：" + error.getMessage()));
+            }
+        }).start();
     }
 
     private String shotImageUrl(JSONObject shot) {

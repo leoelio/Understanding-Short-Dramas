@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 03:54:21
+更新时间：2026-06-10 04:03:11
 
 ## 当前目标
 
-Android 原生迁移继续推进：逛逛页新增动态发布入口，支持文字感受、话题和公开/好友/仅自己可见范围。
+Android 原生迁移继续推进：片尾 AI 二创分镜支持发布 AI 剧情卡和 AI 图片到逛逛动态。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`f2eebcc`
+- 最新提交：`d3e2e46`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,12 +51,12 @@ Android 原生迁移继续推进：逛逛页新增动态发布入口，支持文
 
 ## 本次变更摘要
 
-- Android 逛逛页顶部新增发布组件，和动态列表分离，刷新动态流不会清空编辑区。
-- 发布调用 Web 主线已有 /api/social/posts 接口，成功后清空输入并切到我的动态刷新。
+- 原生二创分镜页新增发剧情卡、发图片按钮，复用 Web 主线 /api/social/posts 社交发布接口。
+- 原生逛逛动态卡新增 AI 资产提示和图片缩略图预览，能区分文字、图片、剧情卡来源。
 
 ## 下一步建议
 
-- 下一步建议迁移 AI 资产选择发布，把已生成的 AI 声音、图片和剧情卡作为动态来源发布到逛逛。
+- 下一步建议迁移声音资产发布：在声音片段生成成功后，把原声/我的声音 mp3 作为 AI 声音动态发布到逛逛。
 
 ## 安全提醒
 
