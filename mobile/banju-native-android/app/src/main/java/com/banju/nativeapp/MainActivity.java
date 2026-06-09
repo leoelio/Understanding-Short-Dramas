@@ -53,6 +53,7 @@ public class MainActivity extends Activity {
     private Button loginButton;
     private LinearLayout dramaList;
     private LinearLayout profileContent;
+    private LinearLayout chatContent;
     private int activeEpisodeId;
     private VideoView activeVideoView;
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
@@ -232,6 +233,12 @@ public class MainActivity extends Activity {
         Button refreshButton = secondaryButton("刷新列表");
         refreshButton.setOnClickListener(v -> fetchDramas());
         actions.addView(refreshButton, weightHeight(1, dp(46)));
+
+        Button chatButton = primaryButton("聊聊");
+        chatButton.setOnClickListener(v -> showChatScreen("正在加载好友动态。"));
+        LinearLayout.LayoutParams chatParams = weightHeight(1, dp(46));
+        chatParams.leftMargin = dp(10);
+        actions.addView(chatButton, chatParams);
 
         Button profileButton = primaryButton("我的");
         profileButton.setOnClickListener(v -> showProfileScreen("正在加载账号状态。"));
@@ -431,6 +438,177 @@ public class MainActivity extends Activity {
             builder.append(badge.optString("title", "徽章"));
         }
         return builder.length() == 0 ? "暂无" : builder.toString();
+    }
+
+    private void showChatScreen(String message) {
+        stopActiveVideo();
+        ScrollView scrollView = newPage();
+        LinearLayout root = pageRoot(scrollView);
+        root.setGravity(Gravity.NO_GRAVITY);
+
+        LinearLayout header = card();
+        header.setGravity(Gravity.NO_GRAVITY);
+        root.addView(header, matchWrap());
+
+        header.addView(text("Social", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        TextView title = text("聊聊", 30, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(4);
+        header.addView(title, titleParams);
+
+        TextView subtitle = text("好友、申请和会话概览", 14, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams subtitleParams = matchWrap();
+        subtitleParams.topMargin = dp(8);
+        header.addView(subtitle, subtitleParams);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionsParams = matchWrap();
+        actionsParams.topMargin = dp(16);
+        header.addView(actions, actionsParams);
+
+        Button backButton = secondaryButton("选剧");
+        backButton.setOnClickListener(v -> showHomeScreen("已返回短剧首页。"));
+        actions.addView(backButton, weightHeight(1, dp(46)));
+
+        Button refreshButton = primaryButton("刷新");
+        refreshButton.setOnClickListener(v -> fetchChatSummary());
+        LinearLayout.LayoutParams refreshParams = weightHeight(1, dp(46));
+        refreshParams.leftMargin = dp(10);
+        actions.addView(refreshButton, refreshParams);
+
+        messageText = text(message, 13, Color.rgb(104, 112, 130), Typeface.NORMAL);
+        LinearLayout.LayoutParams messageParams = matchWrap();
+        messageParams.topMargin = dp(18);
+        root.addView(messageText, messageParams);
+
+        chatContent = new LinearLayout(this);
+        chatContent.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams contentParams = matchWrap();
+        contentParams.topMargin = dp(12);
+        root.addView(chatContent, contentParams);
+
+        setContentView(scrollView);
+        fetchChatSummary();
+    }
+
+    private void fetchChatSummary() {
+        if (chatContent == null) {
+            return;
+        }
+        chatContent.removeAllViews();
+        setMessage("正在同步好友和会话...", true);
+        new Thread(() -> {
+            try {
+                JSONObject friends = new JSONObject(httpGet(loadBaseUrl() + "/api/users/me/friends", loadToken()));
+                JSONObject conversations = new JSONObject(httpGet(loadBaseUrl() + "/api/chat/conversations", loadToken()));
+                runOnUiThread(() -> renderChatSummary(friends, conversations));
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("聊聊加载失败：" + error.getMessage(), false));
+            }
+        }).start();
+    }
+
+    private void renderChatSummary(JSONObject friends, JSONObject conversations) {
+        if (chatContent == null) {
+            return;
+        }
+        chatContent.removeAllViews();
+        setMessage("聊聊已同步。", true);
+
+        JSONArray friendRows = friends.optJSONArray("friends");
+        JSONArray incoming = friends.optJSONArray("incoming_requests");
+        JSONArray outgoing = friends.optJSONArray("outgoing_requests");
+        JSONArray candidates = friends.optJSONArray("candidates");
+        JSONArray conversationRows = conversations.optJSONArray("conversations");
+        int unread = conversations.optInt("unread_count", 0);
+
+        LinearLayout summaryCard = card();
+        summaryCard.setGravity(Gravity.NO_GRAVITY);
+        summaryCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams summaryParams = matchWrap();
+        summaryParams.bottomMargin = dp(12);
+        chatContent.addView(summaryCard, summaryParams);
+
+        summaryCard.addView(text("社交状态", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        TextView countView = text(arrayLength(friendRows) + " 好友 · " + unread + " 未读", 24, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams countParams = matchWrap();
+        countParams.topMargin = dp(6);
+        summaryCard.addView(countView, countParams);
+        TextView requestView = text(arrayLength(incoming) + " 个待处理申请 · " + arrayLength(outgoing) + " 个已发出申请 · " + arrayLength(candidates) + " 个可认识的人", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams requestParams = matchWrap();
+        requestParams.topMargin = dp(8);
+        summaryCard.addView(requestView, requestParams);
+
+        LinearLayout conversationCard = card();
+        conversationCard.setGravity(Gravity.NO_GRAVITY);
+        conversationCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams conversationParams = matchWrap();
+        conversationParams.bottomMargin = dp(12);
+        chatContent.addView(conversationCard, conversationParams);
+
+        conversationCard.addView(text("最近会话", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        if (conversationRows == null || conversationRows.length() == 0) {
+            TextView empty = text("暂无会话。后续会接入聊天详情和同看邀请发送。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            LinearLayout.LayoutParams emptyParams = matchWrap();
+            emptyParams.topMargin = dp(8);
+            conversationCard.addView(empty, emptyParams);
+        } else {
+            for (int i = 0; i < conversationRows.length() && i < 5; i++) {
+                JSONObject conversation = conversationRows.optJSONObject(i);
+                if (conversation != null) {
+                    addConversationRow(conversationCard, conversation);
+                }
+            }
+        }
+
+        LinearLayout requestCard = card();
+        requestCard.setGravity(Gravity.NO_GRAVITY);
+        requestCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        chatContent.addView(requestCard, matchWrap());
+        requestCard.addView(text("好友申请", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        if (incoming == null || incoming.length() == 0) {
+            TextView empty = text("暂无新的好友申请。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            LinearLayout.LayoutParams emptyParams = matchWrap();
+            emptyParams.topMargin = dp(8);
+            requestCard.addView(empty, emptyParams);
+        } else {
+            for (int i = 0; i < incoming.length() && i < 3; i++) {
+                JSONObject request = incoming.optJSONObject(i);
+                JSONObject fromUser = request == null ? null : request.optJSONObject("from_user");
+                TextView item = text(userName(fromUser) + " 请求添加好友", 14, Color.rgb(28, 45, 76), Typeface.BOLD);
+                LinearLayout.LayoutParams itemParams = matchWrap();
+                itemParams.topMargin = dp(8);
+                requestCard.addView(item, itemParams);
+            }
+        }
+    }
+
+    private void addConversationRow(LinearLayout parent, JSONObject conversation) {
+        JSONObject user = conversation.optJSONObject("user");
+        JSONObject lastMessage = conversation.optJSONObject("last_message");
+        int unread = conversation.optInt("unread_count", 0);
+        String message = lastMessage == null ? "还没有聊天记录" : lastMessage.optString("text", "新消息");
+        TextView title = text(userName(user) + (unread > 0 ? " · " + unread + " 未读" : ""), 15, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(10);
+        parent.addView(title, titleParams);
+        TextView desc = text(message, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        desc.setSingleLine(true);
+        LinearLayout.LayoutParams descParams = matchWrap();
+        descParams.topMargin = dp(3);
+        parent.addView(desc, descParams);
+    }
+
+    private String userName(JSONObject user) {
+        if (user == null) {
+            return "好友";
+        }
+        return user.optString("display_name", user.optString("nickname", "好友"));
+    }
+
+    private int arrayLength(JSONArray rows) {
+        return rows == null ? 0 : rows.length();
     }
 
     private void fetchDramas() {
