@@ -2724,7 +2724,7 @@ public class MainActivity extends Activity {
         );
         remixParams.leftMargin = dp(14);
         remixParams.rightMargin = dp(14);
-        remixParams.bottomMargin = dp(170);
+        remixParams.bottomMargin = dp(18);
         playerFrame.addView(activeRemixPanel, remixParams);
 
         setContentView(root);
@@ -3586,31 +3586,29 @@ public class MainActivity extends Activity {
         activeRemixPanel.removeAllViews();
         JSONObject choice = result.optJSONObject("choice");
         String titleText = choice == null ? "AI 二创分镜" : choice.optString("label", "AI 二创分镜");
-        TextView badge = text("镜头 " + (safeIndex + 1) + " / " + shots.length(), 12, Color.rgb(83, 103, 160), Typeface.BOLD);
-        activeRemixPanel.addView(badge, matchWrap());
-
-        TextView title = text(titleText, 18, Color.rgb(18, 20, 26), Typeface.BOLD);
-        title.setSingleLine(true);
-        LinearLayout.LayoutParams titleParams = matchWrap();
-        titleParams.topMargin = dp(6);
-        activeRemixPanel.addView(title, titleParams);
+        String subtitle = shot.optString("subtitle", shot.optString("caption", ""));
+        addPanelHeader(
+                activeRemixPanel,
+                "镜头 " + (safeIndex + 1) + " / " + shots.length(),
+                titleText,
+                subtitle.isEmpty() ? "点击图片或下一张，继续浏览这一段剧情。" : subtitle,
+                v -> showRemixEntry(false)
+        );
 
         ImageView image = new ImageView(this);
         image.setScaleType(ImageView.ScaleType.CENTER_CROP);
         image.setBackground(imagePlaceholderBackground());
         image.setOnClickListener(v -> renderRemixShot(result, imagePlan, shots, (safeIndex + 1) % shots.length()));
-        LinearLayout.LayoutParams imageParams = matchHeight(dp(238));
-        imageParams.topMargin = dp(10);
+        LinearLayout.LayoutParams imageParams = matchHeight(remixImageHeight());
+        imageParams.topMargin = dp(12);
         activeRemixPanel.addView(image, imageParams);
         loadImageInto(image, shotImageUrl(shot));
 
-        String subtitle = shot.optString("subtitle", shot.optString("caption", ""));
-        TextView subtitleView = text(subtitle.isEmpty() ? "点击图片切换下一镜头" : subtitle, 14, Color.rgb(28, 45, 76), Typeface.BOLD);
-        subtitleView.setGravity(Gravity.CENTER);
-        subtitleView.setSingleLine(true);
-        LinearLayout.LayoutParams subtitleParams = matchWrap();
-        subtitleParams.topMargin = dp(8);
-        activeRemixPanel.addView(subtitleView, subtitleParams);
+        TextView pageHint = text(remixShotDots(safeIndex, shots.length()) + "  轻点图片切换下一镜头", 12, Color.rgb(88, 98, 118), Typeface.BOLD);
+        pageHint.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams pageHintParams = matchWrap();
+        pageHintParams.topMargin = dp(8);
+        activeRemixPanel.addView(pageHint, pageHintParams);
 
         LinearLayout navRow = new LinearLayout(this);
         navRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -3628,10 +3626,15 @@ public class MainActivity extends Activity {
         nextParams.leftMargin = dp(8);
         navRow.addView(nextButton, nextParams);
 
+        TextView voiceTitle = text("声音带入", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        LinearLayout.LayoutParams voiceTitleParams = matchWrap();
+        voiceTitleParams.topMargin = dp(10);
+        activeRemixPanel.addView(voiceTitle, voiceTitleParams);
+
         LinearLayout voiceRow = new LinearLayout(this);
         voiceRow.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams voiceParams = matchWrap();
-        voiceParams.topMargin = dp(8);
+        voiceParams.topMargin = dp(6);
         activeRemixPanel.addView(voiceRow, voiceParams);
 
         Button originalVoiceButton = secondaryButton("原声讲述");
@@ -3644,10 +3647,15 @@ public class MainActivity extends Activity {
         userVoiceParams.leftMargin = dp(8);
         voiceRow.addView(userVoiceButton, userVoiceParams);
 
+        TextView shareTitle = text("分享到逛逛", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        LinearLayout.LayoutParams shareTitleParams = matchWrap();
+        shareTitleParams.topMargin = dp(10);
+        activeRemixPanel.addView(shareTitle, shareTitleParams);
+
         LinearLayout publishRow = new LinearLayout(this);
         publishRow.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams publishRowParams = matchWrap();
-        publishRowParams.topMargin = dp(8);
+        publishRowParams.topMargin = dp(6);
         activeRemixPanel.addView(publishRow, publishRowParams);
 
         Button publishStoryButton = primaryButton("发剧情卡");
@@ -3707,6 +3715,23 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> status.setText("发布失败：" + error.getMessage()));
             }
         }).start();
+    }
+
+    private int remixImageHeight() {
+        int screenHeight = getResources().getDisplayMetrics().heightPixels;
+        return Math.max(dp(230), Math.min(dp(360), screenHeight - dp(470)));
+    }
+
+    private String remixShotDots(int activeIndex, int total) {
+        StringBuilder builder = new StringBuilder();
+        int safeTotal = Math.max(1, total);
+        for (int i = 0; i < safeTotal; i++) {
+            if (i > 0) {
+                builder.append(" ");
+            }
+            builder.append(i == activeIndex ? "●" : "○");
+        }
+        return builder.toString();
     }
 
     private String shotImageUrl(JSONObject shot) {
