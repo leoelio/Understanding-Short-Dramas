@@ -1,18 +1,17 @@
 # Project Status
 
-更新时间：2026-06-10 04:26:43
+更新时间：2026-06-10 04:35:52
 
 ## 当前目标
 
-Android 原生迁移继续推进：我的页声音资产管理新增麦克风直录，支持授权文本朗读后停止上传。
+Android 原生迁移继续推进：我的页头像管理接入当前头像展示、图片选择、中心裁切和上传。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`b8d4cf4`
+- 最新提交：`581a677`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M mobile/banju-native-android/app/src/main/AndroidManifest.xml`
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
 
 ## 数据状态
@@ -52,12 +51,12 @@ Android 原生迁移继续推进：我的页声音资产管理新增麦克风直
 
 ## 本次变更摘要
 
-- Android Manifest 新增 RECORD_AUDIO 权限，原生端增加运行时权限申请。
-- 我的页声音资产卡新增麦克风直录/停止上传按钮，MediaRecorder 录制 m4a 后复用现有 voice-profile multipart 接口上传。
+- 原生我的页新增头像管理卡，加载 /api/auth/me 的 avatar_url 并展示媒体头像。
+- Android 支持选择图片后中心裁切为 512x512 JPEG，通过 /api/users/me/avatar 上传并刷新个人资料。
 
 ## 下一步建议
 
-- 下一步建议进行真机验证：麦克风授权、录音停止上传、声音样本生成试听、片尾二创我的声音播放。
+- 下一步建议迁移头像池筛选和预设头像选择，补齐 Web 我的页头像风格筛选能力。
 
 ## 安全提醒
 

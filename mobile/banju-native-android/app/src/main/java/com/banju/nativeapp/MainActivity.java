@@ -56,6 +56,7 @@ public class MainActivity extends Activity {
     private static final String DEFAULT_BASE_URL = "http://127.0.0.1:8000";
     private static final int REQUEST_VOICE_SAMPLE = 4301;
     private static final int REQUEST_RECORD_AUDIO = 4302;
+    private static final int REQUEST_AVATAR_IMAGE = 4303;
     private static final String VOICE_CONSENT_TEXT = "同意利用录入声音生成音频";
     private static final String VOICE_PREVIEW_TEXT = "片尾拓展已开启，我会用你的声音陪你猜下一段剧情。";
 
@@ -66,6 +67,7 @@ public class MainActivity extends Activity {
     private Button loginButton;
     private LinearLayout dramaList;
     private LinearLayout profileContent;
+    private TextView avatarActionStatus;
     private TextView voiceActionStatus;
     private Button voiceRecordButton;
     private MediaRecorder voiceRecorder;
@@ -130,6 +132,9 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_VOICE_SAMPLE && resultCode == RESULT_OK && data != null && data.getData() != null) {
             uploadVoiceSample(data.getData());
+        }
+        if (requestCode == REQUEST_AVATAR_IMAGE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            uploadAvatarImage(data.getData());
         }
     }
 
@@ -843,16 +848,17 @@ public class MainActivity extends Activity {
         setMessage("正在同步账号成长和声音资产...", true);
         new Thread(() -> {
             try {
+                JSONObject me = new JSONObject(httpGet(loadBaseUrl() + "/api/auth/me", loadToken()));
                 JSONObject rewards = new JSONObject(httpGet(loadBaseUrl() + "/api/users/me/rewards", loadToken()));
                 JSONObject voice = new JSONObject(httpGet(loadBaseUrl() + "/api/users/me/voice-profile", loadToken()));
-                runOnUiThread(() -> renderProfileSummary(rewards, voice));
+                runOnUiThread(() -> renderProfileSummary(me.optJSONObject("user"), rewards, voice));
             } catch (Exception error) {
                 runOnUiThread(() -> setMessage("账号状态加载失败：" + error.getMessage(), false));
             }
         }).start();
     }
 
-    private void renderProfileSummary(JSONObject rewards, JSONObject voice) {
+    private void renderProfileSummary(JSONObject userProfile, JSONObject rewards, JSONObject voice) {
         if (profileContent == null) {
             return;
         }
@@ -865,6 +871,8 @@ public class MainActivity extends Activity {
         int total = rewards.optInt("collection_total", 0);
         double completion = rewards.optDouble("completion_percent", 0);
         JSONArray badges = rewards.optJSONArray("badges");
+
+        addAvatarProfileCard(userProfile);
 
         LinearLayout growthCard = card();
         growthCard.setGravity(Gravity.NO_GRAVITY);
@@ -959,6 +967,108 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams nextParams = matchWrap();
         nextParams.topMargin = dp(8);
         nextCard.addView(next, nextParams);
+    }
+
+    private void addAvatarProfileCard(JSONObject userProfile) {
+        LinearLayout avatarCard = card();
+        avatarCard.setGravity(Gravity.NO_GRAVITY);
+        avatarCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams avatarParams = matchWrap();
+        avatarParams.bottomMargin = dp(12);
+        profileContent.addView(avatarCard, avatarParams);
+
+        avatarCard.addView(text("头像管理", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        String displayName = userProfile == null ? loadDisplayName() : userProfile.optString("display_name", loadDisplayName());
+        TextView name = text(displayName, 22, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams nameParams = matchWrap();
+        nameParams.topMargin = dp(6);
+        avatarCard.addView(name, nameParams);
+
+        String avatarUrl = userProfile == null ? "" : userProfile.optString("avatar_url", "");
+        if (avatarUrl.startsWith("/media/")) {
+            ImageView avatarImage = new ImageView(this);
+            avatarImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            avatarImage.setBackground(imagePlaceholderBackground());
+            LinearLayout.LayoutParams imageParams = matchHeight(dp(132));
+            imageParams.topMargin = dp(12);
+            avatarCard.addView(avatarImage, imageParams);
+            loadImageInto(avatarImage, absoluteUrl(avatarUrl));
+        } else {
+            TextView avatarHint = text("当前使用系统预设头像：" + (avatarUrl.isEmpty() ? "默认" : avatarUrl), 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            LinearLayout.LayoutParams hintParams = matchWrap();
+            hintParams.topMargin = dp(10);
+            avatarCard.addView(avatarHint, hintParams);
+        }
+
+        Button chooseButton = primaryButton("选择图片并裁切上传");
+        chooseButton.setOnClickListener(v -> chooseAvatarImage());
+        LinearLayout.LayoutParams chooseParams = matchHeight(dp(44));
+        chooseParams.topMargin = dp(12);
+        avatarCard.addView(chooseButton, chooseParams);
+
+        avatarActionStatus = text("图片会自动中心裁切为正方形头像，上传后同步到好友、同看和逛逛。", 12, Color.rgb(104, 112, 130), Typeface.NORMAL);
+        LinearLayout.LayoutParams statusParams = matchWrap();
+        statusParams.topMargin = dp(10);
+        avatarCard.addView(avatarActionStatus, statusParams);
+    }
+
+    private void chooseAvatarImage() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        startActivityForResult(intent, REQUEST_AVATAR_IMAGE);
+    }
+
+    private void uploadAvatarImage(Uri uri) {
+        if (uri == null) {
+            return;
+        }
+        if (avatarActionStatus != null) {
+            avatarActionStatus.setText("正在处理头像...");
+        }
+        setMessage("正在上传头像...", true);
+        new Thread(() -> {
+            try {
+                byte[] avatarBytes = cropAvatarBytes(uri);
+                httpMultipartAvatar(loadBaseUrl() + "/api/users/me/avatar", loadToken(), avatarBytes);
+                runOnUiThread(() -> {
+                    setMessage("头像已更新。", true);
+                    fetchProfileSummary();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    setMessage("头像上传失败：" + error.getMessage(), false);
+                    if (avatarActionStatus != null) {
+                        avatarActionStatus.setText("头像上传失败：" + error.getMessage());
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private byte[] cropAvatarBytes(Uri uri) throws Exception {
+        InputStream stream = getContentResolver().openInputStream(uri);
+        if (stream == null) {
+            throw new IllegalStateException("无法读取头像图片");
+        }
+        Bitmap source = BitmapFactory.decodeStream(stream);
+        stream.close();
+        if (source == null) {
+            throw new IllegalStateException("图片格式无法识别");
+        }
+        int size = Math.min(source.getWidth(), source.getHeight());
+        int left = Math.max(0, (source.getWidth() - size) / 2);
+        int top = Math.max(0, (source.getHeight() - size) / 2);
+        Bitmap square = Bitmap.createBitmap(source, left, top, size, size);
+        Bitmap scaled = Bitmap.createScaledBitmap(square, 512, 512, true);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        scaled.compress(Bitmap.CompressFormat.JPEG, 90, output);
+        if (square != source) {
+            square.recycle();
+        }
+        scaled.recycle();
+        source.recycle();
+        return output.toByteArray();
     }
 
     private void addVoiceClipRows(LinearLayout parent, JSONArray clips) {
@@ -3584,6 +3694,28 @@ public class MainActivity extends Activity {
         writeUtf8(output, "Content-Disposition: form-data; name=\"voice_sample\"; filename=\"" + safeMultipartFileName(fileName) + "\"\r\n");
         writeUtf8(output, "Content-Type: " + contentType + "\r\n\r\n");
         output.write(fileData);
+        writeUtf8(output, "\r\n--" + boundary + "--\r\n");
+        output.close();
+        return readResponse(connection);
+    }
+
+    private String httpMultipartAvatar(String urlString, String token, byte[] avatarBytes) throws Exception {
+        String boundary = "----banju-avatar-" + UUID.randomUUID();
+        HttpURLConnection connection = (HttpURLConnection) new URL(urlString).openConnection();
+        connection.setRequestMethod("POST");
+        connection.setConnectTimeout(10000);
+        connection.setReadTimeout(20000);
+        connection.setDoOutput(true);
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+        if (!token.isEmpty()) {
+            connection.setRequestProperty("Authorization", "Bearer " + token);
+        }
+        OutputStream output = connection.getOutputStream();
+        writeUtf8(output, "--" + boundary + "\r\n");
+        writeUtf8(output, "Content-Disposition: form-data; name=\"avatar\"; filename=\"avatar_crop.jpg\"\r\n");
+        writeUtf8(output, "Content-Type: image/jpeg\r\n\r\n");
+        output.write(avatarBytes);
         writeUtf8(output, "\r\n--" + boundary + "--\r\n");
         output.close();
         return readResponse(connection);
