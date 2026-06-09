@@ -89,6 +89,9 @@ public class MainActivity extends Activity {
     private LinearLayout watchRoomEventsContent;
     private EditText watchRoomEventInput;
     private int activeEpisodeId;
+    private int lastWatchHistoryEpisodeId = -1;
+    private int lastWatchHistoryProgressSec = -1;
+    private long lastWatchHistoryPostAtMs;
     private String activeRoomCode = "";
     private String activePlayerRoomCode = "";
     private VideoView activeVideoView;
@@ -2453,6 +2456,9 @@ public class MainActivity extends Activity {
             status.setText("视频播放失败，请确认服务端和 adb reverse 已连接。");
             return true;
         });
+        videoView.setOnCompletionListener(mediaPlayer -> {
+            postWatchHistoryProgress(firstEpisodeId, Math.max(videoView.getCurrentPosition(), videoView.getDuration()), true);
+        });
         FrameLayout playerFrame = new FrameLayout(this);
         root.addView(playerFrame, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -2589,8 +2595,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        if (activeVideoView != null && activeVideoView.isPlaying()) {
-            activeVideoView.pause();
+        if (activeVideoView != null) {
+            postCurrentWatchHistoryProgress(false);
+            if (activeVideoView.isPlaying()) {
+                activeVideoView.pause();
+            }
         }
     }
 
@@ -2607,6 +2616,7 @@ public class MainActivity extends Activity {
         stopWatchRoomSync();
         stopWatchRoomEvents();
         stopRemixAudio();
+        postCurrentWatchHistoryProgress(false);
         if (voiceRecording && voiceRecordFile != null) {
             voiceRecordFile.delete();
         }
@@ -2617,6 +2627,39 @@ public class MainActivity extends Activity {
             activeVideoView.stopPlayback();
             activeVideoView = null;
         }
+    }
+
+    private void postCurrentWatchHistoryProgress(boolean force) {
+        if (activeVideoView == null || !videoPrepared || activeEpisodeId <= 0) {
+            return;
+        }
+        postWatchHistoryProgress(activeEpisodeId, activeVideoView.getCurrentPosition(), force);
+    }
+
+    private void postWatchHistoryProgress(int episodeId, int positionMs, boolean force) {
+        if (episodeId <= 0 || positionMs <= 0 || loadToken().isEmpty()) {
+            return;
+        }
+        int progressSec = Math.max(0, Math.round(positionMs / 1000f));
+        long now = System.currentTimeMillis();
+        if (!force
+                && lastWatchHistoryEpisodeId == episodeId
+                && Math.abs(progressSec - lastWatchHistoryProgressSec) < 3
+                && now - lastWatchHistoryPostAtMs < 10000) {
+            return;
+        }
+        lastWatchHistoryEpisodeId = episodeId;
+        lastWatchHistoryProgressSec = progressSec;
+        lastWatchHistoryPostAtMs = now;
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("episode_id", episodeId);
+                payload.put("progress_sec", progressSec);
+                httpPost(loadBaseUrl() + "/api/users/me/watch-history", payload.toString(), loadToken());
+            } catch (Exception ignored) {
+            }
+        }).start();
     }
 
     private void stopRemixAudio() {

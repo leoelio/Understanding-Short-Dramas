@@ -1,19 +1,18 @@
 # Project Status
 
-更新时间：2026-06-10 04:57:02
+更新时间：2026-06-10 05:07:40
 
 ## 当前目标
 
-Android 原生迁移继续推进：新增真机回归验证清单，覆盖登录、播放、高光、弹幕、同看、逛逛、AI 二创、声音和头像链路。
+Android 原生迁移继续推进：补齐原生播放页观看进度上报，支持暂停、离开播放页和播放结束时写入 /api/users/me/watch-history。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`3b96045`
+- 最新提交：`e85c7b6`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
-- `M mobile/banju-native-android/README.md`
-- `?? docs/ANDROID_NATIVE_QA_CHECKLIST.md`
+- `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
 
 ## 数据状态
 
@@ -52,12 +51,12 @@ Android 原生迁移继续推进：新增真机回归验证清单，覆盖登录
 
 ## 本次变更摘要
 
-- 检查 adb：D:\Android\sdk\platform-tools\adb.exe 可用，但当前 adb devices -l 无连接设备，本轮未执行真机安装启动验证。
-- 新增 docs/ANDROID_NATIVE_QA_CHECKLIST.md，并在 mobile/banju-native-android/README.md 中加入验证入口。
+- mobile/banju-native-android MainActivity 新增观看历史上报：播放结束强制保存，onPause 和 stopActiveVideo 保存当前进度，并对短时间相近进度做去重。
+- 已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
 
 ## 下一步建议
 
-- 下一步连接真机后按 Android 原生真机回归验证清单执行，优先验证登录、北往播放、高光、片尾二创和我的页声音/头像。
+- 下一步继续补齐原生端最近观看/续播展示，或连接真机后验证播放进度能在服务端 watch-history 中正确更新。
 
 ## 安全提醒
 
