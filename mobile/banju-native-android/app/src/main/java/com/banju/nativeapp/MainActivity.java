@@ -3613,7 +3613,7 @@ public class MainActivity extends Activity {
         JSONObject user = comment.optJSONObject("user");
         String nickname = user == null ? "观众" : user.optString("nickname", "观众");
         String text = comment.optString("text", "");
-        activeHighlightPanel.removeAllViews();
+        prepareInteractionPanel();
 
         addPanelHeader(
                 activeHighlightPanel,
@@ -3623,17 +3623,19 @@ public class MainActivity extends Activity {
                 v -> activeHighlightPanel.setVisibility(View.GONE)
         );
 
+        addPanelSectionTitle(activeHighlightPanel, "快捷回复");
+
         LinearLayout firstRow = new LinearLayout(this);
         firstRow.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams firstRowParams = matchWrap();
         firstRowParams.topMargin = dp(12);
         activeHighlightPanel.addView(firstRow, firstRowParams);
 
-        Button likeButton = primaryButton("赞一下");
+        Button likeButton = primaryButton("点赞这条");
         likeButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_like", comment, ""));
         firstRow.addView(likeButton, weightHeight(1, dp(42)));
 
-        Button agreeButton = primaryButton("回同感");
+        Button agreeButton = primaryButton("回复同感");
         agreeButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_reply", comment, "同感"));
         LinearLayout.LayoutParams agreeParams = weightHeight(1, dp(42));
         agreeParams.leftMargin = dp(8);
@@ -3645,7 +3647,7 @@ public class MainActivity extends Activity {
         secondRowParams.topMargin = dp(8);
         activeHighlightPanel.addView(secondRow, secondRowParams);
 
-        Button laughButton = secondaryButton("回哈哈");
+        Button laughButton = secondaryButton("回复哈哈");
         laughButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_reply", comment, "哈哈哈"));
         secondRow.addView(laughButton, weightHeight(1, dp(40)));
 
@@ -4509,6 +4511,20 @@ public class MainActivity extends Activity {
         return panel;
     }
 
+    private void prepareInteractionPanel() {
+        if (activeHighlightPanel == null) {
+            return;
+        }
+        if (activeRemixPanel != null) {
+            activeRemixPanel.setVisibility(View.GONE);
+        }
+        if (activePlayerControls != null) {
+            activePlayerControls.setVisibility(View.VISIBLE);
+        }
+        activeHighlightPanel.setBackground(highlightBackground());
+        activeHighlightPanel.removeAllViews();
+    }
+
     private void addPanelHeader(LinearLayout panel, String kicker, String titleText, String subtitle, View.OnClickListener closeListener) {
         LinearLayout topRow = new LinearLayout(this);
         topRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -4544,6 +4560,13 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void addPanelSectionTitle(LinearLayout panel, String value) {
+        TextView section = text(value, 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        LinearLayout.LayoutParams sectionParams = matchWrap();
+        sectionParams.topMargin = dp(12);
+        panel.addView(section, sectionParams);
+    }
+
     private void animatePanel(View panel) {
         panel.setAlpha(0f);
         panel.setTranslationY(dp(18));
@@ -4554,14 +4577,6 @@ public class MainActivity extends Activity {
         if (activeHighlightPanel == null) {
             return;
         }
-        if (activeRemixPanel != null) {
-            activeRemixPanel.setVisibility(View.GONE);
-        }
-        if (activePlayerControls != null) {
-            activePlayerControls.setVisibility(View.VISIBLE);
-        }
-        activeHighlightPanel.removeAllViews();
-
         int highlightId = highlight.optInt("id", -1);
         activeHighlightId = highlightId;
         String highlightType = highlight.optString("highlight_type", "高光");
@@ -4569,6 +4584,7 @@ public class MainActivity extends Activity {
         String titleText = highlight.optString("title", "剧情高光");
         String descriptionText = highlight.optString("description", "");
         JSONArray options = highlight.optJSONArray("options");
+        prepareInteractionPanel();
 
         addPanelHeader(
                 activeHighlightPanel,
@@ -4577,6 +4593,8 @@ public class MainActivity extends Activity {
                 descriptionText,
                 v -> hideHighlightAndScheduleNext()
         );
+
+        addPanelSectionTitle(activeHighlightPanel, "选择你的反应");
 
         LinearLayout optionsRow = new LinearLayout(this);
         optionsRow.setOrientation(LinearLayout.HORIZONTAL);
