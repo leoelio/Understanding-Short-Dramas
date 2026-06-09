@@ -2698,7 +2698,7 @@ public class MainActivity extends Activity {
         bottomControls.addView(activeDanmakuStatus, danmakuStatusParams);
         updateDanmakuModeButtons();
 
-        activeRemixEntryButton = pillButton("片尾 AI 二创");
+        activeRemixEntryButton = pillButton("片尾拓展");
         activeRemixEntryButton.setEnabled(false);
         activeRemixEntryButton.setOnClickListener(v -> showRemixEntry(false));
         LinearLayout.LayoutParams remixButtonParams = matchHeight(dp(42));
@@ -3282,17 +3282,13 @@ public class MainActivity extends Activity {
         String text = comment.optString("text", "");
         activeHighlightPanel.removeAllViews();
 
-        activeHighlightPanel.addView(text("弹幕互动", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
-        TextView title = text(nickname + " 的弹幕", 18, Color.rgb(18, 20, 26), Typeface.BOLD);
-        LinearLayout.LayoutParams titleParams = matchWrap();
-        titleParams.topMargin = dp(6);
-        activeHighlightPanel.addView(title, titleParams);
-
-        TextView body = text(text, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
-        body.setMaxLines(2);
-        LinearLayout.LayoutParams bodyParams = matchWrap();
-        bodyParams.topMargin = dp(8);
-        activeHighlightPanel.addView(body, bodyParams);
+        addPanelHeader(
+                activeHighlightPanel,
+                "弹幕互动",
+                nickname + " 的弹幕",
+                text,
+                v -> activeHighlightPanel.setVisibility(View.GONE)
+        );
 
         LinearLayout firstRow = new LinearLayout(this);
         firstRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -3300,11 +3296,11 @@ public class MainActivity extends Activity {
         firstRowParams.topMargin = dp(12);
         activeHighlightPanel.addView(firstRow, firstRowParams);
 
-        Button likeButton = primaryButton("点赞");
+        Button likeButton = primaryButton("赞一下");
         likeButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_like", comment, ""));
         firstRow.addView(likeButton, weightHeight(1, dp(42)));
 
-        Button agreeButton = primaryButton("同感");
+        Button agreeButton = primaryButton("回同感");
         agreeButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_reply", comment, "同感"));
         LinearLayout.LayoutParams agreeParams = weightHeight(1, dp(42));
         agreeParams.leftMargin = dp(8);
@@ -3316,7 +3312,7 @@ public class MainActivity extends Activity {
         secondRowParams.topMargin = dp(8);
         activeHighlightPanel.addView(secondRow, secondRowParams);
 
-        Button laughButton = secondaryButton("哈哈哈");
+        Button laughButton = secondaryButton("回哈哈");
         laughButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_reply", comment, "哈哈哈"));
         secondRow.addView(laughButton, weightHeight(1, dp(40)));
 
@@ -3369,7 +3365,7 @@ public class MainActivity extends Activity {
                     remixOptionsPayload = payload;
                     if (activeRemixEntryButton != null) {
                         activeRemixEntryButton.setEnabled(options != null && options.length() > 0);
-                        activeRemixEntryButton.setText(options != null && options.length() > 0 ? "片尾 AI 二创" : "暂无片尾二创");
+                        activeRemixEntryButton.setText(options != null && options.length() > 0 ? "片尾拓展" : "暂无片尾拓展");
                     }
                     scheduleRemixEntry();
                 });
@@ -3418,13 +3414,13 @@ public class MainActivity extends Activity {
         activeRemixPanel.removeAllViews();
         activeRemixPanel.setVisibility(View.VISIBLE);
 
-        TextView badge = text(autoTriggered ? "片尾拓展" : "AI 二创", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
-        activeRemixPanel.addView(badge, matchWrap());
-
-        TextView title = text("选一个你想看的后续", 20, Color.rgb(18, 20, 26), Typeface.BOLD);
-        LinearLayout.LayoutParams titleParams = matchWrap();
-        titleParams.topMargin = dp(6);
-        activeRemixPanel.addView(title, titleParams);
+        addPanelHeader(
+                activeRemixPanel,
+                autoTriggered ? "片尾拓展" : "AI 二创",
+                "要不要看看另一种后续？",
+                "选择一个方向，进入 3 张分镜式剧情拓展。",
+                v -> activeRemixPanel.setVisibility(View.GONE)
+        );
 
         JSONArray options = remixOptionsPayload == null ? null : remixOptionsPayload.optJSONArray("options");
         if (options == null || options.length() == 0) {
@@ -3457,15 +3453,13 @@ public class MainActivity extends Activity {
         activeRemixPanel.removeAllViews();
         String choiceLabel = option.optString("label", "二创方向");
         String choiceDescription = option.optString("description", "");
-        TextView title = text(choiceLabel, 20, Color.rgb(18, 20, 26), Typeface.BOLD);
-        activeRemixPanel.addView(title, matchWrap());
-
-        TextView desc = text(choiceDescription, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
-        desc.setLineSpacing(dp(2), 1.0f);
-        desc.setMaxLines(2);
-        LinearLayout.LayoutParams descParams = matchWrap();
-        descParams.topMargin = dp(8);
-        activeRemixPanel.addView(desc, descParams);
+        addPanelHeader(
+                activeRemixPanel,
+                "选择版本",
+                choiceLabel,
+                choiceDescription,
+                v -> showRemixEntry(false)
+        );
 
         String choiceKey = option.optString("key", "");
         JSONArray variants = option.optJSONArray("variants");
@@ -3887,6 +3881,41 @@ public class MainActivity extends Activity {
         return panel;
     }
 
+    private void addPanelHeader(LinearLayout panel, String kicker, String titleText, String subtitle, View.OnClickListener closeListener) {
+        LinearLayout topRow = new LinearLayout(this);
+        topRow.setOrientation(LinearLayout.HORIZONTAL);
+        topRow.setGravity(Gravity.CENTER_VERTICAL);
+        panel.addView(topRow, matchWrap());
+
+        TextView badge = text(kicker, 12, Color.rgb(28, 45, 76), Typeface.BOLD);
+        badge.setSingleLine(true);
+        badge.setGravity(Gravity.CENTER_VERTICAL);
+        badge.setPadding(dp(12), 0, dp(12), 0);
+        badge.setBackground(panelBadgeBackground());
+        topRow.addView(badge, new LinearLayout.LayoutParams(0, dp(30), 1));
+
+        Button closeButton = secondaryButton("收起");
+        closeButton.setTextSize(12);
+        closeButton.setOnClickListener(closeListener);
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(dp(72), dp(32));
+        closeParams.leftMargin = dp(10);
+        topRow.addView(closeButton, closeParams);
+
+        TextView title = text(titleText, 21, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(10);
+        panel.addView(title, titleParams);
+
+        if (subtitle != null && !subtitle.trim().isEmpty()) {
+            TextView desc = text(subtitle, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            desc.setLineSpacing(dp(2), 1.0f);
+            desc.setMaxLines(3);
+            LinearLayout.LayoutParams descParams = matchWrap();
+            descParams.topMargin = dp(7);
+            panel.addView(desc, descParams);
+        }
+    }
+
     private void animatePanel(View panel) {
         panel.setAlpha(0f);
         panel.setTranslationY(dp(18));
@@ -3910,20 +3939,13 @@ public class MainActivity extends Activity {
         String descriptionText = highlight.optString("description", "");
         JSONArray options = highlight.optJSONArray("options");
 
-        TextView badge = text(highlightType + " · " + emotion, 12, Color.rgb(83, 103, 160), Typeface.BOLD);
-        activeHighlightPanel.addView(badge, matchWrap());
-
-        TextView title = text(titleText, 20, Color.rgb(18, 20, 26), Typeface.BOLD);
-        LinearLayout.LayoutParams titleParams = matchWrap();
-        titleParams.topMargin = dp(6);
-        activeHighlightPanel.addView(title, titleParams);
-
-        TextView description = text(descriptionText, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
-        description.setLineSpacing(dp(2), 1.0f);
-        description.setMaxLines(3);
-        LinearLayout.LayoutParams descParams = matchWrap();
-        descParams.topMargin = dp(8);
-        activeHighlightPanel.addView(description, descParams);
+        addPanelHeader(
+                activeHighlightPanel,
+                highlightType + " · " + emotion,
+                titleText,
+                descriptionText,
+                v -> hideHighlightAndScheduleNext()
+        );
 
         LinearLayout optionsRow = new LinearLayout(this);
         optionsRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -3946,7 +3968,7 @@ public class MainActivity extends Activity {
             optionsRow.addView(optionButton, optionParams);
         }
 
-        Button dismissButton = secondaryButton("暂不互动");
+        Button dismissButton = secondaryButton("先看剧情");
         dismissButton.setOnClickListener(v -> hideHighlightAndScheduleNext());
         LinearLayout.LayoutParams dismissParams = matchHeight(dp(40));
         dismissParams.topMargin = dp(10);
@@ -4510,6 +4532,19 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(22));
         drawable.setStroke(dp(1), Color.argb(70, 20, 26, 38));
+        return drawable;
+    }
+
+    private GradientDrawable panelBadgeBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(230, 238, 246, 255),
+                        Color.argb(220, 255, 244, 232)
+                }
+        );
+        drawable.setCornerRadius(dp(15));
+        drawable.setStroke(dp(1), Color.argb(58, 20, 26, 38));
         return drawable;
     }
 
