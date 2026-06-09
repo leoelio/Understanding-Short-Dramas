@@ -527,7 +527,7 @@ public class MainActivity extends Activity {
             return;
         }
         JSONObject assetPayload = post.optJSONObject("asset_payload");
-        String detail = assetPayload == null ? "" : assetPayload.optString("shot_subtitle", assetPayload.optString("source_hint", ""));
+        String detail = assetPayload == null ? "" : assetPayload.optString("shot_subtitle", assetPayload.optString("audio_text", assetPayload.optString("source_hint", "")));
         TextView assetView = text(assetKindLabel(assetKind) + (detail.isEmpty() ? "" : " · " + shortText(detail, 28)), 12, Color.rgb(28, 45, 76), Typeface.BOLD);
         assetView.setPadding(dp(12), dp(10), dp(12), dp(10));
         assetView.setBackground(inputBackground());
@@ -535,7 +535,12 @@ public class MainActivity extends Activity {
         assetParams.topMargin = dp(8);
         parent.addView(assetView, assetParams);
 
-        String assetUrl = absoluteUrl(post.optString("asset_url", ""));
+        String assetUrl = "";
+        if ("image".equals(assetKind) || "story".equals(assetKind)) {
+            assetUrl = absoluteUrl(post.optString("asset_url", ""));
+        } else if ("voice".equals(assetKind) && assetPayload != null) {
+            assetUrl = absoluteUrl(assetPayload.optString("cover_image", ""));
+        }
         if (!assetUrl.isEmpty()) {
             ImageView preview = new ImageView(this);
             preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -2968,9 +2973,59 @@ public class MainActivity extends Activity {
                 String body = httpPost(loadBaseUrl() + "/api/episodes/" + activeEpisodeId + "/remix-voice-clips", payload.toString(), loadToken());
                 JSONObject result = new JSONObject(body);
                 String audioUrl = absoluteUrl(result.optString("audio_url", ""));
-                runOnUiThread(() -> playRemixAudio(audioUrl, status));
+                String audioText = result.optString("text", shot.optString("audio_text", shot.optString("subtitle", "")));
+                runOnUiThread(() -> {
+                    playRemixAudio(audioUrl, status);
+                    addRemixVoicePublishButton(imagePlan, shot, voiceMode, audioUrl, audioText, status);
+                });
             } catch (Exception error) {
                 runOnUiThread(() -> status.setText("声音暂不可用：" + error.getMessage()));
+            }
+        }).start();
+    }
+
+    private void addRemixVoicePublishButton(JSONObject imagePlan, JSONObject shot, String voiceMode, String audioUrl, String audioText, TextView status) {
+        if (activeRemixPanel == null || audioUrl.isEmpty()) {
+            return;
+        }
+        Button publishButton = secondaryButton("发" + ("user".equals(voiceMode) ? "我的声音" : "原声音频"));
+        publishButton.setOnClickListener(v -> publishRemixVoicePost(imagePlan, shot, voiceMode, audioUrl, audioText, status));
+        LinearLayout.LayoutParams publishParams = matchHeight(dp(38));
+        publishParams.topMargin = dp(8);
+        activeRemixPanel.addView(publishButton, publishParams);
+    }
+
+    private void publishRemixVoicePost(JSONObject imagePlan, JSONObject shot, String voiceMode, String audioUrl, String audioText, TextView status) {
+        if (imagePlan == null || shot == null || audioUrl.isEmpty()) {
+            return;
+        }
+        status.setText("正在发布声音动态...");
+        new Thread(() -> {
+            try {
+                String label = "user".equals(voiceMode) ? "我的声音" : "原声讲述";
+                JSONObject assetPayload = new JSONObject();
+                assetPayload.put("source_hint", "native_remix_voice");
+                assetPayload.put("episode_id", activeEpisodeId);
+                assetPayload.put("choice_key", imagePlan.optString("choice_key", ""));
+                assetPayload.put("variant_key", imagePlan.optString("variant_key", ""));
+                assetPayload.put("shot_index", shot.optInt("index", 1));
+                assetPayload.put("voice_mode", voiceMode);
+                assetPayload.put("audio_text", audioText);
+                assetPayload.put("cover_image", shotImageUrl(shot));
+
+                JSONObject payload = new JSONObject();
+                payload.put("visibility", "public");
+                payload.put("source_type", "voice");
+                payload.put("title", shortText("AI 声音：" + label, 80));
+                payload.put("text", shortText(audioText.isEmpty() ? "分享了一段片尾 AI 二创声音。" : audioText, 220));
+                payload.put("asset_kind", "voice");
+                payload.put("asset_url", audioUrl);
+                payload.put("asset_payload", assetPayload);
+                payload.put("topic", "片尾AI二创");
+                httpPost(loadBaseUrl() + "/api/social/posts", payload.toString(), loadToken());
+                runOnUiThread(() -> status.setText("声音已发布到逛逛"));
+            } catch (Exception error) {
+                runOnUiThread(() -> status.setText("声音发布失败：" + error.getMessage()));
             }
         }).start();
     }
