@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
     private LinearLayout chatMessagesContent;
     private EditText chatMessageInput;
     private LinearLayout socialFeedContent;
+    private String activeSocialScope = "all";
     private LinearLayout watchRoomContent;
     private LinearLayout watchRoomEventsContent;
     private EditText watchRoomEventInput;
@@ -372,6 +373,7 @@ public class MainActivity extends Activity {
             return;
         }
         String safeScope = (scope == null || scope.trim().isEmpty()) ? "all" : scope.trim();
+        activeSocialScope = safeScope;
         socialFeedContent.removeAllViews();
         setMessage("正在加载逛逛动态...", true);
         new Thread(() -> {
@@ -457,6 +459,7 @@ public class MainActivity extends Activity {
         String sourceType = post.optString("source_type", "thought");
         String title = post.optString("title", "动态");
         String body = post.optString("text", "");
+        int postId = post.optInt("id", -1);
         postCard.addView(text(sourceLabel(sourceType) + " · " + userName(user), 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
         TextView titleView = text(title, 18, Color.rgb(18, 20, 26), Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = matchWrap();
@@ -488,6 +491,69 @@ public class MainActivity extends Activity {
                 }
             }
         }
+
+        LinearLayout actionRow = new LinearLayout(this);
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionParams = matchWrap();
+        actionParams.topMargin = dp(12);
+        postCard.addView(actionRow, actionParams);
+
+        Button likeButton = post.optBoolean("liked_by_me", false) ? primaryButton("已赞") : secondaryButton("点赞");
+        likeButton.setOnClickListener(v -> toggleSocialLike(postId));
+        actionRow.addView(likeButton, weightHeight(1, dp(42)));
+
+        EditText commentInput = input("", "评论一句");
+        LinearLayout.LayoutParams inputParams = weightHeight(2, dp(42));
+        inputParams.leftMargin = dp(8);
+        actionRow.addView(commentInput, inputParams);
+
+        Button commentButton = primaryButton("发送");
+        commentButton.setOnClickListener(v -> submitSocialComment(postId, commentInput));
+        LinearLayout.LayoutParams commentParams = weightHeight(1, dp(42));
+        commentParams.leftMargin = dp(8);
+        actionRow.addView(commentButton, commentParams);
+    }
+
+    private void toggleSocialLike(int postId) {
+        if (postId <= 0) {
+            setMessage("动态 ID 缺失，无法点赞。", false);
+            return;
+        }
+        setMessage("正在处理点赞...", true);
+        new Thread(() -> {
+            try {
+                httpPost(loadBaseUrl() + "/api/social/posts/" + postId + "/like", "{}", loadToken());
+                runOnUiThread(() -> fetchSocialFeed(activeSocialScope));
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("点赞失败：" + error.getMessage(), false));
+            }
+        }).start();
+    }
+
+    private void submitSocialComment(int postId, EditText commentInput) {
+        if (postId <= 0) {
+            setMessage("动态 ID 缺失，无法评论。", false);
+            return;
+        }
+        String commentText = commentInput.getText().toString().trim();
+        if (commentText.isEmpty()) {
+            setMessage("评论不能为空。", false);
+            return;
+        }
+        setMessage("正在发送评论...", true);
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("text", commentText);
+                httpPost(loadBaseUrl() + "/api/social/posts/" + postId + "/comments", payload.toString(), loadToken());
+                runOnUiThread(() -> {
+                    commentInput.setText("");
+                    fetchSocialFeed(activeSocialScope);
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("评论失败：" + error.getMessage(), false));
+            }
+        }).start();
     }
 
     private String sourceLabel(String sourceType) {

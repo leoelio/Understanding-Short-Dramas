@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 03:39:36
+更新时间：2026-06-10 03:45:56
 
 ## 当前目标
 
-Android 原生迁移继续推进：新增原生逛逛入口和只读动态流，消费 Web 社交 feed 接口展示专题、动态、点赞数和评论摘要。
+Android 原生迁移继续推进：逛逛动态卡已支持点赞和快捷评论，消费 Web 主线已有社交互动接口。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`63a3977`
+- 最新提交：`f8a6a21`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,18 +51,12 @@ Android 原生迁移继续推进：新增原生逛逛入口和只读动态流，
 
 ## 本次变更摘要
 
-- 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
-- 首页新增 逛逛 按钮，并把退出登录移到第二行，减少首页按钮拥挤。
-- 新增原生逛逛页面，提供全部、好友、我的三个 scope 筛选入口。
-- 逛逛页面调用 /api/social/feed?scope=...，展示 topics 和 posts。
-- 动态卡展示来源类型、发布用户、标题、正文、可见性、点赞数、评论数和最多两条评论摘要。
-- 本轮暂不实现发布、点赞、评论和删除评论，只完成真实数据只读展示。
-- Android debug APK 编译成功；本轮未做真机验证。
+- Android 逛逛页记录当前筛选范围，点赞/评论后自动刷新当前动态流。
+- 动态卡底部新增点赞按钮、短评论输入和发送按钮，仍不新增后端协议。
 
 ## 下一步建议
 
-- 手机可用后验证：首页进入逛逛、三个 scope 切换、动态卡显示是否适合小屏。
-- 下一步建议迁移逛逛点赞和评论，再迁移动态发布入口。
+- 下一步建议迁移原生动态发布入口，支持文字感受和已生成 AI 资产的选择发布。
 
 ## 安全提醒
 
