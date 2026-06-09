@@ -52,6 +52,7 @@ public class MainActivity extends Activity {
     private TextView messageText;
     private Button loginButton;
     private LinearLayout dramaList;
+    private LinearLayout profileContent;
     private int activeEpisodeId;
     private VideoView activeVideoView;
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
@@ -232,6 +233,12 @@ public class MainActivity extends Activity {
         refreshButton.setOnClickListener(v -> fetchDramas());
         actions.addView(refreshButton, weightHeight(1, dp(46)));
 
+        Button profileButton = primaryButton("我的");
+        profileButton.setOnClickListener(v -> showProfileScreen("正在加载账号状态。"));
+        LinearLayout.LayoutParams profileParams = weightHeight(1, dp(46));
+        profileParams.leftMargin = dp(10);
+        actions.addView(profileButton, profileParams);
+
         Button logoutButton = secondaryButton("退出登录");
         logoutButton.setOnClickListener(v -> {
             clearSession();
@@ -254,6 +261,176 @@ public class MainActivity extends Activity {
 
         setContentView(scrollView);
         fetchDramas();
+    }
+
+    private void showProfileScreen(String message) {
+        stopActiveVideo();
+        ScrollView scrollView = newPage();
+        LinearLayout root = pageRoot(scrollView);
+        root.setGravity(Gravity.NO_GRAVITY);
+
+        LinearLayout header = card();
+        header.setGravity(Gravity.NO_GRAVITY);
+        root.addView(header, matchWrap());
+
+        TextView eyebrow = text("Account", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        header.addView(eyebrow, matchWrap());
+
+        TextView title = text("我的", 30, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(4);
+        header.addView(title, titleParams);
+
+        TextView user = text(loadDisplayName(), 16, Color.rgb(88, 98, 118), Typeface.BOLD);
+        LinearLayout.LayoutParams userParams = matchWrap();
+        userParams.topMargin = dp(8);
+        header.addView(user, userParams);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionsParams = matchWrap();
+        actionsParams.topMargin = dp(16);
+        header.addView(actions, actionsParams);
+
+        Button backButton = secondaryButton("选剧");
+        backButton.setOnClickListener(v -> showHomeScreen("已返回短剧首页。"));
+        actions.addView(backButton, weightHeight(1, dp(46)));
+
+        Button refreshButton = primaryButton("刷新");
+        refreshButton.setOnClickListener(v -> fetchProfileSummary());
+        LinearLayout.LayoutParams refreshParams = weightHeight(1, dp(46));
+        refreshParams.leftMargin = dp(10);
+        actions.addView(refreshButton, refreshParams);
+
+        Button logoutButton = secondaryButton("退出");
+        logoutButton.setOnClickListener(v -> {
+            clearSession();
+            showLoginScreen("已退出，可重新登录。");
+        });
+        LinearLayout.LayoutParams logoutParams = weightHeight(1, dp(46));
+        logoutParams.leftMargin = dp(10);
+        actions.addView(logoutButton, logoutParams);
+
+        messageText = text(message, 13, Color.rgb(104, 112, 130), Typeface.NORMAL);
+        LinearLayout.LayoutParams messageParams = matchWrap();
+        messageParams.topMargin = dp(18);
+        root.addView(messageText, messageParams);
+
+        profileContent = new LinearLayout(this);
+        profileContent.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams contentParams = matchWrap();
+        contentParams.topMargin = dp(12);
+        root.addView(profileContent, contentParams);
+
+        setContentView(scrollView);
+        fetchProfileSummary();
+    }
+
+    private void fetchProfileSummary() {
+        if (profileContent == null) {
+            return;
+        }
+        profileContent.removeAllViews();
+        setMessage("正在同步账号成长和声音资产...", true);
+        new Thread(() -> {
+            try {
+                JSONObject rewards = new JSONObject(httpGet(loadBaseUrl() + "/api/users/me/rewards", loadToken()));
+                JSONObject voice = new JSONObject(httpGet(loadBaseUrl() + "/api/users/me/voice-profile", loadToken()));
+                runOnUiThread(() -> renderProfileSummary(rewards, voice));
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("账号状态加载失败：" + error.getMessage(), false));
+            }
+        }).start();
+    }
+
+    private void renderProfileSummary(JSONObject rewards, JSONObject voice) {
+        if (profileContent == null) {
+            return;
+        }
+        profileContent.removeAllViews();
+        setMessage("账号状态已同步。", true);
+
+        int points = rewards.optInt("points", 0);
+        String title = rewards.optString("title", "剧情新人");
+        int unlocked = rewards.optInt("collection_unlocked", 0);
+        int total = rewards.optInt("collection_total", 0);
+        double completion = rewards.optDouble("completion_percent", 0);
+        JSONArray badges = rewards.optJSONArray("badges");
+
+        LinearLayout growthCard = card();
+        growthCard.setGravity(Gravity.NO_GRAVITY);
+        growthCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams growthParams = matchWrap();
+        growthParams.bottomMargin = dp(12);
+        profileContent.addView(growthCard, growthParams);
+
+        growthCard.addView(text("成长展馆", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        TextView titleView = text(title, 24, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleViewParams = matchWrap();
+        titleViewParams.topMargin = dp(6);
+        growthCard.addView(titleView, titleViewParams);
+        TextView pointsView = text(points + " 积分 · " + unlocked + "/" + total + " 徽章 · " + completion + "%", 14, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams pointsParams = matchWrap();
+        pointsParams.topMargin = dp(8);
+        growthCard.addView(pointsView, pointsParams);
+
+        if (badges != null && badges.length() > 0) {
+            TextView latest = text("最近徽章：" + badgeLabels(badges), 13, Color.rgb(28, 45, 76), Typeface.BOLD);
+            LinearLayout.LayoutParams latestParams = matchWrap();
+            latestParams.topMargin = dp(10);
+            growthCard.addView(latest, latestParams);
+        }
+
+        JSONObject profile = voice.optJSONObject("profile");
+        JSONArray clips = voice.optJSONArray("clips");
+        boolean generationReady = voice.optBoolean("generation_ready", false);
+        LinearLayout voiceCard = card();
+        voiceCard.setGravity(Gravity.NO_GRAVITY);
+        voiceCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams voiceParams = matchWrap();
+        voiceParams.bottomMargin = dp(12);
+        profileContent.addView(voiceCard, voiceParams);
+
+        voiceCard.addView(text("声音资产", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        String voiceTitle = profile == null ? "未录入声音样本" : "声音样本已启用";
+        TextView voiceTitleView = text(voiceTitle, 22, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams voiceTitleParams = matchWrap();
+        voiceTitleParams.topMargin = dp(6);
+        voiceCard.addView(voiceTitleView, voiceTitleParams);
+        String filename = profile == null ? "后续可在 Web 我的页录入授权语音。" : profile.optString("prompt_audio_filename", "已保存声音样本");
+        int clipCount = clips == null ? 0 : clips.length();
+        TextView voiceDesc = text(filename + " · 已缓存 " + clipCount + " 条声音 · 服务" + (generationReady ? "可用" : "未启用"), 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        voiceDesc.setLineSpacing(dp(2), 1.0f);
+        LinearLayout.LayoutParams voiceDescParams = matchWrap();
+        voiceDescParams.topMargin = dp(8);
+        voiceCard.addView(voiceDesc, voiceDescParams);
+
+        LinearLayout nextCard = card();
+        nextCard.setGravity(Gravity.NO_GRAVITY);
+        nextCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        profileContent.addView(nextCard, matchWrap());
+        nextCard.addView(text("迁移状态", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        TextView next = text("Android 当前只消费 Web 稳定接口。头像上传、声音录入、好友聊天仍以 Web 主线为准，原生端后续逐步接入。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        next.setLineSpacing(dp(2), 1.0f);
+        LinearLayout.LayoutParams nextParams = matchWrap();
+        nextParams.topMargin = dp(8);
+        nextCard.addView(next, nextParams);
+    }
+
+    private String badgeLabels(JSONArray badges) {
+        StringBuilder builder = new StringBuilder();
+        int count = Math.min(3, badges.length());
+        for (int i = 0; i < count; i++) {
+            JSONObject badge = badges.optJSONObject(i);
+            if (badge == null) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append("、");
+            }
+            builder.append(badge.optString("title", "徽章"));
+        }
+        return builder.length() == 0 ? "暂无" : builder.toString();
     }
 
     private void fetchDramas() {
