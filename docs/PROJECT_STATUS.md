@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 06:00:32
+更新时间：2026-06-10 06:06:12
 
 ## 当前目标
 
-Android 原生迁移继续推进聊聊与同看闭环：同看邀请消息已从普通文本升级为可点击邀请卡。
+Android 原生迁移继续推进聊聊能力：聊天详情已接入表情快捷发送和 emoji 消息样式。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`20081a5`
+- 最新提交：`2375a5e`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,11 +51,11 @@ Android 原生迁移继续推进聊聊与同看闭环：同看邀请消息已从
 
 ## 本次变更摘要
 
-- 原生聊天会话识别 watch_link 消息，展示同看邀请卡，支持进房间和直接进入同看播放页，普通文本消息保持原逻辑。
+- 原生聊天详情页新增常用表情快捷栏，发送 message_type=emoji；聊天消息渲染识别 emoji 类型并使用专用表情气泡，继续兼容 text 与 watch_link。
 
 ## 下一步建议
 
-- 继续迁移聊天内表情/资产分享，或进入原生片尾 AI 二创与播放页覆盖层的手机端体验打磨。
+- 继续迁移聊天内 AI 资产分享入口，或进入原生播放页片尾 AI 二创覆盖层体验打磨。
 
 ## 安全提醒
 

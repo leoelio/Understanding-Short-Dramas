@@ -2186,6 +2186,8 @@ public class MainActivity extends Activity {
         contentParams.topMargin = dp(12);
         root.addView(chatMessagesContent, contentParams);
 
+        addChatEmojiRow(root, friend);
+
         LinearLayout composer = new LinearLayout(this);
         composer.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams composerParams = matchWrap();
@@ -2255,6 +2257,10 @@ public class MainActivity extends Activity {
         if (isWatchLinkMessage(message) && addWatchLinkMessageCard(message)) {
             return;
         }
+        if (isEmojiMessage(message)) {
+            addEmojiMessageBubble(message);
+            return;
+        }
         boolean outgoing = "outgoing".equals(message.optString("direction", ""));
         LinearLayout row = new LinearLayout(this);
         row.setGravity(outgoing ? Gravity.RIGHT : Gravity.LEFT);
@@ -2265,6 +2271,46 @@ public class MainActivity extends Activity {
         TextView bubble = text(message.optString("text", ""), 14, outgoing ? Color.WHITE : Color.rgb(18, 20, 26), Typeface.NORMAL);
         bubble.setPadding(dp(14), dp(10), dp(14), dp(10));
         bubble.setBackground(chatBubbleBackground(outgoing));
+        row.addView(bubble, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+    }
+
+    private void addChatEmojiRow(LinearLayout root, JSONObject friend) {
+        LinearLayout emojiRow = new LinearLayout(this);
+        emojiRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams emojiParams = matchWrap();
+        emojiParams.topMargin = dp(14);
+        root.addView(emojiRow, emojiParams);
+
+        String[] emojis = {"哈哈哈", "磕到了", "救命", "太上头"};
+        for (int i = 0; i < emojis.length; i++) {
+            final String emoji = emojis[i];
+            Button button = secondaryButton(emoji);
+            button.setTextSize(13);
+            button.setOnClickListener(v -> sendChatEmoji(friend, emoji));
+            LinearLayout.LayoutParams buttonParams = weightHeight(1, dp(40));
+            if (i > 0) {
+                buttonParams.leftMargin = dp(8);
+            }
+            emojiRow.addView(button, buttonParams);
+        }
+    }
+
+    private boolean isEmojiMessage(JSONObject message) {
+        String type = message.optString("message_type", message.optString("type", ""));
+        return "emoji".equals(type);
+    }
+
+    private void addEmojiMessageBubble(JSONObject message) {
+        boolean outgoing = "outgoing".equals(message.optString("direction", ""));
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(outgoing ? Gravity.RIGHT : Gravity.LEFT);
+        LinearLayout.LayoutParams rowParams = matchWrap();
+        rowParams.topMargin = dp(8);
+        chatMessagesContent.addView(row, rowParams);
+
+        TextView bubble = text(message.optString("text", "👍"), 20, outgoing ? Color.WHITE : Color.rgb(28, 45, 76), Typeface.BOLD);
+        bubble.setPadding(dp(18), dp(12), dp(18), dp(12));
+        bubble.setBackground(emojiBubbleBackground(outgoing));
         row.addView(bubble, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
     }
 
@@ -2369,6 +2415,31 @@ public class MainActivity extends Activity {
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> setMessage("消息发送失败：" + error.getMessage(), false));
+            }
+        }).start();
+    }
+
+    private void sendChatEmoji(JSONObject friend, String emoji) {
+        if (friend == null) {
+            return;
+        }
+        int friendId = friend.optInt("id", 0);
+        if (friendId <= 0) {
+            setMessage("好友信息缺少 ID，无法发送表情。", false);
+            return;
+        }
+        setMessage("正在发送表情...", true);
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("to_user_id", friendId);
+                payload.put("message_type", "emoji");
+                payload.put("text", emoji);
+                payload.put("payload", new JSONObject());
+                httpPost(loadBaseUrl() + "/api/chat/messages", payload.toString(), loadToken());
+                runOnUiThread(() -> fetchChatMessages(friend));
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("表情发送失败：" + error.getMessage(), false));
             }
         }).start();
     }
@@ -4850,6 +4921,18 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(18));
         drawable.setStroke(dp(1), outgoing ? Color.argb(60, 255, 255, 255) : Color.argb(46, 20, 26, 38));
+        return drawable;
+    }
+
+    private GradientDrawable emojiBubbleBackground(boolean outgoing) {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                outgoing
+                        ? new int[]{Color.rgb(255, 122, 74), Color.rgb(255, 72, 118)}
+                        : new int[]{Color.rgb(255, 247, 220), Color.rgb(236, 246, 255)}
+        );
+        drawable.setCornerRadius(dp(22));
+        drawable.setStroke(dp(1), outgoing ? Color.argb(70, 255, 255, 255) : Color.argb(56, 20, 26, 38));
         return drawable;
     }
 
