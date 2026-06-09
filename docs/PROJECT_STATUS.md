@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 06:42:35
+更新时间：2026-06-10 06:47:35
 
 ## 当前目标
 
-Android 原生迁移继续强化同看社交：房间动态列表已升级为成员身份卡。
+Android 原生迁移继续强化播放页同看浮层：实时房间事件已头像化。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`fab0a64`
+- 最新提交：`b8cbfac`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,11 +51,11 @@ Android 原生迁移继续强化同看社交：房间动态列表已升级为成
 
 ## 本次变更摘要
 
-- 原生同看房间动态从纯文本改为带头像/首字兜底、昵称、事件类型、称号兜底和内容摘要的成员动态卡；复用当前 watch-room events 接口，不改 Web 主线和后端。
+- 原生播放页实时同看事件从纯文字气泡升级为轻量头像小卡，包含首字/头像兜底、成员昵称和事件内容；保持原有 watch-room events 轮询和互动榜逻辑不变。
 
 ## 下一步建议
 
-- 继续迁移播放页同看浮层的头像化展示，或继续补齐原生社交动态/AI资产分享卡。
+- 继续补齐原生社交动态/AI资产分享卡，或进一步优化播放页高光互动动画与点击反馈。
 
 ## 安全提醒
 

@@ -3381,12 +3381,31 @@ public class MainActivity extends Activity {
         while (activeDanmakuOverlay.getChildCount() >= ("carnival".equals(activeDanmakuMode) ? 4 : 2)) {
             activeDanmakuOverlay.removeViewAt(0);
         }
-        TextView bubble = text("同看 · " + userName(user) + "：" + content, 12, Color.WHITE, Typeface.BOLD);
-        bubble.setSingleLine(true);
-        bubble.setPadding(dp(12), dp(7), dp(12), dp(7));
+        LinearLayout bubble = new LinearLayout(this);
+        bubble.setOrientation(LinearLayout.HORIZONTAL);
+        bubble.setGravity(Gravity.CENTER_VERTICAL);
+        bubble.setPadding(dp(10), dp(8), dp(12), dp(8));
         bubble.setBackground(roomEventBubbleBackground());
         bubble.setAlpha(0f);
         bubble.setTranslationX(dp(24));
+        addRoomEventOverlayAvatar(bubble, user);
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        copyParams.leftMargin = dp(8);
+        bubble.addView(copy, copyParams);
+
+        TextView title = text("同看 · " + userName(user), 11, Color.argb(230, 255, 255, 255), Typeface.BOLD);
+        title.setSingleLine(true);
+        copy.addView(title, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        TextView body = text(shortText(content, 24), 12, Color.WHITE, Typeface.BOLD);
+        body.setSingleLine(true);
+        LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        bodyParams.topMargin = dp(1);
+        copy.addView(body, bodyParams);
+
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         params.gravity = Gravity.RIGHT;
         params.bottomMargin = dp(6);
@@ -3402,6 +3421,32 @@ public class MainActivity extends Activity {
                 }).start();
             }
         }, 3600);
+    }
+
+    private void addRoomEventOverlayAvatar(LinearLayout parent, JSONObject user) {
+        FrameLayout avatar = new FrameLayout(this);
+        GradientDrawable background = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.argb(235, 255, 255, 255), Color.argb(190, 228, 238, 255)}
+        );
+        background.setShape(GradientDrawable.OVAL);
+        background.setStroke(dp(1), Color.argb(125, 255, 255, 255));
+        avatar.setBackground(background);
+        parent.addView(avatar, new LinearLayout.LayoutParams(dp(30), dp(30)));
+
+        String avatarUrl = user == null ? "" : absoluteUrl(user.optString("avatar_url", ""));
+        if (!avatarUrl.isEmpty()) {
+            ImageView image = new ImageView(this);
+            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            avatar.addView(image, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            loadImageInto(image, avatarUrl);
+            return;
+        }
+        String displayName = userName(user);
+        String initial = displayName.isEmpty() ? "同" : displayName.substring(0, Math.min(1, displayName.length()));
+        TextView fallback = text(initial, 13, Color.rgb(28, 45, 76), Typeface.BOLD);
+        fallback.setGravity(Gravity.CENTER);
+        avatar.addView(fallback, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
     }
 
     private String roomEventText(JSONObject event) {
