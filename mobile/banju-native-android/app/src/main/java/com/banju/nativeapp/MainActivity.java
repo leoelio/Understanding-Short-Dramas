@@ -504,14 +504,15 @@ public class MainActivity extends Activity {
             try {
                 JSONObject friends = new JSONObject(httpGet(loadBaseUrl() + "/api/users/me/friends", loadToken()));
                 JSONObject conversations = new JSONObject(httpGet(loadBaseUrl() + "/api/chat/conversations", loadToken()));
-                runOnUiThread(() -> renderChatSummary(friends, conversations));
+                JSONObject invitations = new JSONObject(httpGet(loadBaseUrl() + "/api/watch-rooms/invitations", loadToken()));
+                runOnUiThread(() -> renderChatSummary(friends, conversations, invitations));
             } catch (Exception error) {
                 runOnUiThread(() -> setMessage("聊聊加载失败：" + error.getMessage(), false));
             }
         }).start();
     }
 
-    private void renderChatSummary(JSONObject friends, JSONObject conversations) {
+    private void renderChatSummary(JSONObject friends, JSONObject conversations, JSONObject invitations) {
         if (chatContent == null) {
             return;
         }
@@ -523,6 +524,8 @@ public class MainActivity extends Activity {
         JSONArray outgoing = friends.optJSONArray("outgoing_requests");
         JSONArray candidates = friends.optJSONArray("candidates");
         JSONArray conversationRows = conversations.optJSONArray("conversations");
+        JSONArray receivedInvitations = invitations.optJSONArray("received");
+        JSONArray sentInvitations = invitations.optJSONArray("sent");
         int unread = conversations.optInt("unread_count", 0);
 
         LinearLayout summaryCard = card();
@@ -537,7 +540,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams countParams = matchWrap();
         countParams.topMargin = dp(6);
         summaryCard.addView(countView, countParams);
-        TextView requestView = text(arrayLength(incoming) + " 个待处理申请 · " + arrayLength(outgoing) + " 个已发出申请 · " + arrayLength(candidates) + " 个可认识的人", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        TextView requestView = text(arrayLength(incoming) + " 个待处理申请 · " + arrayLength(receivedInvitations) + " 个同看邀请 · " + arrayLength(candidates) + " 个可认识的人", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
         LinearLayout.LayoutParams requestParams = matchWrap();
         requestParams.topMargin = dp(8);
         summaryCard.addView(requestView, requestParams);
@@ -560,6 +563,39 @@ public class MainActivity extends Activity {
                 JSONObject conversation = conversationRows.optJSONObject(i);
                 if (conversation != null) {
                     addConversationRow(conversationCard, conversation);
+                }
+            }
+        }
+
+        LinearLayout watchInviteCard = card();
+        watchInviteCard.setGravity(Gravity.NO_GRAVITY);
+        watchInviteCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams watchInviteParams = matchWrap();
+        watchInviteParams.bottomMargin = dp(12);
+        chatContent.addView(watchInviteCard, watchInviteParams);
+        watchInviteCard.addView(text("同看邀请", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        if (receivedInvitations == null || receivedInvitations.length() == 0) {
+            TextView empty = text("暂无待处理同看邀请。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            LinearLayout.LayoutParams emptyParams = matchWrap();
+            emptyParams.topMargin = dp(8);
+            watchInviteCard.addView(empty, emptyParams);
+        } else {
+            for (int i = 0; i < receivedInvitations.length() && i < 3; i++) {
+                JSONObject invitation = receivedInvitations.optJSONObject(i);
+                if (invitation != null) {
+                    addWatchInvitationRow(watchInviteCard, invitation, true);
+                }
+            }
+        }
+        if (sentInvitations != null && sentInvitations.length() > 0) {
+            TextView sentTitle = text("已发出", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+            LinearLayout.LayoutParams sentTitleParams = matchWrap();
+            sentTitleParams.topMargin = dp(16);
+            watchInviteCard.addView(sentTitle, sentTitleParams);
+            for (int i = 0; i < sentInvitations.length() && i < 3; i++) {
+                JSONObject invitation = sentInvitations.optJSONObject(i);
+                if (invitation != null) {
+                    addWatchInvitationRow(watchInviteCard, invitation, false);
                 }
             }
         }
@@ -640,6 +676,75 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams descParams = matchWrap();
         descParams.topMargin = dp(3);
         row.addView(desc, descParams);
+    }
+
+    private void addWatchInvitationRow(LinearLayout parent, JSONObject invitation, boolean incoming) {
+        JSONObject user = incoming ? invitation.optJSONObject("from_user") : invitation.optJSONObject("to_user");
+        JSONObject room = invitation.optJSONObject("room");
+        int invitationId = invitation.optInt("id", 0);
+        String roomCode = room == null ? "" : room.optString("code", "");
+        int episodeId = room == null ? 0 : room.optInt("episode_id", 0);
+        String status = invitation.optString("status", "pending");
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        row.setBackground(inputBackground());
+        LinearLayout.LayoutParams rowParams = matchWrap();
+        rowParams.topMargin = dp(10);
+        parent.addView(row, rowParams);
+
+        String title = incoming ? userName(user) + " 邀请你同看" : "邀请 " + userName(user);
+        row.addView(text(title, 14, Color.rgb(18, 20, 26), Typeface.BOLD), matchWrap());
+        String detail = "房间 " + (roomCode.isEmpty() ? "未知" : roomCode) + " · 剧集 " + episodeId + " · " + status;
+        TextView desc = text(detail, 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams descParams = matchWrap();
+        descParams.topMargin = dp(3);
+        row.addView(desc, descParams);
+
+        if (!incoming) {
+            return;
+        }
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionsParams = matchWrap();
+        actionsParams.topMargin = dp(10);
+        row.addView(actions, actionsParams);
+
+        Button acceptButton = primaryButton("接受");
+        acceptButton.setOnClickListener(v -> postWatchInvitationAction(
+                "/api/watch-rooms/invitations/" + invitationId + "/accept",
+                "已接受同看邀请。"
+        ));
+        actions.addView(acceptButton, weightHeight(1, dp(42)));
+
+        Button declineButton = secondaryButton("拒绝");
+        declineButton.setOnClickListener(v -> postWatchInvitationAction(
+                "/api/watch-rooms/invitations/" + invitationId + "/decline",
+                "已拒绝同看邀请。"
+        ));
+        LinearLayout.LayoutParams declineParams = weightHeight(1, dp(42));
+        declineParams.leftMargin = dp(10);
+        actions.addView(declineButton, declineParams);
+    }
+
+    private void postWatchInvitationAction(String path, String successMessage) {
+        setMessage("正在处理同看邀请...", true);
+        new Thread(() -> {
+            try {
+                JSONObject response = new JSONObject(httpPost(loadBaseUrl() + path, "{}", loadToken()));
+                JSONObject room = response.optJSONObject("room");
+                if (room != null && room.optInt("episode_id", 0) > 0) {
+                    activeEpisodeId = room.optInt("episode_id", activeEpisodeId);
+                }
+                runOnUiThread(() -> {
+                    setMessage(successMessage, true);
+                    fetchChatSummary();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("同看邀请处理失败：" + error.getMessage(), false));
+            }
+        }).start();
     }
 
     private void addFriendRequestRow(LinearLayout parent, JSONObject request, boolean incoming) {
