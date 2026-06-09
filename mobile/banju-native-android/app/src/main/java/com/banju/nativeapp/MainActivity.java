@@ -1990,15 +1990,79 @@ public class MainActivity extends Activity {
 
     private void addWatchRoomEventRow(LinearLayout parent, JSONObject event) {
         JSONObject user = event.optJSONObject("user");
-        JSONObject payload = event.optJSONObject("payload");
-        String content = payload == null ? "" : payload.optString("text", payload.toString());
-        if (content.isEmpty()) {
-            content = event.optString("event_type", "房间动态");
+        String content = roomEventText(event);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(12), dp(11), dp(12), dp(11));
+        row.setBackground(inputBackground());
+        LinearLayout.LayoutParams rowParams = matchWrap();
+        rowParams.topMargin = dp(10);
+        parent.addView(row, rowParams);
+
+        addRoomEventAvatar(row, user);
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        copyParams.leftMargin = dp(10);
+        row.addView(copy, copyParams);
+
+        TextView name = text(userName(user) + " · " + roomEventTypeLabel(event), 14, Color.rgb(18, 20, 26), Typeface.BOLD);
+        name.setSingleLine(true);
+        copy.addView(name, matchWrap());
+
+        TextView subtitle = text(userIdentityTitle(user, "房间成员"), 11, Color.rgb(83, 103, 160), Typeface.BOLD);
+        LinearLayout.LayoutParams subtitleParams = matchWrap();
+        subtitleParams.topMargin = dp(2);
+        copy.addView(subtitle, subtitleParams);
+
+        TextView body = text(shortText(content, 42), 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        body.setSingleLine(true);
+        LinearLayout.LayoutParams bodyParams = matchWrap();
+        bodyParams.topMargin = dp(3);
+        copy.addView(body, bodyParams);
+    }
+
+    private void addRoomEventAvatar(LinearLayout parent, JSONObject user) {
+        FrameLayout avatar = new FrameLayout(this);
+        GradientDrawable background = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.argb(230, 255, 255, 255), Color.argb(210, 232, 241, 255)}
+        );
+        background.setShape(GradientDrawable.OVAL);
+        background.setStroke(dp(1), Color.argb(80, 20, 26, 38));
+        avatar.setBackground(background);
+        parent.addView(avatar, new LinearLayout.LayoutParams(dp(42), dp(42)));
+
+        String avatarUrl = user == null ? "" : absoluteUrl(user.optString("avatar_url", ""));
+        if (!avatarUrl.isEmpty()) {
+            ImageView image = new ImageView(this);
+            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            avatar.addView(image, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            loadImageInto(image, avatarUrl);
+            return;
         }
-        TextView item = text(userName(user) + "：" + content, 13, Color.rgb(28, 45, 76), Typeface.NORMAL);
-        LinearLayout.LayoutParams itemParams = matchWrap();
-        itemParams.topMargin = dp(8);
-        parent.addView(item, itemParams);
+        String displayName = userName(user);
+        String initial = displayName.isEmpty() ? "房" : displayName.substring(0, Math.min(1, displayName.length()));
+        TextView fallback = text(initial, 16, Color.rgb(28, 45, 76), Typeface.BOLD);
+        fallback.setGravity(Gravity.CENTER);
+        avatar.addView(fallback, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+    }
+
+    private String roomEventTypeLabel(JSONObject event) {
+        String type = event.optString("event_type", "danmaku");
+        if ("interaction".equals(type)) {
+            return "高光选择";
+        }
+        if ("danmaku_like".equals(type)) {
+            return "点赞弹幕";
+        }
+        if ("danmaku_reply".equals(type)) {
+            return "回复弹幕";
+        }
+        return "房间发言";
     }
 
     private void sendWatchRoomEvent() {
@@ -3717,8 +3781,12 @@ public class MainActivity extends Activity {
     }
 
     private String danmakuUserTitle(JSONObject user) {
+        return userIdentityTitle(user, "匿名弹幕");
+    }
+
+    private String userIdentityTitle(JSONObject user, String fallback) {
         if (user == null) {
-            return "匿名弹幕";
+            return fallback;
         }
         String growthTitle = user.optString("growth_title", "");
         if (!growthTitle.isEmpty()) {
@@ -3728,7 +3796,7 @@ public class MainActivity extends Activity {
             return "可互动观众";
         }
         String role = user.optString("role", "");
-        return role.isEmpty() ? "匿名弹幕" : role;
+        return role.isEmpty() ? fallback : role;
     }
 
     private void submitDanmakuRoomEvent(String eventType, JSONObject comment, String replyText) {

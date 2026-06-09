@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 06:37:35
+更新时间：2026-06-10 06:42:35
 
 ## 当前目标
 
-Android 原生迁移继续强化弹幕社交：弹幕回复面板已展示用户身份条。
+Android 原生迁移继续强化同看社交：房间动态列表已升级为成员身份卡。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`2c885a5`
+- 最新提交：`fab0a64`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,11 +51,11 @@ Android 原生迁移继续强化弹幕社交：弹幕回复面板已展示用户
 
 ## 本次变更摘要
 
-- 原生弹幕互动面板新增用户身份条，展示首字头像/未来 avatar_url、昵称、可互动观众或成长称号兜底，并保留弹幕内容摘要；当前后端弹幕接口未返回完整头像称号，Android 已做兼容展示。
+- 原生同看房间动态从纯文本改为带头像/首字兜底、昵称、事件类型、称号兜底和内容摘要的成员动态卡；复用当前 watch-room events 接口，不改 Web 主线和后端。
 
 ## 下一步建议
 
-- 继续迁移原生同看动态里的成员头像/称号细节，或继续打磨播放页高光互动同步表现。
+- 继续迁移播放页同看浮层的头像化展示，或继续补齐原生社交动态/AI资产分享卡。
 
 ## 安全提醒
 
