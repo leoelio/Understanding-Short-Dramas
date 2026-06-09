@@ -104,8 +104,10 @@ public class MainActivity extends Activity {
     private LinearLayout activeHighlightPanel;
     private LinearLayout activeDanmakuOverlay;
     private LinearLayout activeRemixPanel;
+    private LinearLayout activeWatchRoomStrip;
     private TextView activePlayerStatus;
     private TextView activeDanmakuStatus;
+    private TextView activeWatchRoomStatus;
     private Button lightDanmakuButton;
     private Button carnivalDanmakuButton;
     private Button immersiveDanmakuButton;
@@ -2648,9 +2650,37 @@ public class MainActivity extends Activity {
         statusParams.topMargin = dp(2);
         titleBlock.addView(status, statusParams);
 
+        if (!activePlayerRoomCode.isEmpty()) {
+            activeWatchRoomStrip = new LinearLayout(this);
+            activeWatchRoomStrip.setOrientation(LinearLayout.HORIZONTAL);
+            activeWatchRoomStrip.setGravity(Gravity.CENTER_VERTICAL);
+            activeWatchRoomStrip.setPadding(dp(12), dp(8), dp(10), dp(8));
+            activeWatchRoomStrip.setBackground(roomEventBubbleBackground());
+            FrameLayout.LayoutParams roomStripParams = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.TOP
+            );
+            roomStripParams.leftMargin = dp(16);
+            roomStripParams.rightMargin = dp(16);
+            roomStripParams.topMargin = dp(96);
+            playerFrame.addView(activeWatchRoomStrip, roomStripParams);
+
+            activeWatchRoomStatus = text("同看房间 " + activePlayerRoomCode + " · 正在同步", 12, Color.WHITE, Typeface.BOLD);
+            activeWatchRoomStatus.setSingleLine(true);
+            activeWatchRoomStrip.addView(activeWatchRoomStatus, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+
+            Button roomButton = glassButton("房间");
+            roomButton.setTextSize(12);
+            roomButton.setOnClickListener(v -> showWatchRoomScreen(activePlayerRoomCode, "已打开同看房间。"));
+            LinearLayout.LayoutParams roomButtonParams = new LinearLayout.LayoutParams(dp(68), dp(34));
+            roomButtonParams.leftMargin = dp(8);
+            activeWatchRoomStrip.addView(roomButton, roomButtonParams);
+        }
+
         activeDanmakuOverlay = new LinearLayout(this);
         activeDanmakuOverlay.setOrientation(LinearLayout.VERTICAL);
-        activeDanmakuOverlay.setPadding(dp(12), dp(92), dp(12), 0);
+        activeDanmakuOverlay.setPadding(dp(12), activePlayerRoomCode.isEmpty() ? dp(92) : dp(142), dp(12), 0);
         FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -2934,11 +2964,35 @@ public class MainActivity extends Activity {
                 payload.put("episode_id", episodeId);
                 payload.put("progress_sec", progressSec);
                 payload.put("playback_state", playbackState);
-                httpPost(loadBaseUrl() + "/api/watch-rooms/" + roomCode + "/sync", payload.toString(), loadToken());
+                String body = httpPost(loadBaseUrl() + "/api/watch-rooms/" + roomCode + "/sync", payload.toString(), loadToken());
+                JSONObject room = new JSONObject(body);
+                runOnUiThread(() -> updatePlayerWatchRoomStatus(room));
             } catch (Exception ignored) {
                 // 同看同步是辅助能力，失败不打断播放。
             }
         }).start();
+    }
+
+    private void updatePlayerWatchRoomStatus(JSONObject room) {
+        if (activeWatchRoomStatus == null || room == null) {
+            return;
+        }
+        String roomCode = room.optString("code", activePlayerRoomCode);
+        if (!roomCode.equals(activePlayerRoomCode)) {
+            return;
+        }
+        JSONObject host = room.optJSONObject("host");
+        JSONObject guest = room.optJSONObject("guest");
+        JSONObject updatedBy = room.optJSONObject("updated_by");
+        int memberCount = room.optInt("member_count", guest == null ? 1 : 2);
+        String state = room.optString("playback_state", "paused");
+        int progressSec = (int) Math.round(room.optDouble("progress_sec", 0));
+        String memberText = memberCount >= 2
+                ? userName(host) + " / " + userName(guest)
+                : userName(host) + " · 等待好友";
+        String stateText = "playing".equals(state) ? "播放中" : "已暂停";
+        String updater = updatedBy == null ? "" : " · " + userName(updatedBy) + "同步";
+        activeWatchRoomStatus.setText("同看 " + roomCode + " · " + memberText + " · " + stateText + " " + formatDuration(progressSec) + updater);
     }
 
     private void scheduleWatchRoomEvents() {
@@ -3051,8 +3105,10 @@ public class MainActivity extends Activity {
         activeHighlightPanel = null;
         activeDanmakuOverlay = null;
         activeRemixPanel = null;
+        activeWatchRoomStrip = null;
         activePlayerStatus = null;
         activeDanmakuStatus = null;
+        activeWatchRoomStatus = null;
         lightDanmakuButton = null;
         carnivalDanmakuButton = null;
         immersiveDanmakuButton = null;
