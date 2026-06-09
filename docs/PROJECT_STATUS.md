@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 03:02:20
+更新时间：2026-06-10 03:05:52
 
 ## 当前目标
 
-Android 原生迁移继续推进：聊聊页补齐好友申请闭环，支持发起申请、接受/拒绝收到的申请、撤回已发申请。
+Android 原生迁移继续推进：聊天详情接入发起同看邀请，串联创建房间、邀请好友和发送 watch_link 消息。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`3e7db6c`
+- 最新提交：`0780ff9`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -52,16 +52,17 @@ Android 原生迁移继续推进：聊聊页补齐好友申请闭环，支持发
 ## 本次变更摘要
 
 - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
-- 聊聊页在好友申请卡片中展示收到的申请，并接入 /api/users/me/friend-requests/{id}/accept 与 /decline。
-- 聊聊页展示已发出的申请，并接入 /api/users/me/friend-requests/{id}/withdraw。
-- 聊聊页展示可认识的人，并通过 /api/users/me/friends 发起好友申请。
-- 所有好友申请操作完成后重新拉取 /api/users/me/friends 与 /api/chat/conversations，不在 Android 本地伪造状态。
+- 聊天详情新增 邀请同看 按钮。
+- 当 activeEpisodeId 存在时，Android 调用 /api/watch-rooms 创建同看房间。
+- 创建成功后调用 /api/watch-rooms/{code}/invite 邀请当前好友。
+- 邀请成功后通过 /api/chat/messages 发送 watch_link 类型消息，消息 payload 带 room_code 和 episode_id。
+- 如果还没有进入过播放页，Android 会提示先进入一集短剧播放页，再发起同看邀请，不使用硬编码剧集。
 - Android debug APK 编译成功；本轮未做真机验证。
 
 ## 下一步建议
 
-- 手机可用后验证候选人申请、接受/拒绝、撤回申请，以及操作后概览刷新是否正确。
-- 下一步建议迁移同看邀请：在聊天详情中发送 watch_link，并接入房间邀请接受/拒绝。
+- 手机可用后验证：先播放一集，再进入聊聊会话发起同看邀请，检查对方会话是否出现房间码消息。
+- 下一步建议迁移同看邀请收件箱：展示 pending 邀请，并支持接受/拒绝。
 
 ## 安全提醒
 

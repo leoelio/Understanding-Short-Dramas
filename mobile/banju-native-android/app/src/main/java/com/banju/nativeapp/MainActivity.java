@@ -782,6 +782,12 @@ public class MainActivity extends Activity {
         refreshParams.leftMargin = dp(10);
         actions.addView(refreshButton, refreshParams);
 
+        Button inviteButton = primaryButton("邀请同看");
+        inviteButton.setOnClickListener(v -> sendWatchRoomInvite(friend));
+        LinearLayout.LayoutParams inviteParams = matchHeight(dp(46));
+        inviteParams.topMargin = dp(10);
+        header.addView(inviteButton, inviteParams);
+
         messageText = text("正在加载会话。", 13, Color.rgb(104, 112, 130), Typeface.NORMAL);
         LinearLayout.LayoutParams messageParams = matchWrap();
         messageParams.topMargin = dp(18);
@@ -900,6 +906,56 @@ public class MainActivity extends Activity {
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> setMessage("消息发送失败：" + error.getMessage(), false));
+            }
+        }).start();
+    }
+
+    private void sendWatchRoomInvite(JSONObject friend) {
+        if (friend == null) {
+            return;
+        }
+        int friendId = friend.optInt("id", 0);
+        if (friendId <= 0) {
+            setMessage("好友信息缺少 ID，无法邀请。", false);
+            return;
+        }
+        if (activeEpisodeId <= 0) {
+            setMessage("请先进入一集短剧播放页，再回来发起同看邀请。", false);
+            return;
+        }
+        setMessage("正在创建同看房间...", true);
+        new Thread(() -> {
+            try {
+                JSONObject roomPayload = new JSONObject();
+                roomPayload.put("episode_id", activeEpisodeId);
+                roomPayload.put("progress_sec", 0);
+                roomPayload.put("playback_state", "paused");
+                JSONObject room = new JSONObject(httpPost(loadBaseUrl() + "/api/watch-rooms", roomPayload.toString(), loadToken()));
+                String roomCode = room.optString("code", "");
+                if (roomCode.isEmpty()) {
+                    throw new IllegalStateException("同看房间缺少房间码");
+                }
+
+                JSONObject invitePayload = new JSONObject();
+                invitePayload.put("user_id", friendId);
+                httpPost(loadBaseUrl() + "/api/watch-rooms/" + roomCode + "/invite", invitePayload.toString(), loadToken());
+
+                JSONObject messagePayload = new JSONObject();
+                messagePayload.put("to_user_id", friendId);
+                messagePayload.put("message_type", "watch_link");
+                messagePayload.put("text", "邀请你加入同看房间 " + roomCode);
+                JSONObject linkPayload = new JSONObject();
+                linkPayload.put("room_code", roomCode);
+                linkPayload.put("episode_id", activeEpisodeId);
+                messagePayload.put("payload", linkPayload);
+                httpPost(loadBaseUrl() + "/api/chat/messages", messagePayload.toString(), loadToken());
+
+                runOnUiThread(() -> {
+                    setMessage("同看邀请已发送：" + roomCode, true);
+                    fetchChatMessages(friend);
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("同看邀请发送失败：" + error.getMessage(), false));
             }
         }).start();
     }

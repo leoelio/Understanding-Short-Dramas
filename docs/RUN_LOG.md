@@ -1382,3 +1382,20 @@
 - 下一步：
   - 手机可用后验证候选人申请、接受/拒绝、撤回申请，以及操作后概览刷新是否正确。
   - 下一步建议迁移同看邀请：在聊天详情中发送 watch_link，并接入房间邀请接受/拒绝。
+
+## 2026-06-10 03:05:52
+
+- 目标：Android 原生迁移继续推进：聊天详情接入发起同看邀请，串联创建房间、邀请好友和发送 watch_link 消息。
+- Git：`0780ff9` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
+  - 聊天详情新增 邀请同看 按钮。
+  - 当 activeEpisodeId 存在时，Android 调用 /api/watch-rooms 创建同看房间。
+  - 创建成功后调用 /api/watch-rooms/{code}/invite 邀请当前好友。
+  - 邀请成功后通过 /api/chat/messages 发送 watch_link 类型消息，消息 payload 带 room_code 和 episode_id。
+  - 如果还没有进入过播放页，Android 会提示先进入一集短剧播放页，再发起同看邀请，不使用硬编码剧集。
+  - Android debug APK 编译成功；本轮未做真机验证。
+- 下一步：
+  - 手机可用后验证：先播放一集，再进入聊聊会话发起同看邀请，检查对方会话是否出现房间码消息。
+  - 下一步建议迁移同看邀请收件箱：展示 pending 邀请，并支持接受/拒绝。
