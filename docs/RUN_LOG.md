@@ -1467,3 +1467,19 @@
 - 下一步：
   - 手机可用后验证：两账号同看时，一方发送房间动态，另一方播放页是否出现同看气泡。
   - 下一步建议迁移原生同看高光事件上报：用户在房间播放页点击高光互动时，同时 POST /api/watch-rooms/{code}/events。
+
+## 2026-06-10 03:29:09
+
+- 目标：Android 原生迁移继续推进：同看播放页的高光互动会同步为房间 interaction 事件，让对方播放页能看到选择动态。
+- Git：`0bd01e6` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
+  - 保留原有 /api/interactions 主上报逻辑不变。
+  - 当 activePlayerRoomCode 存在时，互动主上报成功后额外调用 /api/watch-rooms/{code}/events。
+  - 房间事件类型为 interaction，payload 包含 highlight_id、option_key、label、episode_id 和 native_android 来源。
+  - 房间事件上报失败会被忽略，不影响主互动反馈。
+  - Android debug APK 编译成功；本轮未做真机验证。
+- 下一步：
+  - 手机可用后验证：两账号同看时，一方点击高光选项，另一方播放页是否出现 同看 · 某人：选择了... 气泡。
+  - 下一步建议迁移原生房间中的弹幕点赞/回复事件，继续补齐同看社交细节。

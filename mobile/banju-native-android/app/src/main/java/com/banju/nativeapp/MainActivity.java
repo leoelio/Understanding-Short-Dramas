@@ -2529,11 +2529,32 @@ public class MainActivity extends Activity {
                 payload.put("option_key", optionKey);
                 payload.put("session_id", loadSessionId());
                 httpPost(loadBaseUrl() + "/api/interactions", payload.toString(), loadToken());
+                postWatchRoomInteractionEvent(highlightId, optionKey, label);
                 runOnUiThread(() -> showInteractionFeedback("已选择：" + label + "，已上报。"));
             } catch (Exception error) {
                 runOnUiThread(() -> showInteractionFeedback("已选择：" + label + "，上报失败。"));
             }
         }).start();
+    }
+
+    private void postWatchRoomInteractionEvent(int highlightId, String optionKey, String label) {
+        if (activePlayerRoomCode.isEmpty()) {
+            return;
+        }
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("highlight_id", highlightId);
+            payload.put("option_key", optionKey);
+            payload.put("label", label);
+            payload.put("episode_id", activeEpisodeId);
+            payload.put("source", "native_android");
+            JSONObject body = new JSONObject();
+            body.put("event_type", "interaction");
+            body.put("payload", payload);
+            httpPost(loadBaseUrl() + "/api/watch-rooms/" + activePlayerRoomCode + "/events", body.toString(), loadToken());
+        } catch (Exception ignored) {
+            // 房间事件失败不影响主互动上报。
+        }
     }
 
     private void showInteractionFeedback(String message) {
