@@ -1366,3 +1366,19 @@
 - 下一步：
   - 手机可用后验证 聊聊 概览进入会话、消息发送、未读清零和小屏输入框体验。
   - 下一步可迁移同看邀请消息 watch_link，或迁移好友申请接受/拒绝按钮。
+
+## 2026-06-10 03:02:20
+
+- 目标：Android 原生迁移继续推进：聊聊页补齐好友申请闭环，支持发起申请、接受/拒绝收到的申请、撤回已发申请。
+- Git：`3e7db6c` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
+  - 聊聊页在好友申请卡片中展示收到的申请，并接入 /api/users/me/friend-requests/{id}/accept 与 /decline。
+  - 聊聊页展示已发出的申请，并接入 /api/users/me/friend-requests/{id}/withdraw。
+  - 聊聊页展示可认识的人，并通过 /api/users/me/friends 发起好友申请。
+  - 所有好友申请操作完成后重新拉取 /api/users/me/friends 与 /api/chat/conversations，不在 Android 本地伪造状态。
+  - Android debug APK 编译成功；本轮未做真机验证。
+- 下一步：
+  - 手机可用后验证候选人申请、接受/拒绝、撤回申请，以及操作后概览刷新是否正确。
+  - 下一步建议迁移同看邀请：在聊天详情中发送 watch_link，并接入房间邀请接受/拒绝。

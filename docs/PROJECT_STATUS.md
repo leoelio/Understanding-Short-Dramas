@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 02:58:00
+更新时间：2026-06-10 03:02:20
 
 ## 当前目标
 
-Android 原生迁移继续推进：聊聊从概览升级到会话详情，支持查看最近消息并发送普通文字消息。
+Android 原生迁移继续推进：聊聊页补齐好友申请闭环，支持发起申请、接受/拒绝收到的申请、撤回已发申请。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`2af06f3`
+- 最新提交：`3e7db6c`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -52,16 +52,16 @@ Android 原生迁移继续推进：聊聊从概览升级到会话详情，支持
 ## 本次变更摘要
 
 - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
-- 最近会话行新增点击入口，进入好友会话详情页。
-- 会话详情调用 /api/chat/messages/{friend_user_id} 拉取最近 40 条消息，并区分自己/对方气泡。
-- 会话详情新增输入框和发送按钮，调用 /api/chat/messages 发送普通 text 消息，发送后自动刷新会话。
-- 本轮暂不迁移表情包、同看邀请链接和好友申请处理按钮，避免写操作范围过大。
+- 聊聊页在好友申请卡片中展示收到的申请，并接入 /api/users/me/friend-requests/{id}/accept 与 /decline。
+- 聊聊页展示已发出的申请，并接入 /api/users/me/friend-requests/{id}/withdraw。
+- 聊聊页展示可认识的人，并通过 /api/users/me/friends 发起好友申请。
+- 所有好友申请操作完成后重新拉取 /api/users/me/friends 与 /api/chat/conversations，不在 Android 本地伪造状态。
 - Android debug APK 编译成功；本轮未做真机验证。
 
 ## 下一步建议
 
-- 手机可用后验证 聊聊 概览进入会话、消息发送、未读清零和小屏输入框体验。
-- 下一步可迁移同看邀请消息 watch_link，或迁移好友申请接受/拒绝按钮。
+- 手机可用后验证候选人申请、接受/拒绝、撤回申请，以及操作后概览刷新是否正确。
+- 下一步建议迁移同看邀请：在聊天详情中发送 watch_link，并接入房间邀请接受/拒绝。
 
 ## 安全提醒
 

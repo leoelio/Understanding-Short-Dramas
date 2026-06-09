@@ -577,11 +577,42 @@ public class MainActivity extends Activity {
         } else {
             for (int i = 0; i < incoming.length() && i < 3; i++) {
                 JSONObject request = incoming.optJSONObject(i);
-                JSONObject fromUser = request == null ? null : request.optJSONObject("from_user");
-                TextView item = text(userName(fromUser) + " 请求添加好友", 14, Color.rgb(28, 45, 76), Typeface.BOLD);
-                LinearLayout.LayoutParams itemParams = matchWrap();
-                itemParams.topMargin = dp(8);
-                requestCard.addView(item, itemParams);
+                if (request != null) {
+                    addFriendRequestRow(requestCard, request, true);
+                }
+            }
+        }
+        if (outgoing != null && outgoing.length() > 0) {
+            TextView outgoingTitle = text("已发出", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+            LinearLayout.LayoutParams outgoingTitleParams = matchWrap();
+            outgoingTitleParams.topMargin = dp(16);
+            requestCard.addView(outgoingTitle, outgoingTitleParams);
+            for (int i = 0; i < outgoing.length() && i < 3; i++) {
+                JSONObject request = outgoing.optJSONObject(i);
+                if (request != null) {
+                    addFriendRequestRow(requestCard, request, false);
+                }
+            }
+        }
+
+        LinearLayout candidateCard = card();
+        candidateCard.setGravity(Gravity.NO_GRAVITY);
+        candidateCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams candidateParams = matchWrap();
+        candidateParams.topMargin = dp(12);
+        chatContent.addView(candidateCard, candidateParams);
+        candidateCard.addView(text("可认识的人", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        if (candidates == null || candidates.length() == 0) {
+            TextView empty = text("暂无新的推荐好友。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            LinearLayout.LayoutParams emptyParams = matchWrap();
+            emptyParams.topMargin = dp(8);
+            candidateCard.addView(empty, emptyParams);
+        } else {
+            for (int i = 0; i < candidates.length() && i < 4; i++) {
+                JSONObject candidate = candidates.optJSONObject(i);
+                if (candidate != null) {
+                    addCandidateRow(candidateCard, candidate);
+                }
             }
         }
     }
@@ -609,6 +640,105 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams descParams = matchWrap();
         descParams.topMargin = dp(3);
         row.addView(desc, descParams);
+    }
+
+    private void addFriendRequestRow(LinearLayout parent, JSONObject request, boolean incoming) {
+        JSONObject user = incoming ? request.optJSONObject("from_user") : request.optJSONObject("to_user");
+        int requestId = request.optInt("id", 0);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        row.setBackground(inputBackground());
+        LinearLayout.LayoutParams rowParams = matchWrap();
+        rowParams.topMargin = dp(10);
+        parent.addView(row, rowParams);
+
+        String label = incoming ? " 请求添加好友" : " 等待对方通过";
+        row.addView(text(userName(user) + label, 14, Color.rgb(18, 20, 26), Typeface.BOLD), matchWrap());
+        TextView desc = text(user == null ? "" : user.optString("growth_title", "短剧同好"), 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams descParams = matchWrap();
+        descParams.topMargin = dp(3);
+        row.addView(desc, descParams);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionsParams = matchWrap();
+        actionsParams.topMargin = dp(10);
+        row.addView(actions, actionsParams);
+
+        if (incoming) {
+            Button acceptButton = primaryButton("接受");
+            acceptButton.setOnClickListener(v -> postFriendRequestAction(
+                    "/api/users/me/friend-requests/" + requestId + "/accept",
+                    "{}",
+                    "已接受好友申请。"
+            ));
+            actions.addView(acceptButton, weightHeight(1, dp(42)));
+
+            Button declineButton = secondaryButton("拒绝");
+            declineButton.setOnClickListener(v -> postFriendRequestAction(
+                    "/api/users/me/friend-requests/" + requestId + "/decline",
+                    "{}",
+                    "已拒绝好友申请。"
+            ));
+            LinearLayout.LayoutParams declineParams = weightHeight(1, dp(42));
+            declineParams.leftMargin = dp(10);
+            actions.addView(declineButton, declineParams);
+        } else {
+            Button withdrawButton = secondaryButton("撤回申请");
+            withdrawButton.setOnClickListener(v -> postFriendRequestAction(
+                    "/api/users/me/friend-requests/" + requestId + "/withdraw",
+                    "{}",
+                    "已撤回好友申请。"
+            ));
+            actions.addView(withdrawButton, matchHeight(dp(42)));
+        }
+    }
+
+    private void addCandidateRow(LinearLayout parent, JSONObject candidate) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        row.setBackground(inputBackground());
+        LinearLayout.LayoutParams rowParams = matchWrap();
+        rowParams.topMargin = dp(10);
+        parent.addView(row, rowParams);
+
+        row.addView(text(userName(candidate), 14, Color.rgb(18, 20, 26), Typeface.BOLD), matchWrap());
+        TextView desc = text(candidate.optString("growth_title", "短剧同好") + " · " + candidate.optInt("points", 0) + " 积分", 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams descParams = matchWrap();
+        descParams.topMargin = dp(3);
+        row.addView(desc, descParams);
+
+        Button addButton = primaryButton("申请好友");
+        addButton.setOnClickListener(v -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("user_id", candidate.optInt("id", 0));
+                postFriendRequestAction("/api/users/me/friends", payload.toString(), "好友申请已发送。");
+            } catch (Exception error) {
+                setMessage("好友申请发送失败：" + error.getMessage(), false);
+            }
+        });
+        LinearLayout.LayoutParams addParams = matchHeight(dp(42));
+        addParams.topMargin = dp(10);
+        row.addView(addButton, addParams);
+    }
+
+    private void postFriendRequestAction(String path, String body, String successMessage) {
+        setMessage("正在处理好友申请...", true);
+        new Thread(() -> {
+            try {
+                httpPost(loadBaseUrl() + path, body, loadToken());
+                runOnUiThread(() -> {
+                    setMessage(successMessage, true);
+                    fetchChatSummary();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("好友申请处理失败：" + error.getMessage(), false));
+            }
+        }).start();
     }
 
     private void showChatDetail(JSONObject friend) {
