@@ -61,11 +61,13 @@ public class MainActivity extends Activity {
     private EditText watchRoomEventInput;
     private int activeEpisodeId;
     private String activeRoomCode = "";
+    private String activePlayerRoomCode = "";
     private VideoView activeVideoView;
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
     private Runnable progressRunnable;
     private Runnable danmakuRunnable;
     private Runnable remixRunnable;
+    private Runnable roomSyncRunnable;
     private LinearLayout activeHighlightPanel;
     private LinearLayout activeDanmakuOverlay;
     private LinearLayout activeRemixPanel;
@@ -898,7 +900,7 @@ public class MainActivity extends Activity {
 
         if (episodeId > 0) {
             Button playButton = primaryButton("进入本集播放");
-            playButton.setOnClickListener(v -> showNativePlayer("同看房间 " + roomCode, episodeId));
+            playButton.setOnClickListener(v -> showNativePlayer("同看房间 " + roomCode, episodeId, roomCode));
             LinearLayout.LayoutParams playParams = matchHeight(dp(46));
             playParams.topMargin = dp(14);
             stateCard.addView(playButton, playParams);
@@ -1361,9 +1363,17 @@ public class MainActivity extends Activity {
     }
 
     private void showNativePlayer(String dramaTitle, int firstEpisodeId) {
+        showNativePlayer(dramaTitle, firstEpisodeId, "");
+    }
+
+    private void showNativePlayer(String dramaTitle, int firstEpisodeId, String roomCode) {
         stopActiveVideo();
         resetHighlightState();
         activeEpisodeId = firstEpisodeId;
+        activePlayerRoomCode = roomCode == null ? "" : roomCode.trim().toUpperCase();
+        if (!activePlayerRoomCode.isEmpty()) {
+            activeRoomCode = activePlayerRoomCode;
+        }
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
 
@@ -1387,6 +1397,7 @@ public class MainActivity extends Activity {
             scheduleNextHighlight();
             scheduleDanmakuTrack();
             scheduleRemixEntry();
+            scheduleWatchRoomSync();
         });
         videoView.setOnErrorListener((mediaPlayer, what, extra) -> {
             status.setText("视频播放失败，请确认服务端和 adb reverse 已连接。");
@@ -1543,6 +1554,7 @@ public class MainActivity extends Activity {
         stopProgressWatcher();
         stopDanmakuWatcher();
         stopRemixWatcher();
+        stopWatchRoomSync();
         stopRemixAudio();
         if (activeVideoView != null) {
             activeVideoView.stopPlayback();
@@ -1637,10 +1649,54 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void stopWatchRoomSync() {
+        if (roomSyncRunnable != null) {
+            progressHandler.removeCallbacks(roomSyncRunnable);
+            roomSyncRunnable = null;
+        }
+    }
+
+    private void scheduleWatchRoomSync() {
+        stopWatchRoomSync();
+        if (activePlayerRoomCode.isEmpty()) {
+            return;
+        }
+        roomSyncRunnable = () -> {
+            if (!videoPrepared || activeVideoView == null || activePlayerRoomCode.isEmpty()) {
+                return;
+            }
+            int episodeId = activeEpisodeId;
+            int positionMs = Math.max(0, activeVideoView.getCurrentPosition());
+            boolean playing = activeVideoView.isPlaying();
+            String roomCode = activePlayerRoomCode;
+            postWatchRoomSync(roomCode, episodeId, positionMs / 1000.0, playing ? "playing" : "paused");
+            progressHandler.postDelayed(roomSyncRunnable, 5000);
+        };
+        progressHandler.postDelayed(roomSyncRunnable, 1000);
+    }
+
+    private void postWatchRoomSync(String roomCode, int episodeId, double progressSec, String playbackState) {
+        if (roomCode == null || roomCode.isEmpty() || episodeId <= 0) {
+            return;
+        }
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("episode_id", episodeId);
+                payload.put("progress_sec", progressSec);
+                payload.put("playback_state", playbackState);
+                httpPost(loadBaseUrl() + "/api/watch-rooms/" + roomCode + "/sync", payload.toString(), loadToken());
+            } catch (Exception ignored) {
+                // 同看同步是辅助能力，失败不打断播放。
+            }
+        }).start();
+    }
+
     private void resetHighlightState() {
         stopProgressWatcher();
         stopDanmakuWatcher();
         stopRemixWatcher();
+        stopWatchRoomSync();
         videoPrepared = false;
         highlightTimeline = new JSONArray();
         danmakuTimeline = new JSONArray();
@@ -1658,6 +1714,7 @@ public class MainActivity extends Activity {
         carnivalDanmakuButton = null;
         immersiveDanmakuButton = null;
         activeRemixEntryButton = null;
+        activePlayerRoomCode = "";
     }
 
     private void updatePlayerStatus() {

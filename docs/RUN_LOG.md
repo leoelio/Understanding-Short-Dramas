@@ -1433,3 +1433,20 @@
 - 下一步：
   - 手机可用后验证：发起同看邀请、接受后进入房间、发送房间动态、进入本集播放。
   - 下一步建议迁移同看同步控制：播放页定期 POST /api/watch-rooms/{code}/sync，并拉取 events 展示对方互动。
+
+## 2026-06-10 03:20:17
+
+- 目标：Android 原生迁移继续推进：同看房间进入播放页后保留 room code，并周期性上报当前播放进度和播放状态。
+- Git：`e5b987b` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
+  - showNativePlayer 新增 roomCode 重载；普通播放不带房间上下文，从同看房间进入播放才保留 room code。
+  - 房间页的 进入本集播放 按钮会携带 room code 打开原生播放页。
+  - 原生播放页准备完成后，如果存在 activePlayerRoomCode，每 5 秒调用 /api/watch-rooms/{code}/sync 上报 episode_id、progress_sec 和 playback_state。
+  - 退出播放或切换页面时停止房间同步定时器，避免后台继续上报。
+  - 本轮暂不做另一端自动拉取并跟随房间进度，也不把房间 events 叠加回播放页。
+  - Android debug APK 编译成功；本轮未做真机验证。
+- 下一步：
+  - 手机可用后验证：从房间页进入播放，观察服务端 room progress_sec 是否随播放推进。
+  - 下一步建议迁移播放页房间动态：播放页拉取 /api/watch-rooms/{code}/events，显示对方高光选择、弹幕和点赞。

@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 03:14:24
+更新时间：2026-06-10 03:20:17
 
 ## 当前目标
 
-Android 原生迁移继续推进：新增同看房间页，支持查看房间状态、成员、剧集进度、房间动态，并发送房间事件。
+Android 原生迁移继续推进：同看房间进入播放页后保留 room code，并周期性上报当前播放进度和播放状态。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`4fabaa3`
+- 最新提交：`e5b987b`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -52,17 +52,17 @@ Android 原生迁移继续推进：新增同看房间页，支持查看房间状
 ## 本次变更摘要
 
 - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
-- 同看邀请卡片新增 查看房间 入口；接受同看邀请后可直接进入房间页。
-- 原生同看房间页调用 /api/watch-rooms/{code} 展示房间码、成员、episode_id、播放状态和进度。
-- 原生同看房间页调用 /api/watch-rooms/{code}/events 展示房间动态。
-- 原生同看房间页通过 /api/watch-rooms/{code}/events 发送 danmaku 类型房间事件，payload 带 native_android 来源和文本。
-- 房间页提供 进入本集播放 按钮，先进入该集原生播放页；本轮暂不做双端进度同步控制。
+- showNativePlayer 新增 roomCode 重载；普通播放不带房间上下文，从同看房间进入播放才保留 room code。
+- 房间页的 进入本集播放 按钮会携带 room code 打开原生播放页。
+- 原生播放页准备完成后，如果存在 activePlayerRoomCode，每 5 秒调用 /api/watch-rooms/{code}/sync 上报 episode_id、progress_sec 和 playback_state。
+- 退出播放或切换页面时停止房间同步定时器，避免后台继续上报。
+- 本轮暂不做另一端自动拉取并跟随房间进度，也不把房间 events 叠加回播放页。
 - Android debug APK 编译成功；本轮未做真机验证。
 
 ## 下一步建议
 
-- 手机可用后验证：发起同看邀请、接受后进入房间、发送房间动态、进入本集播放。
-- 下一步建议迁移同看同步控制：播放页定期 POST /api/watch-rooms/{code}/sync，并拉取 events 展示对方互动。
+- 手机可用后验证：从房间页进入播放，观察服务端 room progress_sec 是否随播放推进。
+- 下一步建议迁移播放页房间动态：播放页拉取 /api/watch-rooms/{code}/events，显示对方高光选择、弹幕和点赞。
 
 ## 安全提醒
 
