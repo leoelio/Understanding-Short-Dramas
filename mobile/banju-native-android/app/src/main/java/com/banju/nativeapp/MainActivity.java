@@ -108,6 +108,7 @@ public class MainActivity extends Activity {
     private LinearLayout activeRemixPanel;
     private LinearLayout activeWatchRoomStrip;
     private LinearLayout activeWatchRoomAvatars;
+    private LinearLayout activePlayerControls;
     private TextView activePlayerStatus;
     private TextView activeDanmakuStatus;
     private TextView activeWatchRoomStatus;
@@ -2755,6 +2756,9 @@ public class MainActivity extends Activity {
         });
         videoView.setOnCompletionListener(mediaPlayer -> {
             postWatchHistoryProgress(firstEpisodeId, Math.max(videoView.getCurrentPosition(), videoView.getDuration()), true);
+            if (!remixEntryShown && hasRemixOptions()) {
+                showRemixEntry(true);
+            }
         });
         FrameLayout playerFrame = new FrameLayout(this);
         root.addView(playerFrame, new FrameLayout.LayoutParams(
@@ -2868,6 +2872,7 @@ public class MainActivity extends Activity {
         bottomControls.setOrientation(LinearLayout.VERTICAL);
         bottomControls.setPadding(dp(14), dp(14), dp(14), dp(18));
         bottomControls.setBackground(controlBarBackground());
+        activePlayerControls = bottomControls;
         FrameLayout.LayoutParams controlsParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -2925,11 +2930,12 @@ public class MainActivity extends Activity {
         activeRemixPanel = buildHighlightPanel();
         FrameLayout.LayoutParams remixParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER
         );
         remixParams.leftMargin = dp(14);
         remixParams.rightMargin = dp(14);
+        remixParams.topMargin = dp(18);
         remixParams.bottomMargin = dp(18);
         playerFrame.addView(activeRemixPanel, remixParams);
 
@@ -3377,6 +3383,7 @@ public class MainActivity extends Activity {
         activeDanmakuStatus = null;
         activeWatchRoomStatus = null;
         activeWatchRoomBoardStatus = null;
+        activePlayerControls = null;
         lightDanmakuButton = null;
         carnivalDanmakuButton = null;
         immersiveDanmakuButton = null;
@@ -3706,6 +3713,64 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    private boolean hasRemixOptions() {
+        JSONArray options = remixOptionsPayload == null ? null : remixOptionsPayload.optJSONArray("options");
+        return options != null && options.length() > 0;
+    }
+
+    private void enterRemixOverlay() {
+        if (activeRemixPanel == null) {
+            return;
+        }
+        if (activePlayerControls != null) {
+            activePlayerControls.setVisibility(View.GONE);
+        }
+        if (activeHighlightPanel != null) {
+            activeHighlightPanel.setVisibility(View.GONE);
+        }
+        activeRemixPanel.setBackground(remixOverlayBackground());
+        activeRemixPanel.setVisibility(View.VISIBLE);
+        activeRemixPanel.bringToFront();
+    }
+
+    private void dismissRemixPanel() {
+        stopRemixAudio();
+        if (activeRemixPanel != null) {
+            activeRemixPanel.setVisibility(View.GONE);
+        }
+        if (activePlayerControls != null) {
+            activePlayerControls.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void addRemixChoiceCard(LinearLayout parent, String kicker, String titleText, String description, View.OnClickListener listener) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(13), dp(16), dp(13));
+        card.setBackground(remixChoiceBackground());
+        card.setClickable(true);
+        card.setOnClickListener(listener);
+        LinearLayout.LayoutParams cardParams = matchWrap();
+        cardParams.topMargin = dp(10);
+        parent.addView(card, cardParams);
+
+        TextView kickerView = text(kicker, 11, Color.rgb(83, 103, 160), Typeface.BOLD);
+        card.addView(kickerView, matchWrap());
+
+        TextView title = text(titleText, 18, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(4);
+        card.addView(title, titleParams);
+
+        if (description != null && !description.trim().isEmpty()) {
+            TextView desc = text(description, 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            desc.setMaxLines(2);
+            LinearLayout.LayoutParams descParams = matchWrap();
+            descParams.topMargin = dp(5);
+            card.addView(desc, descParams);
+        }
+    }
+
     private void scheduleRemixEntry() {
         if (!videoPrepared || activeVideoView == null || remixOptionsPayload == null || remixEntryShown) {
             return;
@@ -3734,18 +3799,21 @@ public class MainActivity extends Activity {
             return;
         }
         remixEntryShown = true;
-        if (activeHighlightPanel != null) {
-            activeHighlightPanel.setVisibility(View.GONE);
+        enterRemixOverlay();
+        if (autoTriggered && activeVideoView != null && activeVideoView.isPlaying()) {
+            activeVideoView.pause();
         }
         activeRemixPanel.removeAllViews();
         activeRemixPanel.setVisibility(View.VISIBLE);
 
+        JSONArray featured = remixOptionsPayload == null ? null : remixOptionsPayload.optJSONArray("featured_remixes");
+        int featuredCount = featured == null ? 0 : featured.length();
         addPanelHeader(
                 activeRemixPanel,
                 autoTriggered ? "片尾拓展" : "AI 二创",
                 "要不要看看另一种后续？",
-                "选择一个方向，进入 3 张分镜式剧情拓展。",
-                v -> activeRemixPanel.setVisibility(View.GONE)
+                featuredCount > 0 ? "已有 " + featuredCount + " 条精选二创。选择一个方向，进入 3 张分镜番外。" : "不影响正片观看，只是一个可选番外体验。",
+                v -> dismissRemixPanel()
         );
 
         JSONArray options = remixOptionsPayload == null ? null : remixOptionsPayload.optJSONArray("options");
@@ -3762,12 +3830,14 @@ public class MainActivity extends Activity {
                 continue;
             }
             String label = option.optString("label", "二创方向");
-            Button optionButton = primaryButton(label);
-            optionButton.setTextSize(14);
-            optionButton.setOnClickListener(v -> showRemixVariants(option));
-            LinearLayout.LayoutParams optionParams = matchHeight(dp(44));
-            optionParams.topMargin = dp(10);
-            activeRemixPanel.addView(optionButton, optionParams);
+            String desc = option.optString("description", "");
+            addRemixChoiceCard(
+                    activeRemixPanel,
+                    "方向 " + (i + 1),
+                    label,
+                    desc,
+                    v -> showRemixVariants(option)
+            );
         }
         animatePanel(activeRemixPanel);
     }
@@ -3776,6 +3846,7 @@ public class MainActivity extends Activity {
         if (activeRemixPanel == null) {
             return;
         }
+        enterRemixOverlay();
         activeRemixPanel.removeAllViews();
         String choiceLabel = option.optString("label", "二创方向");
         String choiceDescription = option.optString("description", "");
@@ -3803,12 +3874,14 @@ public class MainActivity extends Activity {
                 }
                 String variantKey = variant.optString("variant_key", "");
                 String label = variant.optString("label", "个性版本");
-                Button variantButton = primaryButton(label);
-                variantButton.setTextSize(14);
-                variantButton.setOnClickListener(v -> createRemix(choiceKey, variantKey, label));
-                LinearLayout.LayoutParams variantParams = matchHeight(dp(44));
-                variantParams.topMargin = dp(10);
-                activeRemixPanel.addView(variantButton, variantParams);
+                String desc = variant.optString("description", variant.optString("value", ""));
+                addRemixChoiceCard(
+                        activeRemixPanel,
+                        "版本 " + (i + 1),
+                        label,
+                        desc,
+                        v -> createRemix(choiceKey, variantKey, label)
+                );
             }
         }
 
@@ -3824,10 +3897,22 @@ public class MainActivity extends Activity {
         if (activeRemixPanel == null || choiceKey.isEmpty()) {
             return;
         }
+        enterRemixOverlay();
         activeRemixPanel.removeAllViews();
-        TextView loading = text("正在生成：" + label, 17, Color.rgb(18, 20, 26), Typeface.BOLD);
+        TextView loading = text("正在穿梭进入剧集", 22, Color.rgb(18, 20, 26), Typeface.BOLD);
         loading.setGravity(Gravity.CENTER);
         activeRemixPanel.addView(loading, matchWrap());
+        TextView detail = text("准备「" + label + "」的片尾番外。图片和声音会优先读取缓存。", 13, Color.rgb(88, 98, 118), Typeface.BOLD);
+        detail.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams detailParams = matchWrap();
+        detailParams.topMargin = dp(10);
+        activeRemixPanel.addView(detail, detailParams);
+        TextView orbit = text("•   •   •", 30, Color.rgb(10, 102, 255), Typeface.BOLD);
+        orbit.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams orbitParams = matchWrap();
+        orbitParams.topMargin = dp(22);
+        activeRemixPanel.addView(orbit, orbitParams);
+        animatePanel(activeRemixPanel);
 
         new Thread(() -> {
             try {
@@ -3850,6 +3935,7 @@ public class MainActivity extends Activity {
         if (activeRemixPanel == null) {
             return;
         }
+        enterRemixOverlay();
         JSONObject imagePlan = result.optJSONObject("image_plan");
         JSONArray shots = imagePlan == null ? null : imagePlan.optJSONArray("shots");
         if (shots != null && shots.length() > 0) {
@@ -3902,6 +3988,7 @@ public class MainActivity extends Activity {
         if (activeRemixPanel == null) {
             return;
         }
+        enterRemixOverlay();
         int safeIndex = Math.max(0, Math.min(shotIndex, shots.length() - 1));
         JSONObject shot = shots.optJSONObject(safeIndex);
         if (shot == null) {
@@ -3918,7 +4005,7 @@ public class MainActivity extends Activity {
                 "镜头 " + (safeIndex + 1) + " / " + shots.length(),
                 titleText,
                 subtitle.isEmpty() ? "点击图片或下一张，继续浏览这一段剧情。" : subtitle,
-                v -> showRemixEntry(false)
+                v -> dismissRemixPanel()
         );
 
         ImageView image = new ImageView(this);
@@ -4212,6 +4299,7 @@ public class MainActivity extends Activity {
         if (activeRemixPanel == null) {
             return;
         }
+        enterRemixOverlay();
         activeRemixPanel.removeAllViews();
         TextView error = text("二创生成失败：" + message, 14, Color.rgb(210, 54, 70), Typeface.BOLD);
         activeRemixPanel.addView(error, matchWrap());
@@ -4279,6 +4367,9 @@ public class MainActivity extends Activity {
         }
         if (activeRemixPanel != null) {
             activeRemixPanel.setVisibility(View.GONE);
+        }
+        if (activePlayerControls != null) {
+            activePlayerControls.setVisibility(View.VISIBLE);
         }
         activeHighlightPanel.removeAllViews();
 
@@ -4883,6 +4974,33 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(22));
         drawable.setStroke(dp(1), Color.argb(70, 20, 26, 38));
+        return drawable;
+    }
+
+    private GradientDrawable remixOverlayBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.argb(246, 255, 255, 255),
+                        Color.argb(240, 241, 247, 255),
+                        Color.argb(242, 255, 246, 232)
+                }
+        );
+        drawable.setCornerRadius(dp(30));
+        drawable.setStroke(dp(1), Color.argb(120, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable remixChoiceBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(235, 255, 255, 255),
+                        Color.argb(220, 236, 244, 255)
+                }
+        );
+        drawable.setCornerRadius(dp(20));
+        drawable.setStroke(dp(1), Color.argb(54, 20, 26, 38));
         return drawable;
     }
 

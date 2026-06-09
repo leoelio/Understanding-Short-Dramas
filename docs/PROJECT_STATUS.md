@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 06:06:12
+更新时间：2026-06-10 06:13:24
 
 ## 当前目标
 
-Android 原生迁移继续推进聊聊能力：聊天详情已接入表情快捷发送和 emoji 消息样式。
+Android 原生迁移继续推进播放页核心亮点：片尾 AI 二创入口升级为沉浸式覆盖层。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`2375a5e`
+- 最新提交：`20fad78`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,11 +51,11 @@ Android 原生迁移继续推进聊聊能力：聊天详情已接入表情快捷
 
 ## 本次变更摘要
 
-- 原生聊天详情页新增常用表情快捷栏，发送 message_type=emoji；聊天消息渲染识别 emoji 类型并使用专用表情气泡，继续兼容 text 与 watch_link。
+- 原生播放页在片尾触发或视频结束时展示片尾拓展；进入二创时隐藏底部播放控制条并使用全屏覆盖层；二创方向和个性版本改为可点击卡片；生成态改为穿梭进入剧集提示。
 
 ## 下一步建议
 
-- 继续迁移聊天内 AI 资产分享入口，或进入原生播放页片尾 AI 二创覆盖层体验打磨。
+- 继续迁移原生片尾 AI 二创的精选内容展示、场景内选择提示，或进一步打磨播放页高光/弹幕覆盖层视觉。
 
 ## 安全提醒
 
