@@ -68,6 +68,7 @@ public class MainActivity extends Activity {
     private LinearLayout dramaList;
     private LinearLayout profileContent;
     private TextView avatarActionStatus;
+    private EditText profileDisplayNameInput;
     private JSONArray avatarPool = new JSONArray();
     private int avatarPoolPage;
     private TextView voiceActionStatus;
@@ -988,6 +989,21 @@ public class MainActivity extends Activity {
         nameParams.topMargin = dp(6);
         avatarCard.addView(name, nameParams);
 
+        LinearLayout nameRow = new LinearLayout(this);
+        nameRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams nameRowParams = matchWrap();
+        nameRowParams.topMargin = dp(10);
+        avatarCard.addView(nameRow, nameRowParams);
+
+        profileDisplayNameInput = input(displayName, "昵称");
+        nameRow.addView(profileDisplayNameInput, weightHeight(2, dp(44)));
+
+        Button saveNameButton = primaryButton("保存昵称");
+        saveNameButton.setOnClickListener(v -> updateProfileDisplayName());
+        LinearLayout.LayoutParams saveNameParams = weightHeight(1, dp(44));
+        saveNameParams.leftMargin = dp(8);
+        nameRow.addView(saveNameButton, saveNameParams);
+
         String avatarUrl = userProfile == null ? "" : userProfile.optString("avatar_url", "");
         if (avatarUrl.startsWith("/media/")) {
             ImageView avatarImage = new ImageView(this);
@@ -1139,6 +1155,42 @@ public class MainActivity extends Activity {
                     setMessage("头像切换失败：" + error.getMessage(), false);
                     if (avatarActionStatus != null) {
                         avatarActionStatus.setText("头像切换失败：" + error.getMessage());
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void updateProfileDisplayName() {
+        String displayName = profileDisplayNameInput == null ? "" : profileDisplayNameInput.getText().toString().trim();
+        if (displayName.isEmpty()) {
+            setMessage("昵称不能为空。", false);
+            if (avatarActionStatus != null) {
+                avatarActionStatus.setText("昵称不能为空。");
+            }
+            return;
+        }
+        if (avatarActionStatus != null) {
+            avatarActionStatus.setText("正在保存昵称...");
+        }
+        setMessage("正在保存昵称...", true);
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("display_name", displayName);
+                JSONObject response = new JSONObject(httpPatch(loadBaseUrl() + "/api/users/me/profile", payload.toString(), loadToken()));
+                JSONObject user = response.optJSONObject("user");
+                String savedName = user == null ? displayName : user.optString("display_name", displayName);
+                runOnUiThread(() -> {
+                    saveDisplayName(savedName);
+                    setMessage("昵称已保存。", true);
+                    fetchProfileSummary();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    setMessage("昵称保存失败：" + error.getMessage(), false);
+                    if (avatarActionStatus != null) {
+                        avatarActionStatus.setText("昵称保存失败：" + error.getMessage());
                     }
                 });
             }
@@ -3994,6 +4046,13 @@ public class MainActivity extends Activity {
         getSharedPreferences(PREFS, MODE_PRIVATE)
                 .edit()
                 .putString(KEY_TOKEN, token)
+                .putString(KEY_DISPLAY_NAME, displayName)
+                .apply();
+    }
+
+    private void saveDisplayName(String displayName) {
+        getSharedPreferences(PREFS, MODE_PRIVATE)
+                .edit()
                 .putString(KEY_DISPLAY_NAME, displayName)
                 .apply();
     }
