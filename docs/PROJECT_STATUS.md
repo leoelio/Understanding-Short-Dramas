@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 03:34:48
+更新时间：2026-06-10 03:39:36
 
 ## 当前目标
 
-Android 原生迁移继续推进：同看播放页的弹幕气泡支持点击、点赞和快捷回复，并同步为房间事件。
+Android 原生迁移继续推进：新增原生逛逛入口和只读动态流，消费 Web 社交 feed 接口展示专题、动态、点赞数和评论摘要。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`5c73bb5`
+- 最新提交：`63a3977`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -52,16 +52,17 @@ Android 原生迁移继续推进：同看播放页的弹幕气泡支持点击、
 ## 本次变更摘要
 
 - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
-- 同看播放页中的普通弹幕气泡新增点击入口；只有 activePlayerRoomCode 存在时启用，普通播放不写房间事件。
-- 点击弹幕后弹出轻量弹幕互动面板，提供点赞、同感、哈哈哈和关闭操作。
-- 点赞会 POST /api/watch-rooms/{code}/events，event_type 为 danmaku_like。
-- 快捷回复会 POST /api/watch-rooms/{code}/events，event_type 为 danmaku_reply，payload 带回复文本、danmaku_id、原弹幕文本、episode_id 和 native_android 来源。
+- 首页新增 逛逛 按钮，并把退出登录移到第二行，减少首页按钮拥挤。
+- 新增原生逛逛页面，提供全部、好友、我的三个 scope 筛选入口。
+- 逛逛页面调用 /api/social/feed?scope=...，展示 topics 和 posts。
+- 动态卡展示来源类型、发布用户、标题、正文、可见性、点赞数、评论数和最多两条评论摘要。
+- 本轮暂不实现发布、点赞、评论和删除评论，只完成真实数据只读展示。
 - Android debug APK 编译成功；本轮未做真机验证。
 
 ## 下一步建议
 
-- 手机可用后验证：同看播放中点击弹幕，点赞/回复后对方播放页是否出现同看气泡。
-- 下一步建议迁移原生逛逛/动态流，补齐 Web 端社交发布与浏览能力。
+- 手机可用后验证：首页进入逛逛、三个 scope 切换、动态卡显示是否适合小屏。
+- 下一步建议迁移逛逛点赞和评论，再迁移动态发布入口。
 
 ## 安全提醒
 

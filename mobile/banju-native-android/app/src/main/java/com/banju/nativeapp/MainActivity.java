@@ -56,6 +56,7 @@ public class MainActivity extends Activity {
     private LinearLayout chatContent;
     private LinearLayout chatMessagesContent;
     private EditText chatMessageInput;
+    private LinearLayout socialFeedContent;
     private LinearLayout watchRoomContent;
     private LinearLayout watchRoomEventsContent;
     private EditText watchRoomEventInput;
@@ -250,6 +251,12 @@ public class MainActivity extends Activity {
         chatParams.leftMargin = dp(10);
         actions.addView(chatButton, chatParams);
 
+        Button socialButton = primaryButton("逛逛");
+        socialButton.setOnClickListener(v -> showSocialFeedScreen("正在加载动态流。", "all"));
+        LinearLayout.LayoutParams socialParams = weightHeight(1, dp(46));
+        socialParams.leftMargin = dp(10);
+        actions.addView(socialButton, socialParams);
+
         Button profileButton = primaryButton("我的");
         profileButton.setOnClickListener(v -> showProfileScreen("正在加载账号状态。"));
         LinearLayout.LayoutParams profileParams = weightHeight(1, dp(46));
@@ -261,9 +268,9 @@ public class MainActivity extends Activity {
             clearSession();
             showLoginScreen("已退出，可重新登录。");
         });
-        LinearLayout.LayoutParams logoutParams = weightHeight(1, dp(46));
-        logoutParams.leftMargin = dp(10);
-        actions.addView(logoutButton, logoutParams);
+        LinearLayout.LayoutParams logoutParams = matchHeight(dp(44));
+        logoutParams.topMargin = dp(10);
+        header.addView(logoutButton, logoutParams);
 
         messageText = text(message, 13, Color.rgb(104, 112, 130), Typeface.NORMAL);
         LinearLayout.LayoutParams messageParams = matchWrap();
@@ -278,6 +285,222 @@ public class MainActivity extends Activity {
 
         setContentView(scrollView);
         fetchDramas();
+    }
+
+    private void showSocialFeedScreen(String message, String scope) {
+        stopActiveVideo();
+        ScrollView scrollView = newPage();
+        LinearLayout root = pageRoot(scrollView);
+        root.setGravity(Gravity.NO_GRAVITY);
+
+        LinearLayout header = card();
+        header.setGravity(Gravity.NO_GRAVITY);
+        root.addView(header, matchWrap());
+
+        header.addView(text("Discover", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        TextView title = text("逛逛", 30, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(4);
+        header.addView(title, titleParams);
+
+        TextView subtitle = text("AI 声音、剧情卡和朋友动态", 14, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams subtitleParams = matchWrap();
+        subtitleParams.topMargin = dp(8);
+        header.addView(subtitle, subtitleParams);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionsParams = matchWrap();
+        actionsParams.topMargin = dp(16);
+        header.addView(actions, actionsParams);
+
+        Button homeButton = secondaryButton("选剧");
+        homeButton.setOnClickListener(v -> showHomeScreen("已返回短剧首页。"));
+        actions.addView(homeButton, weightHeight(1, dp(46)));
+
+        Button chatButton = primaryButton("聊聊");
+        chatButton.setOnClickListener(v -> showChatScreen("正在加载好友动态。"));
+        LinearLayout.LayoutParams chatParams = weightHeight(1, dp(46));
+        chatParams.leftMargin = dp(10);
+        actions.addView(chatButton, chatParams);
+
+        Button profileButton = primaryButton("我的");
+        profileButton.setOnClickListener(v -> showProfileScreen("正在加载账号状态。"));
+        LinearLayout.LayoutParams profileParams = weightHeight(1, dp(46));
+        profileParams.leftMargin = dp(10);
+        actions.addView(profileButton, profileParams);
+
+        LinearLayout scopeRow = new LinearLayout(this);
+        scopeRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams scopeParams = matchWrap();
+        scopeParams.topMargin = dp(12);
+        header.addView(scopeRow, scopeParams);
+
+        Button allButton = secondaryButton("全部");
+        allButton.setOnClickListener(v -> fetchSocialFeed("all"));
+        scopeRow.addView(allButton, weightHeight(1, dp(42)));
+
+        Button friendsButton = secondaryButton("好友");
+        friendsButton.setOnClickListener(v -> fetchSocialFeed("friends"));
+        LinearLayout.LayoutParams friendsParams = weightHeight(1, dp(42));
+        friendsParams.leftMargin = dp(8);
+        scopeRow.addView(friendsButton, friendsParams);
+
+        Button mineButton = secondaryButton("我的");
+        mineButton.setOnClickListener(v -> fetchSocialFeed("mine"));
+        LinearLayout.LayoutParams mineParams = weightHeight(1, dp(42));
+        mineParams.leftMargin = dp(8);
+        scopeRow.addView(mineButton, mineParams);
+
+        messageText = text(message, 13, Color.rgb(104, 112, 130), Typeface.NORMAL);
+        LinearLayout.LayoutParams messageParams = matchWrap();
+        messageParams.topMargin = dp(18);
+        root.addView(messageText, messageParams);
+
+        socialFeedContent = new LinearLayout(this);
+        socialFeedContent.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams contentParams = matchWrap();
+        contentParams.topMargin = dp(12);
+        root.addView(socialFeedContent, contentParams);
+
+        setContentView(scrollView);
+        fetchSocialFeed(scope);
+    }
+
+    private void fetchSocialFeed(String scope) {
+        if (socialFeedContent == null) {
+            return;
+        }
+        String safeScope = (scope == null || scope.trim().isEmpty()) ? "all" : scope.trim();
+        socialFeedContent.removeAllViews();
+        setMessage("正在加载逛逛动态...", true);
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject(httpGet(loadBaseUrl() + "/api/social/feed?scope=" + safeScope, loadToken()));
+                runOnUiThread(() -> renderSocialFeed(payload));
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("逛逛加载失败：" + error.getMessage(), false));
+            }
+        }).start();
+    }
+
+    private void renderSocialFeed(JSONObject payload) {
+        if (socialFeedContent == null) {
+            return;
+        }
+        socialFeedContent.removeAllViews();
+        JSONArray topics = payload.optJSONArray("topics");
+        JSONArray posts = payload.optJSONArray("posts");
+        setMessage("已加载 " + arrayLength(posts) + " 条动态。", true);
+
+        LinearLayout topicCard = card();
+        topicCard.setGravity(Gravity.NO_GRAVITY);
+        topicCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams topicParams = matchWrap();
+        topicParams.bottomMargin = dp(12);
+        socialFeedContent.addView(topicCard, topicParams);
+        topicCard.addView(text("今日专题", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        if (topics == null || topics.length() == 0) {
+            TextView empty = text("暂无专题。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            LinearLayout.LayoutParams emptyParams = matchWrap();
+            emptyParams.topMargin = dp(8);
+            topicCard.addView(empty, emptyParams);
+        } else {
+            for (int i = 0; i < topics.length() && i < 3; i++) {
+                JSONObject topic = topics.optJSONObject(i);
+                if (topic != null) {
+                    addSocialTopicRow(topicCard, topic);
+                }
+            }
+        }
+
+        if (posts == null || posts.length() == 0) {
+            LinearLayout emptyCard = card();
+            emptyCard.setGravity(Gravity.NO_GRAVITY);
+            emptyCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+            socialFeedContent.addView(emptyCard, matchWrap());
+            emptyCard.addView(text("暂无动态", 18, Color.rgb(18, 20, 26), Typeface.BOLD), matchWrap());
+            TextView empty = text("后续会接入发布入口，先展示 Web 主线已有动态。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            LinearLayout.LayoutParams emptyParams = matchWrap();
+            emptyParams.topMargin = dp(8);
+            emptyCard.addView(empty, emptyParams);
+            return;
+        }
+
+        for (int i = 0; i < posts.length() && i < 20; i++) {
+            JSONObject post = posts.optJSONObject(i);
+            if (post != null) {
+                addSocialPostCard(post);
+            }
+        }
+    }
+
+    private void addSocialTopicRow(LinearLayout parent, JSONObject topic) {
+        String title = topic.optString("title", topic.optString("name", "专题"));
+        String desc = topic.optString("description", topic.optString("subtitle", ""));
+        TextView row = text(title + (desc.isEmpty() ? "" : " · " + desc), 13, Color.rgb(28, 45, 76), Typeface.BOLD);
+        row.setSingleLine(true);
+        LinearLayout.LayoutParams rowParams = matchWrap();
+        rowParams.topMargin = dp(8);
+        parent.addView(row, rowParams);
+    }
+
+    private void addSocialPostCard(JSONObject post) {
+        LinearLayout postCard = card();
+        postCard.setGravity(Gravity.NO_GRAVITY);
+        postCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams postParams = matchWrap();
+        postParams.bottomMargin = dp(12);
+        socialFeedContent.addView(postCard, postParams);
+
+        JSONObject user = post.optJSONObject("user");
+        String sourceType = post.optString("source_type", "thought");
+        String title = post.optString("title", "动态");
+        String body = post.optString("text", "");
+        postCard.addView(text(sourceLabel(sourceType) + " · " + userName(user), 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        TextView titleView = text(title, 18, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(6);
+        postCard.addView(titleView, titleParams);
+        if (!body.isEmpty()) {
+            TextView bodyView = text(body, 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            bodyView.setMaxLines(4);
+            LinearLayout.LayoutParams bodyParams = matchWrap();
+            bodyParams.topMargin = dp(8);
+            postCard.addView(bodyView, bodyParams);
+        }
+        TextView meta = text(post.optInt("like_count", 0) + " 赞 · " + post.optInt("comment_count", 0) + " 评论 · " + post.optString("visibility", "public"), 12, Color.rgb(104, 112, 130), Typeface.NORMAL);
+        LinearLayout.LayoutParams metaParams = matchWrap();
+        metaParams.topMargin = dp(10);
+        postCard.addView(meta, metaParams);
+
+        JSONArray comments = post.optJSONArray("comments");
+        if (comments != null && comments.length() > 0) {
+            for (int i = 0; i < comments.length() && i < 2; i++) {
+                JSONObject comment = comments.optJSONObject(i);
+                if (comment != null) {
+                    JSONObject commentUser = comment.optJSONObject("user");
+                    TextView commentView = text(userName(commentUser) + "：" + comment.optString("text", ""), 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
+                    commentView.setSingleLine(true);
+                    LinearLayout.LayoutParams commentParams = matchWrap();
+                    commentParams.topMargin = dp(6);
+                    postCard.addView(commentView, commentParams);
+                }
+            }
+        }
+    }
+
+    private String sourceLabel(String sourceType) {
+        if ("voice".equals(sourceType)) {
+            return "AI 声音";
+        }
+        if ("image".equals(sourceType)) {
+            return "AI 图片";
+        }
+        if ("story".equals(sourceType)) {
+            return "AI 剧情";
+        }
+        return "文字感受";
     }
 
     private void showProfileScreen(String message) {
