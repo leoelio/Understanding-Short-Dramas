@@ -3623,6 +3623,7 @@ public class MainActivity extends Activity {
                 v -> activeHighlightPanel.setVisibility(View.GONE)
         );
 
+        addDanmakuUserStrip(activeHighlightPanel, user, text);
         addPanelSectionTitle(activeHighlightPanel, "快捷回复");
 
         LinearLayout firstRow = new LinearLayout(this);
@@ -3660,6 +3661,74 @@ public class MainActivity extends Activity {
         activeHighlightPanel.setVisibility(View.VISIBLE);
         activeHighlightPanel.bringToFront();
         animatePanel(activeHighlightPanel);
+    }
+
+    private void addDanmakuUserStrip(LinearLayout panel, JSONObject user, String content) {
+        LinearLayout strip = new LinearLayout(this);
+        strip.setOrientation(LinearLayout.HORIZONTAL);
+        strip.setGravity(Gravity.CENTER_VERTICAL);
+        strip.setPadding(dp(12), dp(10), dp(12), dp(10));
+        strip.setBackground(inputBackground());
+        LinearLayout.LayoutParams stripParams = matchWrap();
+        stripParams.topMargin = dp(12);
+        panel.addView(strip, stripParams);
+
+        FrameLayout avatar = new FrameLayout(this);
+        GradientDrawable avatarBackground = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.argb(230, 255, 255, 255), Color.argb(210, 232, 241, 255)}
+        );
+        avatarBackground.setShape(GradientDrawable.OVAL);
+        avatarBackground.setStroke(dp(1), Color.argb(80, 20, 26, 38));
+        avatar.setBackground(avatarBackground);
+        LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(dp(42), dp(42));
+        strip.addView(avatar, avatarParams);
+
+        String avatarUrl = user == null ? "" : absoluteUrl(user.optString("avatar_url", ""));
+        if (!avatarUrl.isEmpty()) {
+            ImageView image = new ImageView(this);
+            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            avatar.addView(image, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            loadImageInto(image, avatarUrl);
+        } else {
+            String displayName = userName(user);
+            String initial = displayName.isEmpty() ? "观" : displayName.substring(0, Math.min(1, displayName.length()));
+            TextView fallback = text(initial, 16, Color.rgb(28, 45, 76), Typeface.BOLD);
+            fallback.setGravity(Gravity.CENTER);
+            avatar.addView(fallback, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        }
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        copyParams.leftMargin = dp(10);
+        strip.addView(copy, copyParams);
+
+        TextView name = text(userName(user), 14, Color.rgb(18, 20, 26), Typeface.BOLD);
+        name.setSingleLine(true);
+        copy.addView(name, matchWrap());
+
+        String title = danmakuUserTitle(user);
+        TextView meta = text(title + " · " + shortText(content, 24), 12, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        meta.setSingleLine(true);
+        LinearLayout.LayoutParams metaParams = matchWrap();
+        metaParams.topMargin = dp(2);
+        copy.addView(meta, metaParams);
+    }
+
+    private String danmakuUserTitle(JSONObject user) {
+        if (user == null) {
+            return "匿名弹幕";
+        }
+        String growthTitle = user.optString("growth_title", "");
+        if (!growthTitle.isEmpty()) {
+            return growthTitle;
+        }
+        if (user.optBoolean("relation_ready", false)) {
+            return "可互动观众";
+        }
+        String role = user.optString("role", "");
+        return role.isEmpty() ? "匿名弹幕" : role;
     }
 
     private void submitDanmakuRoomEvent(String eventType, JSONObject comment, String replyText) {
