@@ -45,6 +45,8 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class MainActivity extends Activity {
@@ -109,6 +111,7 @@ public class MainActivity extends Activity {
     private TextView activePlayerStatus;
     private TextView activeDanmakuStatus;
     private TextView activeWatchRoomStatus;
+    private TextView activeWatchRoomBoardStatus;
     private Button lightDanmakuButton;
     private Button carnivalDanmakuButton;
     private Button immersiveDanmakuButton;
@@ -124,6 +127,8 @@ public class MainActivity extends Activity {
     private int activeHighlightId = -1;
     private boolean remixEntryShown;
     private String activeDanmakuMode = "light";
+    private final Map<String, Integer> activeRoomChoiceCounts = new HashMap<>();
+    private String activeRoomLatestAction = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -2686,11 +2691,25 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams roomButtonParams = new LinearLayout.LayoutParams(dp(68), dp(34));
             roomButtonParams.leftMargin = dp(8);
             activeWatchRoomStrip.addView(roomButton, roomButtonParams);
+
+            activeWatchRoomBoardStatus = text("互动榜 · 等待同伴选择、点赞或发言", 12, Color.WHITE, Typeface.BOLD);
+            activeWatchRoomBoardStatus.setSingleLine(true);
+            activeWatchRoomBoardStatus.setPadding(dp(12), dp(7), dp(12), dp(7));
+            activeWatchRoomBoardStatus.setBackground(danmakuBubbleBackground());
+            FrameLayout.LayoutParams boardParams = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.TOP
+            );
+            boardParams.leftMargin = dp(16);
+            boardParams.rightMargin = dp(16);
+            boardParams.topMargin = dp(146);
+            playerFrame.addView(activeWatchRoomBoardStatus, boardParams);
         }
 
         activeDanmakuOverlay = new LinearLayout(this);
         activeDanmakuOverlay.setOrientation(LinearLayout.VERTICAL);
-        activeDanmakuOverlay.setPadding(dp(12), activePlayerRoomCode.isEmpty() ? dp(92) : dp(142), dp(12), 0);
+        activeDanmakuOverlay.setPadding(dp(12), activePlayerRoomCode.isEmpty() ? dp(92) : dp(188), dp(12), 0);
         FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -3092,10 +3111,48 @@ public class MainActivity extends Activity {
                 continue;
             }
             lastRoomEventId = Math.max(lastRoomEventId, event.optInt("id", lastRoomEventId));
+            updateWatchRoomBoard(event);
             if (i >= start) {
                 showWatchRoomEventBubble(event);
             }
         }
+    }
+
+    private void updateWatchRoomBoard(JSONObject event) {
+        if (activeWatchRoomBoardStatus == null || event == null) {
+            return;
+        }
+        String type = event.optString("event_type", "");
+        JSONObject user = event.optJSONObject("user");
+        JSONObject payload = event.optJSONObject("payload");
+        if (payload == null) {
+            return;
+        }
+        String label = "";
+        if ("interaction".equals(type)) {
+            label = payload.optString("label", payload.optString("option_label", payload.optString("option_key", "")));
+            if (!label.isEmpty()) {
+                activeRoomChoiceCounts.put(label, activeRoomChoiceCounts.containsKey(label) ? activeRoomChoiceCounts.get(label) + 1 : 1);
+                activeRoomLatestAction = userName(user) + "选了「" + label + "」";
+            }
+        } else if ("danmaku_like".equals(type)) {
+            activeRoomLatestAction = userName(user) + "赞了一条弹幕";
+        } else if ("danmaku_reply".equals(type)) {
+            activeRoomLatestAction = userName(user) + "回弹幕：" + payload.optString("text", "同感");
+        } else if ("danmaku".equals(type)) {
+            activeRoomLatestAction = userName(user) + "说：" + payload.optString("text", "发了一条动态");
+        }
+        String hotLabel = "";
+        int hotCount = 0;
+        for (Map.Entry<String, Integer> entry : activeRoomChoiceCounts.entrySet()) {
+            if (entry.getValue() > hotCount) {
+                hotLabel = entry.getKey();
+                hotCount = entry.getValue();
+            }
+        }
+        String hotText = hotLabel.isEmpty() ? "热门选择待产生" : "热门选择「" + hotLabel + "」x" + hotCount;
+        String latestText = activeRoomLatestAction.isEmpty() ? "等待同伴互动" : activeRoomLatestAction;
+        activeWatchRoomBoardStatus.setText("互动榜 · " + hotText + " · " + latestText);
     }
 
     private void showWatchRoomEventBubble(JSONObject event) {
@@ -3172,11 +3229,14 @@ public class MainActivity extends Activity {
         activePlayerStatus = null;
         activeDanmakuStatus = null;
         activeWatchRoomStatus = null;
+        activeWatchRoomBoardStatus = null;
         lightDanmakuButton = null;
         carnivalDanmakuButton = null;
         immersiveDanmakuButton = null;
         activeRemixEntryButton = null;
         activePlayerRoomCode = "";
+        activeRoomChoiceCounts.clear();
+        activeRoomLatestAction = "";
     }
 
     private void updatePlayerStatus() {

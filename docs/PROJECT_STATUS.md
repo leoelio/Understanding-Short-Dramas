@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 05:48:23
+更新时间：2026-06-10 05:53:43
 
 ## 当前目标
 
-Android 原生迁移继续推进：播放页同看状态条增加成员头像、称号和徽章数量展示，强化同看社交感。
+Android 原生迁移继续推进：播放页同看新增互动榜，聚合同看高光选择、弹幕点赞/回复和房间发言。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`384dac5`
+- 最新提交：`e1c0d42`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -51,13 +51,13 @@ Android 原生迁移继续推进：播放页同看状态条增加成员头像、
 
 ## 本次变更摘要
 
-- 原生播放页同看状态条新增成员头像叠放区域，使用 room payload 中 host/guest 的 avatar_url 加载头像。
-- 状态条第二行展示 growth_title 和 badge_count，并保留房间码、成员、播放状态、同步进度和最近同步用户。
-- 头像容器使用圆形背景和 clipToOutline；已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
+- 原生同看播放页新增互动榜状态行，展示热门高光选择和最新同伴动作。
+- 房间事件轮询时聚合 interaction、danmaku_like、danmaku_reply、danmaku 四类事件，持续刷新播放页内榜单。
+- 同看模式下弹幕区域继续下移，避免遮挡成员状态条和互动榜；已执行 .\\scripts\\build_banju_native_android_debug.ps1，debug APK 构建成功。
 
 ## 下一步建议
 
-- 下一步可继续迁移播放页内同看互动榜/答题结果展示，或连接真机验证头像、称号和房间状态条的实际观感。
+- 下一步可继续迁移原生好友/聊聊页面的聊天细节，或连接真机验证同看成员条、互动榜和房间动态气泡的实际展示。
 
 ## 安全提醒
 
