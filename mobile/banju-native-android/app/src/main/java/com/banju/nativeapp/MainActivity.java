@@ -68,6 +68,7 @@ public class MainActivity extends Activity {
     private Runnable danmakuRunnable;
     private Runnable remixRunnable;
     private Runnable roomSyncRunnable;
+    private Runnable roomEventsRunnable;
     private LinearLayout activeHighlightPanel;
     private LinearLayout activeDanmakuOverlay;
     private LinearLayout activeRemixPanel;
@@ -84,6 +85,7 @@ public class MainActivity extends Activity {
     private JSONObject remixOptionsPayload;
     private int nextHighlightIndex;
     private int nextDanmakuIndex;
+    private int lastRoomEventId;
     private int activeHighlightId = -1;
     private boolean remixEntryShown;
     private String activeDanmakuMode = "light";
@@ -1398,6 +1400,7 @@ public class MainActivity extends Activity {
             scheduleDanmakuTrack();
             scheduleRemixEntry();
             scheduleWatchRoomSync();
+            scheduleWatchRoomEvents();
         });
         videoView.setOnErrorListener((mediaPlayer, what, extra) -> {
             status.setText("视频播放失败，请确认服务端和 adb reverse 已连接。");
@@ -1555,6 +1558,7 @@ public class MainActivity extends Activity {
         stopDanmakuWatcher();
         stopRemixWatcher();
         stopWatchRoomSync();
+        stopWatchRoomEvents();
         stopRemixAudio();
         if (activeVideoView != null) {
             activeVideoView.stopPlayback();
@@ -1656,6 +1660,13 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void stopWatchRoomEvents() {
+        if (roomEventsRunnable != null) {
+            progressHandler.removeCallbacks(roomEventsRunnable);
+            roomEventsRunnable = null;
+        }
+    }
+
     private void scheduleWatchRoomSync() {
         stopWatchRoomSync();
         if (activePlayerRoomCode.isEmpty()) {
@@ -1692,17 +1703,111 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    private void scheduleWatchRoomEvents() {
+        stopWatchRoomEvents();
+        if (activePlayerRoomCode.isEmpty()) {
+            return;
+        }
+        roomEventsRunnable = () -> {
+            if (!videoPrepared || activeVideoView == null || activePlayerRoomCode.isEmpty()) {
+                return;
+            }
+            String roomCode = activePlayerRoomCode;
+            int afterId = lastRoomEventId;
+            new Thread(() -> {
+                try {
+                    JSONArray events = new JSONArray(httpGet(loadBaseUrl() + "/api/watch-rooms/" + roomCode + "/events?after_id=" + afterId, loadToken()));
+                    runOnUiThread(() -> renderWatchRoomEventsOverlay(events));
+                } catch (Exception ignored) {
+                    // 房间动态是辅助展示，失败不影响观看。
+                }
+            }).start();
+            progressHandler.postDelayed(roomEventsRunnable, 3500);
+        };
+        progressHandler.postDelayed(roomEventsRunnable, 1200);
+    }
+
+    private void renderWatchRoomEventsOverlay(JSONArray events) {
+        if (events == null || events.length() == 0 || activeDanmakuOverlay == null) {
+            return;
+        }
+        int start = Math.max(0, events.length() - 3);
+        for (int i = 0; i < events.length(); i++) {
+            JSONObject event = events.optJSONObject(i);
+            if (event == null) {
+                continue;
+            }
+            lastRoomEventId = Math.max(lastRoomEventId, event.optInt("id", lastRoomEventId));
+            if (i >= start) {
+                showWatchRoomEventBubble(event);
+            }
+        }
+    }
+
+    private void showWatchRoomEventBubble(JSONObject event) {
+        if (activeDanmakuOverlay == null || "immersive".equals(activeDanmakuMode)) {
+            return;
+        }
+        JSONObject user = event.optJSONObject("user");
+        String content = roomEventText(event);
+        while (activeDanmakuOverlay.getChildCount() >= ("carnival".equals(activeDanmakuMode) ? 4 : 2)) {
+            activeDanmakuOverlay.removeViewAt(0);
+        }
+        TextView bubble = text("同看 · " + userName(user) + "：" + content, 12, Color.WHITE, Typeface.BOLD);
+        bubble.setSingleLine(true);
+        bubble.setPadding(dp(12), dp(7), dp(12), dp(7));
+        bubble.setBackground(roomEventBubbleBackground());
+        bubble.setAlpha(0f);
+        bubble.setTranslationX(dp(24));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.gravity = Gravity.RIGHT;
+        params.bottomMargin = dp(6);
+        params.rightMargin = dp(12);
+        activeDanmakuOverlay.addView(bubble, params);
+        bubble.animate().alpha(1f).translationX(0f).setDuration(220).start();
+        progressHandler.postDelayed(() -> {
+            if (activeDanmakuOverlay != null) {
+                bubble.animate().alpha(0f).translationX(dp(18)).setDuration(180).withEndAction(() -> {
+                    if (activeDanmakuOverlay != null) {
+                        activeDanmakuOverlay.removeView(bubble);
+                    }
+                }).start();
+            }
+        }, 3600);
+    }
+
+    private String roomEventText(JSONObject event) {
+        String type = event.optString("event_type", "danmaku");
+        JSONObject payload = event.optJSONObject("payload");
+        if (payload == null) {
+            return "更新了房间动态";
+        }
+        if ("interaction".equals(type)) {
+            String label = payload.optString("label", payload.optString("option_label", ""));
+            return label.isEmpty() ? "完成了一次高光互动" : "选择了 " + label;
+        }
+        if ("danmaku_like".equals(type)) {
+            return "点赞了一条弹幕";
+        }
+        if ("danmaku_reply".equals(type)) {
+            return payload.optString("text", "回复了一条弹幕");
+        }
+        return payload.optString("text", "发了一条弹幕");
+    }
+
     private void resetHighlightState() {
         stopProgressWatcher();
         stopDanmakuWatcher();
         stopRemixWatcher();
         stopWatchRoomSync();
+        stopWatchRoomEvents();
         videoPrepared = false;
         highlightTimeline = new JSONArray();
         danmakuTimeline = new JSONArray();
         remixOptionsPayload = null;
         nextHighlightIndex = 0;
         nextDanmakuIndex = 0;
+        lastRoomEventId = 0;
         activeHighlightId = -1;
         remixEntryShown = false;
         activeHighlightPanel = null;
@@ -2820,6 +2925,19 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(18));
         drawable.setStroke(dp(1), outgoing ? Color.argb(60, 255, 255, 255) : Color.argb(46, 20, 26, 38));
+        return drawable;
+    }
+
+    private GradientDrawable roomEventBubbleBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(220, 0, 122, 255),
+                        Color.argb(214, 88, 86, 214)
+                }
+        );
+        drawable.setCornerRadius(dp(18));
+        drawable.setStroke(dp(1), Color.argb(96, 255, 255, 255));
         return drawable;
     }
 

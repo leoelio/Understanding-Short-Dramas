@@ -1450,3 +1450,20 @@
 - 下一步：
   - 手机可用后验证：从房间页进入播放，观察服务端 room progress_sec 是否随播放推进。
   - 下一步建议迁移播放页房间动态：播放页拉取 /api/watch-rooms/{code}/events，显示对方高光选择、弹幕和点赞。
+
+## 2026-06-10 03:25:32
+
+- 目标：Android 原生迁移继续推进：同看播放页开始拉取房间 events，并把对方房间动态叠加到视频上方。
+- Git：`99a7c93` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
+  - 原生播放页新增房间事件轮询器，仅在 activePlayerRoomCode 存在时启用，普通播放不拉取房间事件。
+  - 轮询 /api/watch-rooms/{code}/events?after_id=lastRoomEventId，记录 lastRoomEventId 避免重复展示。
+  - 支持把 danmaku、danmaku_like、danmaku_reply、interaction 转换为可读文案，并显示为 同看 气泡。
+  - 同看气泡使用独立蓝紫渐变样式；沉浸模式下不展示房间动态。
+  - 退出播放或切换页面时停止房间事件轮询。
+  - Android debug APK 编译成功；本轮未做真机验证。
+- 下一步：
+  - 手机可用后验证：两账号同看时，一方发送房间动态，另一方播放页是否出现同看气泡。
+  - 下一步建议迁移原生同看高光事件上报：用户在房间播放页点击高光互动时，同时 POST /api/watch-rooms/{code}/events。

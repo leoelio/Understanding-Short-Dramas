@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-10 03:20:17
+更新时间：2026-06-10 03:25:32
 
 ## 当前目标
 
-Android 原生迁移继续推进：同看房间进入播放页后保留 room code，并周期性上报当前播放进度和播放状态。
+Android 原生迁移继续推进：同看播放页开始拉取房间 events，并把对方房间动态叠加到视频上方。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`e5b987b`
+- 最新提交：`99a7c93`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -52,17 +52,17 @@ Android 原生迁移继续推进：同看房间进入播放页后保留 room cod
 ## 本次变更摘要
 
 - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
-- showNativePlayer 新增 roomCode 重载；普通播放不带房间上下文，从同看房间进入播放才保留 room code。
-- 房间页的 进入本集播放 按钮会携带 room code 打开原生播放页。
-- 原生播放页准备完成后，如果存在 activePlayerRoomCode，每 5 秒调用 /api/watch-rooms/{code}/sync 上报 episode_id、progress_sec 和 playback_state。
-- 退出播放或切换页面时停止房间同步定时器，避免后台继续上报。
-- 本轮暂不做另一端自动拉取并跟随房间进度，也不把房间 events 叠加回播放页。
+- 原生播放页新增房间事件轮询器，仅在 activePlayerRoomCode 存在时启用，普通播放不拉取房间事件。
+- 轮询 /api/watch-rooms/{code}/events?after_id=lastRoomEventId，记录 lastRoomEventId 避免重复展示。
+- 支持把 danmaku、danmaku_like、danmaku_reply、interaction 转换为可读文案，并显示为 同看 气泡。
+- 同看气泡使用独立蓝紫渐变样式；沉浸模式下不展示房间动态。
+- 退出播放或切换页面时停止房间事件轮询。
 - Android debug APK 编译成功；本轮未做真机验证。
 
 ## 下一步建议
 
-- 手机可用后验证：从房间页进入播放，观察服务端 room progress_sec 是否随播放推进。
-- 下一步建议迁移播放页房间动态：播放页拉取 /api/watch-rooms/{code}/events，显示对方高光选择、弹幕和点赞。
+- 手机可用后验证：两账号同看时，一方发送房间动态，另一方播放页是否出现同看气泡。
+- 下一步建议迁移原生同看高光事件上报：用户在房间播放页点击高光互动时，同时 POST /api/watch-rooms/{code}/events。
 
 ## 安全提醒
 
