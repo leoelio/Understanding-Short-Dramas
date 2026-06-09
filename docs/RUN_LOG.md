@@ -1416,3 +1416,20 @@
 - 下一步：
   - 手机可用后验证同看邀请：A 发起邀请，B 在聊聊页接受/拒绝，检查邀请状态和房间码显示。
   - 下一步建议迁移原生同看房间页：根据 room code 拉取房间状态和 events，显示双方成员、进度和房间动态。
+
+## 2026-06-10 03:14:24
+
+- 目标：Android 原生迁移继续推进：新增同看房间页，支持查看房间状态、成员、剧集进度、房间动态，并发送房间事件。
+- Git：`4fabaa3` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
+  - 同看邀请卡片新增 查看房间 入口；接受同看邀请后可直接进入房间页。
+  - 原生同看房间页调用 /api/watch-rooms/{code} 展示房间码、成员、episode_id、播放状态和进度。
+  - 原生同看房间页调用 /api/watch-rooms/{code}/events 展示房间动态。
+  - 原生同看房间页通过 /api/watch-rooms/{code}/events 发送 danmaku 类型房间事件，payload 带 native_android 来源和文本。
+  - 房间页提供 进入本集播放 按钮，先进入该集原生播放页；本轮暂不做双端进度同步控制。
+  - Android debug APK 编译成功；本轮未做真机验证。
+- 下一步：
+  - 手机可用后验证：发起同看邀请、接受后进入房间、发送房间动态、进入本集播放。
+  - 下一步建议迁移同看同步控制：播放页定期 POST /api/watch-rooms/{code}/sync，并拉取 events 展示对方互动。

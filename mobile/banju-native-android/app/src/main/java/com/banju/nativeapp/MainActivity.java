@@ -56,7 +56,11 @@ public class MainActivity extends Activity {
     private LinearLayout chatContent;
     private LinearLayout chatMessagesContent;
     private EditText chatMessageInput;
+    private LinearLayout watchRoomContent;
+    private LinearLayout watchRoomEventsContent;
+    private EditText watchRoomEventInput;
     private int activeEpisodeId;
+    private String activeRoomCode = "";
     private VideoView activeVideoView;
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
     private Runnable progressRunnable;
@@ -703,6 +707,11 @@ public class MainActivity extends Activity {
         row.addView(desc, descParams);
 
         if (!incoming) {
+            Button openButton = secondaryButton("查看房间");
+            openButton.setOnClickListener(v -> showWatchRoomScreen(roomCode, "正在打开同看房间。"));
+            LinearLayout.LayoutParams openParams = matchHeight(dp(42));
+            openParams.topMargin = dp(10);
+            row.addView(openButton, openParams);
             return;
         }
         LinearLayout actions = new LinearLayout(this);
@@ -714,35 +723,246 @@ public class MainActivity extends Activity {
         Button acceptButton = primaryButton("接受");
         acceptButton.setOnClickListener(v -> postWatchInvitationAction(
                 "/api/watch-rooms/invitations/" + invitationId + "/accept",
-                "已接受同看邀请。"
+                "已接受同看邀请。",
+                true
         ));
         actions.addView(acceptButton, weightHeight(1, dp(42)));
 
         Button declineButton = secondaryButton("拒绝");
         declineButton.setOnClickListener(v -> postWatchInvitationAction(
                 "/api/watch-rooms/invitations/" + invitationId + "/decline",
-                "已拒绝同看邀请。"
+                "已拒绝同看邀请。",
+                false
         ));
         LinearLayout.LayoutParams declineParams = weightHeight(1, dp(42));
         declineParams.leftMargin = dp(10);
         actions.addView(declineButton, declineParams);
     }
 
-    private void postWatchInvitationAction(String path, String successMessage) {
+    private void postWatchInvitationAction(String path, String successMessage, boolean openRoomOnSuccess) {
         setMessage("正在处理同看邀请...", true);
         new Thread(() -> {
             try {
                 JSONObject response = new JSONObject(httpPost(loadBaseUrl() + path, "{}", loadToken()));
                 JSONObject room = response.optJSONObject("room");
+                if (room == null) {
+                    JSONObject invitation = response.optJSONObject("invitation");
+                    room = invitation == null ? null : invitation.optJSONObject("room");
+                }
+                String roomCode = room == null ? "" : room.optString("code", "");
                 if (room != null && room.optInt("episode_id", 0) > 0) {
                     activeEpisodeId = room.optInt("episode_id", activeEpisodeId);
                 }
                 runOnUiThread(() -> {
-                    setMessage(successMessage, true);
-                    fetchChatSummary();
+                    if (openRoomOnSuccess && !roomCode.isEmpty()) {
+                        showWatchRoomScreen(roomCode, successMessage);
+                    } else {
+                        setMessage(successMessage, true);
+                        fetchChatSummary();
+                    }
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> setMessage("同看邀请处理失败：" + error.getMessage(), false));
+            }
+        }).start();
+    }
+
+    private void showWatchRoomScreen(String roomCode, String message) {
+        if (roomCode == null || roomCode.trim().isEmpty()) {
+            setMessage("同看房间码缺失。", false);
+            return;
+        }
+        stopActiveVideo();
+        activeRoomCode = roomCode.trim().toUpperCase();
+
+        ScrollView scrollView = newPage();
+        LinearLayout root = pageRoot(scrollView);
+        root.setGravity(Gravity.NO_GRAVITY);
+
+        LinearLayout header = card();
+        header.setGravity(Gravity.NO_GRAVITY);
+        root.addView(header, matchWrap());
+
+        header.addView(text("Co-watch", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        TextView title = text("同看房间 " + activeRoomCode, 26, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(4);
+        header.addView(title, titleParams);
+
+        TextView subtitle = text("成员、进度和房间动态", 14, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams subtitleParams = matchWrap();
+        subtitleParams.topMargin = dp(8);
+        header.addView(subtitle, subtitleParams);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionsParams = matchWrap();
+        actionsParams.topMargin = dp(16);
+        header.addView(actions, actionsParams);
+
+        Button backButton = secondaryButton("聊聊");
+        backButton.setOnClickListener(v -> showChatScreen("已返回聊聊。"));
+        actions.addView(backButton, weightHeight(1, dp(46)));
+
+        Button refreshButton = primaryButton("刷新");
+        refreshButton.setOnClickListener(v -> fetchWatchRoom(activeRoomCode));
+        LinearLayout.LayoutParams refreshParams = weightHeight(1, dp(46));
+        refreshParams.leftMargin = dp(10);
+        actions.addView(refreshButton, refreshParams);
+
+        messageText = text(message, 13, Color.rgb(104, 112, 130), Typeface.NORMAL);
+        LinearLayout.LayoutParams messageParams = matchWrap();
+        messageParams.topMargin = dp(18);
+        root.addView(messageText, messageParams);
+
+        watchRoomContent = new LinearLayout(this);
+        watchRoomContent.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams contentParams = matchWrap();
+        contentParams.topMargin = dp(12);
+        root.addView(watchRoomContent, contentParams);
+
+        LinearLayout composer = new LinearLayout(this);
+        composer.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams composerParams = matchWrap();
+        composerParams.topMargin = dp(14);
+        root.addView(composer, composerParams);
+
+        watchRoomEventInput = input("", "发一条房间动态");
+        composer.addView(watchRoomEventInput, weightHeight(1, dp(48)));
+
+        Button sendButton = primaryButton("发送");
+        sendButton.setOnClickListener(v -> sendWatchRoomEvent());
+        LinearLayout.LayoutParams sendParams = new LinearLayout.LayoutParams(dp(86), dp(48));
+        sendParams.leftMargin = dp(10);
+        composer.addView(sendButton, sendParams);
+
+        setContentView(scrollView);
+        fetchWatchRoom(activeRoomCode);
+    }
+
+    private void fetchWatchRoom(String roomCode) {
+        if (watchRoomContent == null || roomCode == null || roomCode.trim().isEmpty()) {
+            return;
+        }
+        watchRoomContent.removeAllViews();
+        setMessage("正在同步同看房间...", true);
+        new Thread(() -> {
+            try {
+                String safeCode = roomCode.trim().toUpperCase();
+                JSONObject room = new JSONObject(httpGet(loadBaseUrl() + "/api/watch-rooms/" + safeCode, loadToken()));
+                JSONArray events = new JSONArray(httpGet(loadBaseUrl() + "/api/watch-rooms/" + safeCode + "/events", loadToken()));
+                runOnUiThread(() -> renderWatchRoom(room, events));
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("同看房间加载失败：" + error.getMessage(), false));
+            }
+        }).start();
+    }
+
+    private void renderWatchRoom(JSONObject room, JSONArray events) {
+        if (watchRoomContent == null) {
+            return;
+        }
+        watchRoomContent.removeAllViews();
+        String roomCode = room.optString("code", activeRoomCode);
+        int episodeId = room.optInt("episode_id", 0);
+        if (!roomCode.isEmpty()) {
+            activeRoomCode = roomCode;
+        }
+        if (episodeId > 0) {
+            activeEpisodeId = episodeId;
+        }
+        setMessage("房间已同步。", true);
+
+        LinearLayout stateCard = card();
+        stateCard.setGravity(Gravity.NO_GRAVITY);
+        stateCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout.LayoutParams stateParams = matchWrap();
+        stateParams.bottomMargin = dp(12);
+        watchRoomContent.addView(stateCard, stateParams);
+
+        JSONObject host = room.optJSONObject("host");
+        JSONObject guest = room.optJSONObject("guest");
+        stateCard.addView(text("房间状态", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        TextView title = text("成员 " + room.optInt("member_count", 1) + " 人 · " + room.optString("playback_state", "paused"), 22, Color.rgb(18, 20, 26), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(6);
+        stateCard.addView(title, titleParams);
+        TextView members = text("房主：" + userName(host) + " · 成员：" + (guest == null ? "等待加入" : userName(guest)), 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams membersParams = matchWrap();
+        membersParams.topMargin = dp(8);
+        stateCard.addView(members, membersParams);
+        TextView progress = text("剧集 " + episodeId + " · 进度 " + (int) Math.round(room.optDouble("progress_sec", 0)) + " 秒", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        LinearLayout.LayoutParams progressParams = matchWrap();
+        progressParams.topMargin = dp(4);
+        stateCard.addView(progress, progressParams);
+
+        if (episodeId > 0) {
+            Button playButton = primaryButton("进入本集播放");
+            playButton.setOnClickListener(v -> showNativePlayer("同看房间 " + roomCode, episodeId));
+            LinearLayout.LayoutParams playParams = matchHeight(dp(46));
+            playParams.topMargin = dp(14);
+            stateCard.addView(playButton, playParams);
+        }
+
+        LinearLayout eventsCard = card();
+        eventsCard.setGravity(Gravity.NO_GRAVITY);
+        eventsCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        watchRoomContent.addView(eventsCard, matchWrap());
+        eventsCard.addView(text("房间动态", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
+        watchRoomEventsContent = eventsCard;
+        if (events == null || events.length() == 0) {
+            TextView empty = text("暂无动态，可以先发一句。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+            LinearLayout.LayoutParams emptyParams = matchWrap();
+            emptyParams.topMargin = dp(8);
+            eventsCard.addView(empty, emptyParams);
+            return;
+        }
+        for (int i = 0; i < events.length(); i++) {
+            JSONObject event = events.optJSONObject(i);
+            if (event != null) {
+                addWatchRoomEventRow(eventsCard, event);
+            }
+        }
+    }
+
+    private void addWatchRoomEventRow(LinearLayout parent, JSONObject event) {
+        JSONObject user = event.optJSONObject("user");
+        JSONObject payload = event.optJSONObject("payload");
+        String content = payload == null ? "" : payload.optString("text", payload.toString());
+        if (content.isEmpty()) {
+            content = event.optString("event_type", "房间动态");
+        }
+        TextView item = text(userName(user) + "：" + content, 13, Color.rgb(28, 45, 76), Typeface.NORMAL);
+        LinearLayout.LayoutParams itemParams = matchWrap();
+        itemParams.topMargin = dp(8);
+        parent.addView(item, itemParams);
+    }
+
+    private void sendWatchRoomEvent() {
+        if (watchRoomEventInput == null || activeRoomCode.isEmpty()) {
+            return;
+        }
+        String content = watchRoomEventInput.getText().toString().trim();
+        if (content.isEmpty()) {
+            setMessage("房间动态不能为空。", false);
+            return;
+        }
+        setMessage("正在发送房间动态...", true);
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("text", content);
+                payload.put("source", "native_android");
+                JSONObject body = new JSONObject();
+                body.put("event_type", "danmaku");
+                body.put("payload", payload);
+                httpPost(loadBaseUrl() + "/api/watch-rooms/" + activeRoomCode + "/events", body.toString(), loadToken());
+                runOnUiThread(() -> {
+                    watchRoomEventInput.setText("");
+                    fetchWatchRoom(activeRoomCode);
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> setMessage("房间动态发送失败：" + error.getMessage(), false));
             }
         }).start();
     }
