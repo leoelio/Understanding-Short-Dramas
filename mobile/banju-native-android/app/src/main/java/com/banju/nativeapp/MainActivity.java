@@ -2,6 +2,8 @@ package com.banju.nativeapp;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -12,6 +14,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.OpenableColumns;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -30,6 +33,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -45,6 +49,9 @@ public class MainActivity extends Activity {
     private static final String KEY_DISPLAY_NAME = "display_name";
     private static final String KEY_SESSION_ID = "session_id";
     private static final String DEFAULT_BASE_URL = "http://127.0.0.1:8000";
+    private static final int REQUEST_VOICE_SAMPLE = 4301;
+    private static final String VOICE_CONSENT_TEXT = "同意利用录入声音生成音频";
+    private static final String VOICE_PREVIEW_TEXT = "片尾拓展已开启，我会用你的声音陪你猜下一段剧情。";
 
     private EditText baseUrlInput;
     private EditText usernameInput;
@@ -53,6 +60,7 @@ public class MainActivity extends Activity {
     private Button loginButton;
     private LinearLayout dramaList;
     private LinearLayout profileContent;
+    private TextView voiceActionStatus;
     private LinearLayout chatContent;
     private LinearLayout chatMessagesContent;
     private EditText chatMessageInput;
@@ -104,6 +112,14 @@ public class MainActivity extends Activity {
             showLoginScreen("");
         } else {
             showHomeScreen("已恢复登录，正在拉取短剧列表。");
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_VOICE_SAMPLE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            uploadVoiceSample(data.getData());
         }
     }
 
@@ -873,16 +889,153 @@ public class MainActivity extends Activity {
         voiceDescParams.topMargin = dp(8);
         voiceCard.addView(voiceDesc, voiceDescParams);
 
+        TextView consent = text("授权文本：" + voice.optString("consent_text", VOICE_CONSENT_TEXT), 12, Color.rgb(28, 45, 76), Typeface.BOLD);
+        LinearLayout.LayoutParams consentParams = matchWrap();
+        consentParams.topMargin = dp(8);
+        voiceCard.addView(consent, consentParams);
+
+        LinearLayout voiceActions = new LinearLayout(this);
+        voiceActions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionParams = matchWrap();
+        actionParams.topMargin = dp(12);
+        voiceCard.addView(voiceActions, actionParams);
+
+        Button uploadButton = primaryButton("上传样本");
+        uploadButton.setOnClickListener(v -> chooseVoiceSampleFile());
+        voiceActions.addView(uploadButton, weightHeight(1, dp(44)));
+
+        Button previewButton = secondaryButton(generationReady ? "生成试听" : "服务未启用");
+        previewButton.setEnabled(profile != null && generationReady);
+        previewButton.setOnClickListener(v -> createVoicePreviewClip());
+        LinearLayout.LayoutParams previewParams = weightHeight(1, dp(44));
+        previewParams.leftMargin = dp(8);
+        voiceActions.addView(previewButton, previewParams);
+
+        voiceActionStatus = text("请上传朗读授权文本的 3-8 秒音频；试听会缓存到声音资产。", 12, Color.rgb(104, 112, 130), Typeface.NORMAL);
+        LinearLayout.LayoutParams voiceStatusParams = matchWrap();
+        voiceStatusParams.topMargin = dp(10);
+        voiceCard.addView(voiceActionStatus, voiceStatusParams);
+
+        addVoiceClipRows(voiceCard, clips);
+
         LinearLayout nextCard = card();
         nextCard.setGravity(Gravity.NO_GRAVITY);
         nextCard.setPadding(dp(18), dp(18), dp(18), dp(18));
         profileContent.addView(nextCard, matchWrap());
         nextCard.addView(text("迁移状态", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
-        TextView next = text("Android 当前只消费 Web 稳定接口。头像上传、声音录入、好友聊天仍以 Web 主线为准，原生端后续逐步接入。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        TextView next = text("Android 当前继续消费 Web 稳定接口。声音样本上传、试听生成、好友聊天、同看和逛逛已逐步接入；头像裁剪和麦克风直录后续继续迁移。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
         next.setLineSpacing(dp(2), 1.0f);
         LinearLayout.LayoutParams nextParams = matchWrap();
         nextParams.topMargin = dp(8);
         nextCard.addView(next, nextParams);
+    }
+
+    private void addVoiceClipRows(LinearLayout parent, JSONArray clips) {
+        if (clips == null || clips.length() == 0) {
+            return;
+        }
+        TextView title = text("最近缓存声音", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = matchWrap();
+        titleParams.topMargin = dp(14);
+        parent.addView(title, titleParams);
+
+        for (int i = 0; i < clips.length() && i < 3; i++) {
+            JSONObject clip = clips.optJSONObject(i);
+            if (clip == null) {
+                continue;
+            }
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(dp(12), dp(10), dp(12), dp(10));
+            row.setBackground(inputBackground());
+            LinearLayout.LayoutParams rowParams = matchWrap();
+            rowParams.topMargin = dp(8);
+            parent.addView(row, rowParams);
+
+            TextView label = text(shortText(clip.optString("scene_key", "voice"), 18) + " · " + shortText(clip.optString("text", ""), 28), 12, Color.rgb(28, 45, 76), Typeface.BOLD);
+            label.setSingleLine(true);
+            row.addView(label, weightHeight(2, dp(38)));
+
+            Button playButton = secondaryButton("播放");
+            String audioUrl = absoluteUrl(clip.optString("audio_url", ""));
+            playButton.setOnClickListener(v -> playProfileVoiceAudio(audioUrl));
+            LinearLayout.LayoutParams playParams = weightHeight(1, dp(38));
+            playParams.leftMargin = dp(8);
+            row.addView(playButton, playParams);
+        }
+    }
+
+    private void chooseVoiceSampleFile() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("audio/*");
+        startActivityForResult(intent, REQUEST_VOICE_SAMPLE);
+    }
+
+    private void uploadVoiceSample(Uri uri) {
+        if (uri == null) {
+            return;
+        }
+        if (voiceActionStatus != null) {
+            voiceActionStatus.setText("正在上传声音样本...");
+        }
+        setMessage("正在上传声音样本...", true);
+        new Thread(() -> {
+            try {
+                byte[] fileData = readUriBytes(uri);
+                String fileName = displayNameForUri(uri);
+                String contentType = getContentResolver().getType(uri);
+                if (contentType == null || contentType.isEmpty()) {
+                    contentType = "audio/wav";
+                }
+                httpMultipartVoiceProfile(loadBaseUrl() + "/api/users/me/voice-profile", loadToken(), fileName, contentType, fileData);
+                runOnUiThread(() -> {
+                    setMessage("声音样本已上传。", true);
+                    fetchProfileSummary();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    setMessage("声音样本上传失败：" + error.getMessage(), false);
+                    if (voiceActionStatus != null) {
+                        voiceActionStatus.setText("上传失败：" + error.getMessage());
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void createVoicePreviewClip() {
+        if (voiceActionStatus != null) {
+            voiceActionStatus.setText("正在生成试听...");
+        }
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("text", VOICE_PREVIEW_TEXT);
+                payload.put("scene_key", "native_profile_preview");
+                String body = httpPost(loadBaseUrl() + "/api/users/me/voice-clips", payload.toString(), loadToken());
+                JSONObject result = new JSONObject(body);
+                String audioUrl = absoluteUrl(result.optString("audio_url", ""));
+                runOnUiThread(() -> {
+                    playProfileVoiceAudio(audioUrl);
+                    fetchProfileSummary();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    setMessage("试听生成失败：" + error.getMessage(), false);
+                    if (voiceActionStatus != null) {
+                        voiceActionStatus.setText("试听生成失败：" + error.getMessage());
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void playProfileVoiceAudio(String audioUrl) {
+        if (voiceActionStatus == null) {
+            return;
+        }
+        playRemixAudio(audioUrl, voiceActionStatus);
     }
 
     private String badgeLabels(JSONArray badges) {
@@ -3253,6 +3406,80 @@ public class MainActivity extends Activity {
         output.write(data);
         output.close();
         return readResponse(connection);
+    }
+
+    private String httpMultipartVoiceProfile(String urlString, String token, String fileName, String contentType, byte[] fileData) throws Exception {
+        String boundary = "----banju-native-" + UUID.randomUUID();
+        HttpURLConnection connection = (HttpURLConnection) new URL(urlString).openConnection();
+        connection.setRequestMethod("POST");
+        connection.setConnectTimeout(10000);
+        connection.setReadTimeout(20000);
+        connection.setDoOutput(true);
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+        if (!token.isEmpty()) {
+            connection.setRequestProperty("Authorization", "Bearer " + token);
+        }
+
+        OutputStream output = connection.getOutputStream();
+        writeUtf8(output, "--" + boundary + "\r\n");
+        writeUtf8(output, "Content-Disposition: form-data; name=\"consent_text\"\r\n\r\n");
+        writeUtf8(output, VOICE_CONSENT_TEXT + "\r\n");
+
+        writeUtf8(output, "--" + boundary + "\r\n");
+        writeUtf8(output, "Content-Disposition: form-data; name=\"voice_sample\"; filename=\"" + safeMultipartFileName(fileName) + "\"\r\n");
+        writeUtf8(output, "Content-Type: " + contentType + "\r\n\r\n");
+        output.write(fileData);
+        writeUtf8(output, "\r\n--" + boundary + "--\r\n");
+        output.close();
+        return readResponse(connection);
+    }
+
+    private void writeUtf8(OutputStream output, String value) throws Exception {
+        output.write(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private byte[] readUriBytes(Uri uri) throws Exception {
+        InputStream stream = getContentResolver().openInputStream(uri);
+        if (stream == null) {
+            throw new IllegalStateException("无法读取音频文件");
+        }
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[8192];
+        int read;
+        while ((read = stream.read(chunk)) != -1) {
+            buffer.write(chunk, 0, read);
+        }
+        stream.close();
+        return buffer.toByteArray();
+    }
+
+    private String displayNameForUri(Uri uri) {
+        String fallback = uri.getLastPathSegment();
+        Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (index >= 0) {
+                    String name = cursor.getString(index);
+                    if (name != null && !name.trim().isEmpty()) {
+                        return name;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // 文件名只影响展示和后端扩展名判断，失败时使用 fallback。
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        return fallback == null || fallback.trim().isEmpty() ? "voice_sample.wav" : fallback;
+    }
+
+    private String safeMultipartFileName(String fileName) {
+        return fileName.replace("\\", "_").replace("/", "_").replace("\"", "_");
     }
 
     private String readResponse(HttpURLConnection connection) throws Exception {
