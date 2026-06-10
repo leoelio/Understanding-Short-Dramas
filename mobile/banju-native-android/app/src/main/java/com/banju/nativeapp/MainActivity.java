@@ -79,6 +79,8 @@ public class MainActivity extends Activity {
     private MediaRecorder voiceRecorder;
     private File voiceRecordFile;
     private boolean voiceRecording;
+    private Runnable voiceRecordTicker;
+    private long voiceRecordStartedAtMs;
     private LinearLayout chatContent;
     private LinearLayout chatMessagesContent;
     private EditText chatMessageInput;
@@ -1017,7 +1019,7 @@ public class MainActivity extends Activity {
         nextCard.setPadding(dp(18), dp(18), dp(18), dp(18));
         profileContent.addView(nextCard, matchWrap());
         nextCard.addView(text("迁移状态", 12, Color.rgb(83, 103, 160), Typeface.BOLD), matchWrap());
-        TextView next = text("Android 当前继续消费 Web 稳定接口。声音样本上传、试听生成、好友聊天、同看和逛逛已逐步接入；头像裁剪和麦克风直录后续继续迁移。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
+        TextView next = text("Android 当前继续消费 Web 稳定接口。声音样本上传、麦克风直录、试听生成、头像裁切、好友聊天、同看和逛逛已逐步接入；后续继续补齐更多 Web 端复核和 AI 配置能力。", 13, Color.rgb(88, 98, 118), Typeface.NORMAL);
         next.setLineSpacing(dp(2), 1.0f);
         LinearLayout.LayoutParams nextParams = matchWrap();
         nextParams.topMargin = dp(8);
@@ -1377,10 +1379,12 @@ public class MainActivity extends Activity {
             voiceRecorder.prepare();
             voiceRecorder.start();
             voiceRecording = true;
+            voiceRecordStartedAtMs = System.currentTimeMillis();
             updateVoiceRecordButton();
+            startVoiceRecordTicker();
             setMessage("正在录音，请朗读授权文本。", true);
             if (voiceActionStatus != null) {
-                voiceActionStatus.setText("正在录音：请朗读“" + VOICE_CONSENT_TEXT + "”，完成后点停止上传。");
+                voiceActionStatus.setText("正在录音 0:00：请朗读“" + VOICE_CONSENT_TEXT + "”。建议 3-8 秒。");
             }
         } catch (Exception error) {
             voiceRecording = false;
@@ -1422,11 +1426,35 @@ public class MainActivity extends Activity {
 
     private void updateVoiceRecordButton() {
         if (voiceRecordButton != null) {
-            voiceRecordButton.setText(voiceRecording ? "停止上传" : "麦克风直录");
+            voiceRecordButton.setText(voiceRecording ? "停止并上传" : "麦克风直录");
+        }
+    }
+
+    private void startVoiceRecordTicker() {
+        stopVoiceRecordTicker();
+        voiceRecordTicker = () -> {
+            if (!voiceRecording) {
+                return;
+            }
+            int elapsedSec = (int) Math.max(0, (System.currentTimeMillis() - voiceRecordStartedAtMs) / 1000);
+            if (voiceActionStatus != null) {
+                String tip = elapsedSec < 3 ? "建议至少录满 3 秒。" : "录完后点停止并上传。";
+                voiceActionStatus.setText("正在录音 " + formatDuration(elapsedSec) + "：请朗读“" + VOICE_CONSENT_TEXT + "”。" + tip);
+            }
+            progressHandler.postDelayed(voiceRecordTicker, 1000);
+        };
+        progressHandler.post(voiceRecordTicker);
+    }
+
+    private void stopVoiceRecordTicker() {
+        if (voiceRecordTicker != null) {
+            progressHandler.removeCallbacks(voiceRecordTicker);
+            voiceRecordTicker = null;
         }
     }
 
     private void stopVoiceRecorderOnly() {
+        stopVoiceRecordTicker();
         if (voiceRecorder != null) {
             try {
                 voiceRecorder.release();
@@ -1434,6 +1462,21 @@ public class MainActivity extends Activity {
                 // 忽略释放失败，下一次录音会重新创建 recorder。
             }
             voiceRecorder = null;
+        }
+    }
+
+    private void cancelVoiceRecording(String statusText) {
+        File recorded = voiceRecordFile;
+        voiceRecording = false;
+        stopVoiceRecorderOnly();
+        if (recorded != null && recorded.exists()) {
+            recorded.delete();
+        }
+        voiceRecordFile = null;
+        voiceRecordStartedAtMs = 0L;
+        updateVoiceRecordButton();
+        if (statusText != null && !statusText.isEmpty() && voiceActionStatus != null) {
+            voiceActionStatus.setText(statusText);
         }
     }
 
@@ -3040,6 +3083,9 @@ public class MainActivity extends Activity {
                 activeVideoView.pause();
             }
         }
+        if (voiceRecording) {
+            cancelVoiceRecording("录音已暂停，返回后可重新录制。");
+        }
     }
 
     @Override
@@ -3059,12 +3105,7 @@ public class MainActivity extends Activity {
         stopStickerWatcher();
         stopRemixAudio();
         postCurrentWatchHistoryProgress(false);
-        if (voiceRecording && voiceRecordFile != null) {
-            voiceRecordFile.delete();
-        }
-        voiceRecording = false;
-        stopVoiceRecorderOnly();
-        updateVoiceRecordButton();
+        cancelVoiceRecording("");
         if (activeVideoView != null) {
             activeVideoView.stopPlayback();
             activeVideoView = null;
