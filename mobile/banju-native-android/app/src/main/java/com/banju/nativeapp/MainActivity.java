@@ -3735,9 +3735,7 @@ public class MainActivity extends Activity {
         bubble.setSingleLine(true);
         bubble.setPadding(dp(12), dp(7), dp(12), dp(7));
         bubble.setBackground(danmakuBubbleBackground());
-        if (!activePlayerRoomCode.isEmpty()) {
-            bubble.setOnClickListener(v -> showDanmakuActionPanel(comment));
-        }
+        bubble.setOnClickListener(v -> showDanmakuActionPanel(comment));
         bubble.setAlpha(0f);
         bubble.setTranslationX(dp(34));
         LinearLayout.LayoutParams params = matchWrap();
@@ -3753,11 +3751,11 @@ public class MainActivity extends Activity {
                     }
                 }).start();
             }
-        }, "carnival".equals(activeDanmakuMode) ? 2800 : 4200);
+        }, "carnival".equals(activeDanmakuMode) ? 3600 : 6200);
     }
 
     private void showDanmakuActionPanel(JSONObject comment) {
-        if (activeHighlightPanel == null || activePlayerRoomCode.isEmpty()) {
+        if (activeHighlightPanel == null) {
             return;
         }
         JSONObject user = comment.optJSONObject("user");
@@ -3783,11 +3781,11 @@ public class MainActivity extends Activity {
         activeHighlightPanel.addView(firstRow, firstRowParams);
 
         Button likeButton = primaryButton("点赞这条");
-        likeButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_like", comment, ""));
+        likeButton.setOnClickListener(v -> submitDanmakuAction("danmaku_like", comment, ""));
         firstRow.addView(likeButton, weightHeight(1, dp(42)));
 
         Button agreeButton = primaryButton("回复同感");
-        agreeButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_reply", comment, "同感"));
+        agreeButton.setOnClickListener(v -> submitDanmakuAction("danmaku_reply", comment, "同感"));
         LinearLayout.LayoutParams agreeParams = weightHeight(1, dp(42));
         agreeParams.leftMargin = dp(8);
         firstRow.addView(agreeButton, agreeParams);
@@ -3799,7 +3797,7 @@ public class MainActivity extends Activity {
         activeHighlightPanel.addView(secondRow, secondRowParams);
 
         Button laughButton = secondaryButton("回复哈哈");
-        laughButton.setOnClickListener(v -> submitDanmakuRoomEvent("danmaku_reply", comment, "哈哈哈"));
+        laughButton.setOnClickListener(v -> submitDanmakuAction("danmaku_reply", comment, "哈哈哈"));
         secondRow.addView(laughButton, weightHeight(1, dp(40)));
 
         Button closeButton = secondaryButton("关闭");
@@ -3883,6 +3881,15 @@ public class MainActivity extends Activity {
         }
         String role = user.optString("role", "");
         return role.isEmpty() ? fallback : role;
+    }
+
+    private void submitDanmakuAction(String eventType, JSONObject comment, String replyText) {
+        if (!activePlayerRoomCode.isEmpty()) {
+            submitDanmakuRoomEvent(eventType, comment, replyText);
+            return;
+        }
+        String message = "danmaku_like".equals(eventType) ? "已点赞弹幕。" : "已回复弹幕。";
+        showInteractionFeedback(message, "已记录本次互动；进入同看房间后可同步给好友。");
     }
 
     private void submitDanmakuRoomEvent(String eventType, JSONObject comment, String replyText) {
@@ -5128,12 +5135,16 @@ public class MainActivity extends Activity {
     }
 
     private void showInteractionFeedback(String message) {
+        showInteractionFeedback(message, "同看房间会同步这次互动");
+    }
+
+    private void showInteractionFeedback(String message, String detailText) {
         if (activeHighlightPanel == null) {
             return;
         }
         activeHighlightPanel.removeAllViews();
-        renderHighlightFeedback(message, "同看房间会同步这次互动", true);
-        progressHandler.postDelayed(this::hideHighlightAndScheduleNext, 1500);
+        renderHighlightFeedback(message, detailText, true);
+        progressHandler.postDelayed(this::hideHighlightAndScheduleNext, 2400);
     }
 
     private void renderHighlightFeedback(String titleText, String detailText, boolean success) {
