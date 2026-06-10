@@ -1901,3 +1901,13 @@
   - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 新增自定义回复输入区、48 字限制、广告/联系方式基础拦截，并复用 danmaku_reply 事件；普通观看显示本地反馈，同看房间同步到 watch-room events。构建、安装和真机弹幕面板显示验证通过。
 - 下一步：
   - 继续迁移播放页体验：优先补齐片尾 AI 二创分镜过渡、声音播放状态和同看/逛逛之间的 AI 资产分享细节。
+
+## 2026-06-11 03:03:47
+
+- 目标：Android 原生片尾 AI 二创补齐声音播放状态：每个分镜只保留一个声音状态区和一个发布入口。
+- Git：`ff5d843` / `native-android-migration`
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口，并在真机验证北往第 1 集片尾 AI 二创分镜和原声播放状态。
+- 变更：
+  - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 调整二创分镜声音区：原声/我的声音点击后禁用按钮并显示加载状态，旧请求返回会被忽略，切换分镜会停止上一段音频，声音生成成功后只显示一个可发布到逛逛的声音按钮。构建、安装和真机片尾二创入口/分镜/原声播放验证通过。
+- 下一步：
+  - 继续迁移播放页体验：优先补齐原生二创发布到逛逛后的可见反馈、同看房间内 AI 资产分享，以及播放页整体视觉统一细节。

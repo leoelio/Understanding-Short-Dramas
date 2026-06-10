@@ -121,6 +121,10 @@ public class MainActivity extends Activity {
     private Button carnivalDanmakuButton;
     private Button immersiveDanmakuButton;
     private Button activeRemixEntryButton;
+    private Button activeRemixOriginalVoiceButton;
+    private Button activeRemixUserVoiceButton;
+    private Button activeRemixVoicePublishButton;
+    private TextView activeRemixVoiceStatus;
     private MediaPlayer remixAudioPlayer;
     private boolean videoPrepared;
     private JSONArray highlightTimeline = new JSONArray();
@@ -136,6 +140,7 @@ public class MainActivity extends Activity {
     private boolean activeHighlightTapSubmitted;
     private long[] stickerSlotLastShownAtMs = new long[0];
     private boolean remixEntryShown;
+    private int remixVoiceRequestSeq;
     private String activeDanmakuMode = "light";
     private final Map<String, Integer> activeRoomChoiceCounts = new HashMap<>();
     private String activeRoomLatestAction = "";
@@ -4569,6 +4574,8 @@ public class MainActivity extends Activity {
             return;
         }
 
+        remixVoiceRequestSeq++;
+        stopRemixAudio();
         activeRemixPanel.removeAllViews();
         JSONObject choice = result.optJSONObject("choice");
         String titleText = choice == null ? "AI 二创分镜" : choice.optString("label", "AI 二创分镜");
@@ -4658,15 +4665,26 @@ public class MainActivity extends Activity {
         voiceParams.topMargin = dp(6);
         activeRemixPanel.addView(voiceRow, voiceParams);
 
-        Button originalVoiceButton = secondaryButton("原声讲述");
-        originalVoiceButton.setOnClickListener(v -> requestRemixVoice(imagePlan, shot, "original"));
-        voiceRow.addView(originalVoiceButton, weightHeight(1, dp(40)));
+        activeRemixOriginalVoiceButton = secondaryButton("原声讲述");
+        activeRemixOriginalVoiceButton.setOnClickListener(v -> requestRemixVoice(imagePlan, shot, "original"));
+        voiceRow.addView(activeRemixOriginalVoiceButton, weightHeight(1, dp(40)));
 
-        Button userVoiceButton = secondaryButton("我的声音");
-        userVoiceButton.setOnClickListener(v -> requestRemixVoice(imagePlan, shot, "user"));
+        activeRemixUserVoiceButton = secondaryButton("我的声音");
+        activeRemixUserVoiceButton.setOnClickListener(v -> requestRemixVoice(imagePlan, shot, "user"));
         LinearLayout.LayoutParams userVoiceParams = weightHeight(1, dp(40));
         userVoiceParams.leftMargin = dp(8);
-        voiceRow.addView(userVoiceButton, userVoiceParams);
+        voiceRow.addView(activeRemixUserVoiceButton, userVoiceParams);
+
+        activeRemixVoiceStatus = text("选择一种声音播放当前分镜。", 12, Color.rgb(104, 112, 130), Typeface.BOLD);
+        LinearLayout.LayoutParams voiceStatusParams = matchWrap();
+        voiceStatusParams.topMargin = dp(7);
+        activeRemixPanel.addView(activeRemixVoiceStatus, voiceStatusParams);
+
+        activeRemixVoicePublishButton = secondaryButton("发布当前声音");
+        activeRemixVoicePublishButton.setVisibility(View.GONE);
+        LinearLayout.LayoutParams voicePublishParams = matchHeight(dp(38));
+        voicePublishParams.topMargin = dp(8);
+        activeRemixPanel.addView(activeRemixVoicePublishButton, voicePublishParams);
 
         TextView shareTitle = text("分享到逛逛", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
         LinearLayout.LayoutParams shareTitleParams = matchWrap();
@@ -4938,8 +4956,9 @@ public class MainActivity extends Activity {
             renderRemixError("当前分镜缺少声音参数");
             return;
         }
-        TextView status = text("正在准备" + ("user".equals(voiceMode) ? "我的声音" : "原声") + "...", 13, Color.rgb(83, 103, 160), Typeface.BOLD);
-        activeRemixPanel.addView(status, matchWrap());
+        int requestSeq = ++remixVoiceRequestSeq;
+        stopRemixAudio();
+        setRemixVoiceControlsLoading(voiceMode);
         new Thread(() -> {
             try {
                 JSONObject payload = new JSONObject();
@@ -4953,24 +4972,67 @@ public class MainActivity extends Activity {
                 String audioUrl = absoluteUrl(result.optString("audio_url", ""));
                 String audioText = result.optString("text", shot.optString("audio_text", shot.optString("subtitle", "")));
                 runOnUiThread(() -> {
+                    if (requestSeq != remixVoiceRequestSeq) {
+                        return;
+                    }
+                    restoreRemixVoiceButtons();
+                    TextView status = activeRemixVoiceStatus == null ? text("", 12, Color.rgb(104, 112, 130), Typeface.BOLD) : activeRemixVoiceStatus;
                     playRemixAudio(audioUrl, status);
                     addRemixVoicePublishButton(imagePlan, shot, voiceMode, audioUrl, audioText, status);
                 });
             } catch (Exception error) {
-                runOnUiThread(() -> status.setText("声音暂不可用：" + error.getMessage()));
+                runOnUiThread(() -> {
+                    if (requestSeq != remixVoiceRequestSeq) {
+                        return;
+                    }
+                    restoreRemixVoiceButtons();
+                    if (activeRemixVoiceStatus != null) {
+                        activeRemixVoiceStatus.setText("声音暂不可用：" + error.getMessage());
+                    }
+                });
             }
         }).start();
+    }
+
+    private void setRemixVoiceControlsLoading(String voiceMode) {
+        if (activeRemixVoiceStatus != null) {
+            activeRemixVoiceStatus.setText(("user".equals(voiceMode) ? "我的声音" : "原声讲述") + "正在准备...");
+        }
+        if (activeRemixVoicePublishButton != null) {
+            activeRemixVoicePublishButton.setVisibility(View.GONE);
+            activeRemixVoicePublishButton.setOnClickListener(null);
+        }
+        if (activeRemixOriginalVoiceButton != null) {
+            activeRemixOriginalVoiceButton.setEnabled(false);
+            activeRemixOriginalVoiceButton.setText("original".equals(voiceMode) ? "准备中" : "原声讲述");
+        }
+        if (activeRemixUserVoiceButton != null) {
+            activeRemixUserVoiceButton.setEnabled(false);
+            activeRemixUserVoiceButton.setText("user".equals(voiceMode) ? "准备中" : "我的声音");
+        }
+    }
+
+    private void restoreRemixVoiceButtons() {
+        if (activeRemixOriginalVoiceButton != null) {
+            activeRemixOriginalVoiceButton.setEnabled(true);
+            activeRemixOriginalVoiceButton.setText("原声讲述");
+        }
+        if (activeRemixUserVoiceButton != null) {
+            activeRemixUserVoiceButton.setEnabled(true);
+            activeRemixUserVoiceButton.setText("我的声音");
+        }
     }
 
     private void addRemixVoicePublishButton(JSONObject imagePlan, JSONObject shot, String voiceMode, String audioUrl, String audioText, TextView status) {
         if (activeRemixPanel == null || audioUrl.isEmpty()) {
             return;
         }
-        Button publishButton = secondaryButton("发" + ("user".equals(voiceMode) ? "我的声音" : "原声音频"));
-        publishButton.setOnClickListener(v -> publishRemixVoicePost(imagePlan, shot, voiceMode, audioUrl, audioText, status));
-        LinearLayout.LayoutParams publishParams = matchHeight(dp(38));
-        publishParams.topMargin = dp(8);
-        activeRemixPanel.addView(publishButton, publishParams);
+        if (activeRemixVoicePublishButton == null) {
+            return;
+        }
+        activeRemixVoicePublishButton.setText("发" + ("user".equals(voiceMode) ? "我的声音" : "原声音频"));
+        activeRemixVoicePublishButton.setVisibility(View.VISIBLE);
+        activeRemixVoicePublishButton.setOnClickListener(v -> publishRemixVoicePost(imagePlan, shot, voiceMode, audioUrl, audioText, status));
     }
 
     private void publishRemixVoicePost(JSONObject imagePlan, JSONObject shot, String voiceMode, String audioUrl, String audioText, TextView status) {
