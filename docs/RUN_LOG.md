@@ -1355,7 +1355,7 @@
 
 - 目标：Android 原生迁移继续推进：聊聊从概览升级到会话详情，支持查看最近消息并发送普通文字消息。
 - Git：`2af06f3` / `native-android-migration`
-- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口，并在真机验证北往第 1 集同看邀请入口、好友列表加载和邀请发送成功。
 - 变更：
   - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
   - 最近会话行新增点击入口，进入好友会话详情页。
@@ -1371,7 +1371,7 @@
 
 - 目标：Android 原生迁移继续推进：聊聊页补齐好友申请闭环，支持发起申请、接受/拒绝收到的申请、撤回已发申请。
 - Git：`3e7db6c` / `native-android-migration`
-- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口，并在真机验证北往第 1 集播放、紧凑底部浮层、同看房间创建和片尾 AI 全屏层级。
 - 变更：
   - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
   - 聊聊页在好友申请卡片中展示收到的申请，并接入 /api/users/me/friend-requests/{id}/accept 与 /decline。
@@ -1941,3 +1941,13 @@
   - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 在同看状态条新增邀请按钮，播放页底部弹层拉取 /api/users/me/friends，兼容好友接口的 user 嵌套结构，复用 /api/watch-rooms/{code}/invite 与 /api/chat/messages watch_link 协议发送邀请。
 - 下一步：
   - 继续迁移 Web 端体验到 Android：优先统一播放页内部视觉细节，并补齐同看邀请的好友搜索/更多好友分页。
+
+## 2026-06-11 04:16:52
+
+- 目标：Android 原生播放页继续统一移动端观看体验：压缩底部控制层级，将弹幕模式、片尾 AI、同看入口整理成更紧凑的播放器浮层。
+- Git：`db0d609` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 将播放页底部控制区改为分段弹幕控制 + 一行主操作，新增播放器专用按钮和分段背景样式；片尾 AI 打开时隐藏同看条、互动榜和弹幕层，关闭后恢复，避免全屏二创流程被播放浮层遮挡。真机验证北往第1集可播放、同看房间可创建、片尾 AI 可打开且无崩溃。
+- 下一步：
+  - 继续迁移 Web 端体验到 Android：优先补齐高光弹层视觉细节和片尾 AI 分镜页的图片/语音交互完成度。

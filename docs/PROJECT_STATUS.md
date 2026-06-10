@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-11 03:58:15
+更新时间：2026-06-11 04:16:52
 
 ## 当前目标
 
-Android 原生播放页补齐同看好友邀请入口：同看房间内可直接选择好友发送邀请和聊天同看链接。
+Android 原生播放页继续统一移动端观看体验：压缩底部控制层级，将弹幕模式、片尾 AI、同看入口整理成更紧凑的播放器浮层。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`8a2f188`
+- 最新提交：`db0d609`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -18,7 +18,7 @@ Android 原生播放页补齐同看好友邀请入口：同看房间内可直接
 
 - Android 原生工作树不维护业务数据库。
 - 当前客户端通过 `http://127.0.0.1:8000` 消费 Web 主线服务端稳定接口；真机调试使用 `adb reverse tcp:8000 tcp:8000`。
-- 本次真机验证：北往第 1 集普通播放页点击“开启同看”后创建房间 `0CD975`，同看状态条出现“邀请”入口；邀请面板成功加载好友“复核员 / 管理员”，点击“复核员”后显示“已邀请 复核员 加入房间 0CD975”。
+- 本次真机验证：北往第 1 集可播放；底部控制区改为“弹幕分段控制 + 片尾 AI / 同看”紧凑浮层；点击“同看”创建房间 `D80EDA`；点击“片尾 AI”打开全屏二创层时同看条、互动榜和弹幕层已隐藏，无崩溃。
 
 ## 高光来源
 
@@ -39,11 +39,11 @@ Android 原生播放页补齐同看好友邀请入口：同看房间内可直接
 
 ## 本次变更摘要
 
-- mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 在同看状态条新增邀请按钮，播放页底部弹层拉取 /api/users/me/friends，兼容好友接口的 user 嵌套结构，复用 /api/watch-rooms/{code}/invite 与 /api/chat/messages watch_link 协议发送邀请。
+- mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 将播放页底部控制区改为分段弹幕控制 + 一行主操作，新增播放器专用按钮和分段背景样式；片尾 AI 打开时隐藏同看条、互动榜和弹幕层，关闭后恢复，避免全屏二创流程被播放浮层遮挡。真机验证北往第1集可播放、同看房间可创建、片尾 AI 可打开且无崩溃。
 
 ## 下一步建议
 
-- 继续迁移 Web 端体验到 Android：优先统一播放页内部视觉细节，并补齐同看邀请的好友搜索/更多好友分页。
+- 继续迁移 Web 端体验到 Android：优先补齐高光弹层视觉细节和片尾 AI 分镜页的图片/语音交互完成度。
 
 ## 安全提醒
 

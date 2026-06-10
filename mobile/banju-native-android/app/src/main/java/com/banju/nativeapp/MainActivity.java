@@ -2938,7 +2938,7 @@ public class MainActivity extends Activity {
 
         LinearLayout bottomControls = new LinearLayout(this);
         bottomControls.setOrientation(LinearLayout.VERTICAL);
-        bottomControls.setPadding(dp(14), dp(14), dp(14), dp(18));
+        bottomControls.setPadding(dp(10), dp(10), dp(10), dp(12));
         bottomControls.setBackground(controlBarBackground());
         activePlayerControls = bottomControls;
         FrameLayout.LayoutParams controlsParams = new FrameLayout.LayoutParams(
@@ -2948,48 +2948,56 @@ public class MainActivity extends Activity {
         );
         controlsParams.leftMargin = dp(14);
         controlsParams.rightMargin = dp(14);
-        controlsParams.bottomMargin = dp(18);
+        controlsParams.bottomMargin = dp(12);
         playerFrame.addView(bottomControls, controlsParams);
 
         LinearLayout modeRow = new LinearLayout(this);
         modeRow.setOrientation(LinearLayout.HORIZONTAL);
+        modeRow.setGravity(Gravity.CENTER_VERTICAL);
+        modeRow.setPadding(dp(4), dp(4), dp(4), dp(4));
+        modeRow.setBackground(segmentControlBackground());
         bottomControls.addView(modeRow, matchWrap());
 
         lightDanmakuButton = pillButton("轻聊");
         lightDanmakuButton.setOnClickListener(v -> setDanmakuMode("light"));
-        modeRow.addView(lightDanmakuButton, weightHeight(1, dp(38)));
+        modeRow.addView(lightDanmakuButton, weightHeight(1, dp(34)));
 
         carnivalDanmakuButton = pillButton("狂欢");
         carnivalDanmakuButton.setOnClickListener(v -> setDanmakuMode("carnival"));
-        LinearLayout.LayoutParams carnivalParams = weightHeight(1, dp(38));
-        carnivalParams.leftMargin = dp(8);
+        LinearLayout.LayoutParams carnivalParams = weightHeight(1, dp(34));
+        carnivalParams.leftMargin = dp(4);
         modeRow.addView(carnivalDanmakuButton, carnivalParams);
 
         immersiveDanmakuButton = pillButton("沉浸");
         immersiveDanmakuButton.setOnClickListener(v -> setDanmakuMode("immersive"));
-        LinearLayout.LayoutParams immersiveParams = weightHeight(1, dp(38));
-        immersiveParams.leftMargin = dp(8);
+        LinearLayout.LayoutParams immersiveParams = weightHeight(1, dp(34));
+        immersiveParams.leftMargin = dp(4);
         modeRow.addView(immersiveDanmakuButton, immersiveParams);
 
         activeDanmakuStatus = text("弹幕准备中", 11, Color.argb(200, 236, 242, 255), Typeface.NORMAL);
+        activeDanmakuStatus.setSingleLine(true);
         LinearLayout.LayoutParams danmakuStatusParams = matchWrap();
-        danmakuStatusParams.topMargin = dp(8);
+        danmakuStatusParams.topMargin = dp(6);
         bottomControls.addView(activeDanmakuStatus, danmakuStatusParams);
         updateDanmakuModeButtons();
 
-        activeRemixEntryButton = pillButton("片尾拓展");
+        LinearLayout actionRow = new LinearLayout(this);
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionRowParams = matchWrap();
+        actionRowParams.topMargin = dp(8);
+        bottomControls.addView(actionRow, actionRowParams);
+
+        activeRemixEntryButton = playerActionButton("片尾 AI", true);
         activeRemixEntryButton.setEnabled(false);
         activeRemixEntryButton.setOnClickListener(v -> showRemixEntry(false));
-        LinearLayout.LayoutParams remixButtonParams = matchHeight(dp(42));
-        remixButtonParams.topMargin = dp(10);
-        bottomControls.addView(activeRemixEntryButton, remixButtonParams);
+        actionRow.addView(activeRemixEntryButton, weightHeight(1, dp(42)));
 
         if (activePlayerRoomCode.isEmpty()) {
-            activeStartWatchRoomButton = pillButton("开启同看");
+            activeStartWatchRoomButton = playerActionButton("同看", false);
             activeStartWatchRoomButton.setOnClickListener(v -> startPlayerWatchRoom());
-            LinearLayout.LayoutParams roomStartParams = matchHeight(dp(40));
-            roomStartParams.topMargin = dp(8);
-            bottomControls.addView(activeStartWatchRoomButton, roomStartParams);
+            LinearLayout.LayoutParams roomStartParams = weightHeight(1, dp(42));
+            roomStartParams.leftMargin = dp(8);
+            actionRow.addView(activeStartWatchRoomButton, roomStartParams);
         }
 
         activeHighlightPanel = buildHighlightPanel();
@@ -3000,7 +3008,7 @@ public class MainActivity extends Activity {
         );
         highlightParams.leftMargin = dp(14);
         highlightParams.rightMargin = dp(14);
-        highlightParams.bottomMargin = dp(170);
+        highlightParams.bottomMargin = dp(138);
         playerFrame.addView(activeHighlightPanel, highlightParams);
 
         activeRemixPanel = buildHighlightPanel();
@@ -3252,7 +3260,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     if (activeStartWatchRoomButton != null) {
                         activeStartWatchRoomButton.setEnabled(true);
-                        activeStartWatchRoomButton.setText("开启同看");
+                        activeStartWatchRoomButton.setText("同看");
                     }
                     if (activePlayerStatus != null) {
                         activePlayerStatus.setText("同看房间创建失败：" + error.getMessage());
@@ -4441,7 +4449,7 @@ public class MainActivity extends Activity {
                     remixOptionsPayload = payload;
                     if (activeRemixEntryButton != null) {
                         activeRemixEntryButton.setEnabled(options != null && options.length() > 0);
-                        activeRemixEntryButton.setText(options != null && options.length() > 0 ? "片尾拓展" : "暂无片尾拓展");
+                        activeRemixEntryButton.setText(options != null && options.length() > 0 ? "片尾 AI" : "暂无片尾");
                     }
                     scheduleRemixEntry();
                 });
@@ -4477,6 +4485,7 @@ public class MainActivity extends Activity {
         if (activeHighlightPanel != null) {
             activeHighlightPanel.setVisibility(View.GONE);
         }
+        setPlayerOverlayChromeVisible(false);
         activeRemixPanel.setBackground(remixOverlayBackground());
         activeRemixPanel.setVisibility(View.VISIBLE);
         activeRemixPanel.bringToFront();
@@ -4490,9 +4499,23 @@ public class MainActivity extends Activity {
         if (activePlayerControls != null) {
             activePlayerControls.setVisibility(View.VISIBLE);
         }
+        setPlayerOverlayChromeVisible(true);
         resetHighlightIndexToCurrent();
         updatePlayerStatus();
         scheduleNextHighlight();
+    }
+
+    private void setPlayerOverlayChromeVisible(boolean visible) {
+        int state = visible ? View.VISIBLE : View.GONE;
+        if (activeWatchRoomStrip != null) {
+            activeWatchRoomStrip.setVisibility(state);
+        }
+        if (activeWatchRoomBoardStatus != null) {
+            activeWatchRoomBoardStatus.setVisibility(state);
+        }
+        if (activeDanmakuOverlay != null) {
+            activeDanmakuOverlay.setVisibility(state);
+        }
     }
 
     private boolean isRemixOverlayVisible() {
@@ -6501,6 +6524,19 @@ public class MainActivity extends Activity {
         return button;
     }
 
+    private Button playerActionButton(String label, boolean primary) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(14);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setAllCaps(false);
+        button.setMinHeight(0);
+        button.setPadding(dp(10), 0, dp(10), 0);
+        button.setBackground(playerActionBackground(primary));
+        return button;
+    }
+
     private Button highlightOptionButton(String label, String highlightType, int index) {
         Button button = new Button(this);
         button.setText((index + 1) + "  " + label);
@@ -6603,6 +6639,19 @@ public class MainActivity extends Activity {
         return drawable;
     }
 
+    private GradientDrawable segmentControlBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(70, 255, 255, 255),
+                        Color.argb(38, 255, 255, 255)
+                }
+        );
+        drawable.setCornerRadius(dp(22));
+        drawable.setStroke(dp(1), Color.argb(48, 255, 255, 255));
+        return drawable;
+    }
+
     private GradientDrawable pillButtonBackground(boolean selected) {
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
@@ -6612,6 +6661,18 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(19));
         drawable.setStroke(dp(1), selected ? Color.argb(100, 255, 255, 255) : Color.argb(54, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable playerActionBackground(boolean primary) {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                primary
+                        ? new int[]{Color.rgb(0, 122, 255), Color.rgb(86, 156, 255)}
+                        : new int[]{Color.argb(118, 255, 255, 255), Color.argb(60, 255, 255, 255)}
+        );
+        drawable.setCornerRadius(dp(21));
+        drawable.setStroke(dp(1), Color.argb(primary ? 118 : 66, 255, 255, 255));
         return drawable;
     }
 
