@@ -104,6 +104,7 @@ public class MainActivity extends Activity {
     private Runnable remixRunnable;
     private Runnable roomSyncRunnable;
     private Runnable roomEventsRunnable;
+    private Runnable highlightTapRunnable;
     private LinearLayout activeHighlightPanel;
     private LinearLayout activeDanmakuOverlay;
     private FrameLayout activeHighlightEffectLayer;
@@ -129,6 +130,8 @@ public class MainActivity extends Activity {
     private int lastRoomEventId;
     private int activeHighlightId = -1;
     private int highlightEffectSeed;
+    private int activeHighlightTapCount;
+    private boolean activeHighlightTapSubmitted;
     private boolean remixEntryShown;
     private String activeDanmakuMode = "light";
     private final Map<String, Integer> activeRoomChoiceCounts = new HashMap<>();
@@ -3068,6 +3071,7 @@ public class MainActivity extends Activity {
         stopRemixWatcher();
         stopWatchRoomSync();
         stopWatchRoomEvents();
+        stopHighlightTapWatcher();
         stopRemixAudio();
         postCurrentWatchHistoryProgress(false);
         if (voiceRecording && voiceRecordFile != null) {
@@ -3217,6 +3221,13 @@ public class MainActivity extends Activity {
         if (roomEventsRunnable != null) {
             progressHandler.removeCallbacks(roomEventsRunnable);
             roomEventsRunnable = null;
+        }
+    }
+
+    private void stopHighlightTapWatcher() {
+        if (highlightTapRunnable != null) {
+            progressHandler.removeCallbacks(highlightTapRunnable);
+            highlightTapRunnable = null;
         }
     }
 
@@ -3513,6 +3524,7 @@ public class MainActivity extends Activity {
         stopRemixWatcher();
         stopWatchRoomSync();
         stopWatchRoomEvents();
+        stopHighlightTapWatcher();
         videoPrepared = false;
         highlightTimeline = new JSONArray();
         danmakuTimeline = new JSONArray();
@@ -3522,6 +3534,8 @@ public class MainActivity extends Activity {
         lastRoomEventId = 0;
         activeHighlightId = -1;
         highlightEffectSeed = 0;
+        activeHighlightTapCount = 0;
+        activeHighlightTapSubmitted = false;
         remixEntryShown = false;
         activeHighlightPanel = null;
         activeDanmakuOverlay = null;
@@ -4810,6 +4824,9 @@ public class MainActivity extends Activity {
         if (activeHighlightPanel == null) {
             return;
         }
+        stopHighlightTapWatcher();
+        activeHighlightTapCount = 0;
+        activeHighlightTapSubmitted = false;
         if (activeRemixPanel != null) {
             activeRemixPanel.setVisibility(View.GONE);
         }
@@ -5046,28 +5063,33 @@ public class MainActivity extends Activity {
 
         addPanelSectionTitle(activeHighlightPanel, "选择你的反应，同步到互动榜");
 
-        LinearLayout optionsList = new LinearLayout(this);
-        optionsList.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams listParams = matchWrap();
-        listParams.topMargin = dp(8);
-        activeHighlightPanel.addView(optionsList, listParams);
+        boolean tapMode = isHighlightTapMode(highlight);
+        if (tapMode) {
+            addHighlightTapPad(highlightId, highlightType, emotion, options);
+        } else {
+            LinearLayout optionsList = new LinearLayout(this);
+            optionsList.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout.LayoutParams listParams = matchWrap();
+            listParams.topMargin = dp(8);
+            activeHighlightPanel.addView(optionsList, listParams);
 
-        int count = Math.max(1, options == null ? 0 : options.length());
-        for (int i = 0; i < count; i++) {
-            JSONObject option = options == null ? null : options.optJSONObject(i);
-            String label = option == null ? "我有话说" : option.optString("label", "我有话说");
-            String optionKey = option == null ? "default" : option.optString("key", "default");
-            Button optionButton = highlightOptionButton(label, highlightType, i);
-            optionButton.setOnClickListener(v -> {
-                animateTap(v);
-                showHighlightStickers(highlightType, label, emotion, true);
-                submitInteraction(highlightId, optionKey, label);
-            });
-            LinearLayout.LayoutParams optionParams = matchHeight(dp(48));
-            if (i > 0) {
-                optionParams.topMargin = dp(8);
+            int count = Math.max(1, options == null ? 0 : options.length());
+            for (int i = 0; i < count; i++) {
+                JSONObject option = options == null ? null : options.optJSONObject(i);
+                String label = option == null ? "我有话说" : option.optString("label", "我有话说");
+                String optionKey = option == null ? "default" : option.optString("key", "default");
+                Button optionButton = highlightOptionButton(label, highlightType, i);
+                optionButton.setOnClickListener(v -> {
+                    animateTap(v);
+                    showHighlightStickers(highlightType, label, emotion, true);
+                    submitInteraction(highlightId, optionKey, label);
+                });
+                LinearLayout.LayoutParams optionParams = matchHeight(dp(48));
+                if (i > 0) {
+                    optionParams.topMargin = dp(8);
+                }
+                optionsList.addView(optionButton, optionParams);
             }
-            optionsList.addView(optionButton, optionParams);
         }
 
         Button dismissButton = secondaryButton("继续看正片");
@@ -5083,13 +5105,199 @@ public class MainActivity extends Activity {
         if (activeHighlightPanel.getParent() instanceof View) {
             ((View) activeHighlightPanel.getParent()).requestLayout();
         }
-        progressHandler.postDelayed(() -> {
-            if (activeHighlightPanel != null
-                    && activeHighlightPanel.getVisibility() == View.VISIBLE
-                    && activeHighlightId == highlightId) {
+        if (!tapMode) {
+            progressHandler.postDelayed(() -> {
+                if (activeHighlightPanel != null
+                        && activeHighlightPanel.getVisibility() == View.VISIBLE
+                        && activeHighlightId == highlightId) {
+                    hideHighlightAndScheduleNext();
+                }
+            }, 10000);
+        }
+    }
+
+    private boolean isHighlightTapMode(JSONObject highlight) {
+        if (highlight == null) {
+            return false;
+        }
+        JSONArray options = highlight.optJSONArray("options");
+        if (options == null || options.length() == 0 || highlight.optJSONObject("reward_hint") != null) {
+            return false;
+        }
+        for (int i = 0; i < options.length(); i++) {
+            JSONObject option = options.optJSONObject(i);
+            String key = option == null ? "" : option.optString("key", "");
+            if (key.contains("vehicle") || key.contains("train") || key.contains("car") || key.contains("motor")) {
+                return false;
+            }
+        }
+        String source = highlight.optString("highlight_type", "")
+                + highlight.optString("title", "")
+                + highlight.optString("description", "")
+                + highlight.optString("emotion", "");
+        return source.contains("爽")
+                || source.contains("高能")
+                || source.contains("搞笑")
+                || source.contains("好笑")
+                || source.contains("反转")
+                || source.contains("冲突")
+                || source.contains("甜")
+                || source.contains("爱情")
+                || source.contains("心动")
+                || source.contains("亲");
+    }
+
+    private void addHighlightTapPad(int highlightId, String highlightType, String emotion, JSONArray options) {
+        JSONObject option = options == null ? null : options.optJSONObject(0);
+        String optionKey = option == null ? "default" : option.optString("key", "default");
+        String optionLabel = option == null ? highlightTapPadText(highlightType) : option.optString("label", highlightTapPadText(highlightType));
+
+        TextView helper = text("连续点击表达情绪，停手后自动同步。超过 99 次显示 MAX。", 12, Color.rgb(88, 98, 118), Typeface.BOLD);
+        LinearLayout.LayoutParams helperParams = matchWrap();
+        helperParams.topMargin = dp(4);
+        activeHighlightPanel.addView(helper, helperParams);
+
+        LinearLayout pad = new LinearLayout(this);
+        pad.setOrientation(LinearLayout.HORIZONTAL);
+        pad.setGravity(Gravity.CENTER_VERTICAL);
+        pad.setPadding(dp(18), 0, dp(18), 0);
+        pad.setClickable(true);
+        pad.setBackground(highlightImpactPadBackground(highlightType, false));
+        LinearLayout.LayoutParams padParams = matchHeight(dp(88));
+        padParams.topMargin = dp(10);
+        activeHighlightPanel.addView(pad, padParams);
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        pad.addView(copy, copyParams);
+
+        TextView title = text(highlightTapPadText(highlightType), 18, Color.WHITE, Typeface.BOLD);
+        title.setSingleLine(true);
+        copy.addView(title, matchWrap());
+
+        TextView subtitle = text(optionLabel + " · 停手后自动提交", 12, Color.argb(220, 255, 255, 255), Typeface.BOLD);
+        subtitle.setSingleLine(true);
+        LinearLayout.LayoutParams subtitleParams = matchWrap();
+        subtitleParams.topMargin = dp(3);
+        copy.addView(subtitle, subtitleParams);
+
+        TextView counter = text("0", 34, Color.WHITE, Typeface.BOLD);
+        counter.setGravity(Gravity.CENTER);
+        counter.setBackground(highlightTapCounterBackground());
+        pad.addView(counter, new LinearLayout.LayoutParams(dp(86), dp(58)));
+
+        pad.setOnClickListener(v -> handleHighlightTap(pad, counter, highlightId, optionKey, optionLabel, highlightType, emotion));
+        scheduleHighlightTapNoClickHide(highlightId);
+    }
+
+    private String highlightTapPadText(String highlightType) {
+        String type = highlightType == null ? "" : highlightType;
+        if (type.contains("甜") || type.contains("爱情") || type.contains("心动")) {
+            return "疯狂送心";
+        }
+        if (type.contains("搞笑") || type.contains("好笑")) {
+            return "笑点连击";
+        }
+        if (type.contains("反转")) {
+            return "反转刷屏";
+        }
+        if (type.contains("爽") || type.contains("高能")) {
+            return "爽值连击";
+        }
+        return "情绪连击";
+    }
+
+    private void handleHighlightTap(View pad, TextView counter, int highlightId, String optionKey, String optionLabel, String highlightType, String emotion) {
+        if (activeHighlightId != highlightId || activeHighlightTapSubmitted) {
+            return;
+        }
+        activeHighlightTapCount++;
+        counter.setText(activeHighlightTapCount > 99 ? "MAX" : String.valueOf(activeHighlightTapCount));
+        pad.setBackground(highlightImpactPadBackground(highlightType, activeHighlightTapCount >= 5));
+        animateTap(pad);
+        showHighlightTapBurst(pad, highlightType, optionLabel, emotion, activeHighlightTapCount);
+        scheduleHighlightTapSubmit(highlightId, optionKey, optionLabel);
+    }
+
+    private void scheduleHighlightTapNoClickHide(int highlightId) {
+        stopHighlightTapWatcher();
+        highlightTapRunnable = () -> {
+            if (activeHighlightId == highlightId && activeHighlightTapCount == 0) {
                 hideHighlightAndScheduleNext();
             }
-        }, 10000);
+        };
+        progressHandler.postDelayed(highlightTapRunnable, 2200);
+    }
+
+    private void scheduleHighlightTapSubmit(int highlightId, String optionKey, String optionLabel) {
+        stopHighlightTapWatcher();
+        highlightTapRunnable = () -> {
+            if (activeHighlightId != highlightId || activeHighlightTapSubmitted || activeHighlightTapCount <= 0) {
+                return;
+            }
+            activeHighlightTapSubmitted = true;
+            String countText = activeHighlightTapCount > 99 ? "MAX" : String.valueOf(activeHighlightTapCount);
+            submitInteraction(highlightId, optionKey, optionLabel + " x" + countText);
+        };
+        progressHandler.postDelayed(highlightTapRunnable, 1100);
+    }
+
+    private void showHighlightTapBurst(View pad, String highlightType, String optionLabel, String emotion, int count) {
+        showHighlightStickers(highlightType, optionLabel, emotion, true);
+        String countText = count > 99 ? "MAX" : String.valueOf(count);
+        addHighlightTapWord("+1", highlightType, 0, true);
+        addHighlightTapWord("总 " + countText, highlightType, 1, true);
+        if (count >= 5) {
+            boolean heart = isHeartHighlight(highlightType);
+            addHighlightTapWord(heart ? (count >= 16 ? "心动MAX" : "爱心变大") : (count >= 16 ? "燃到MAX" : "开始冒火"), highlightType, 2, true);
+        }
+    }
+
+    private void addHighlightTapWord(String value, String highlightType, int index, boolean burst) {
+        if (activeHighlightEffectLayer == null || value == null || value.trim().isEmpty()) {
+            return;
+        }
+        TextView word = text(value, index == 1 ? 15 : 18, Color.WHITE, Typeface.BOLD);
+        word.setSingleLine(true);
+        word.setGravity(Gravity.CENTER);
+        word.setPadding(dp(12), 0, dp(12), 0);
+        word.setBackground(highlightStickerBackground(highlightType, burst, index + 5));
+        word.setAlpha(0f);
+        word.setScaleX(0.78f);
+        word.setScaleY(0.78f);
+
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                dp(40)
+        );
+        int width = Math.max(dp(320), getResources().getDisplayMetrics().widthPixels);
+        params.leftMargin = Math.max(dp(20), Math.min(width - dp(130), dp(120 + index * 88 + (highlightEffectSeed % 3) * 26)));
+        params.topMargin = dp(520 + index * 48);
+        activeHighlightEffectLayer.addView(word, params);
+        word.animate()
+                .alpha(1f)
+                .scaleX(index == 2 ? 1.18f : 1f)
+                .scaleY(index == 2 ? 1.18f : 1f)
+                .translationYBy(-dp(34 + index * 10))
+                .setDuration(170)
+                .withEndAction(() -> word.animate()
+                        .alpha(0f)
+                        .translationYBy(-dp(46))
+                        .setStartDelay(420)
+                        .setDuration(360)
+                        .withEndAction(() -> {
+                            if (activeHighlightEffectLayer != null) {
+                                activeHighlightEffectLayer.removeView(word);
+                            }
+                        })
+                        .start())
+                .start();
+    }
+
+    private boolean isHeartHighlight(String highlightType) {
+        String type = highlightType == null ? "" : highlightType;
+        return type.contains("甜") || type.contains("爱情") || type.contains("心动");
     }
 
     private void submitInteraction(int highlightId, String optionKey, String label) {
@@ -5168,10 +5376,13 @@ public class MainActivity extends Activity {
     }
 
     private void hideHighlightAndScheduleNext() {
+        stopHighlightTapWatcher();
         if (activeHighlightPanel != null) {
             activeHighlightPanel.setVisibility(View.GONE);
         }
         activeHighlightId = -1;
+        activeHighlightTapCount = 0;
+        activeHighlightTapSubmitted = false;
         updatePlayerStatus();
         scheduleNextHighlight();
     }
@@ -5702,6 +5913,33 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(17));
         drawable.setStroke(dp(1), Color.argb(80, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable highlightImpactPadBackground(String highlightType, boolean hot) {
+        int first = hot ? highlightAccentColor(highlightType, true) : Color.rgb(20, 24, 36);
+        int second = hot ? Color.rgb(255, 216, 106) : highlightAccentColor(highlightType, true);
+        int third = highlightAccentColor(highlightType, false);
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(246, Color.red(first), Color.green(first), Color.blue(first)),
+                        Color.argb(238, Color.red(second), Color.green(second), Color.blue(second)),
+                        Color.argb(226, Color.red(third), Color.green(third), Color.blue(third))
+                }
+        );
+        drawable.setCornerRadius(dp(22));
+        drawable.setStroke(dp(1), Color.argb(hot ? 150 : 96, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable highlightTapCounterBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.argb(232, 12, 16, 28), Color.argb(218, 45, 58, 92)}
+        );
+        drawable.setCornerRadius(dp(19));
+        drawable.setStroke(dp(1), Color.argb(96, 255, 255, 255));
         return drawable;
     }
 
