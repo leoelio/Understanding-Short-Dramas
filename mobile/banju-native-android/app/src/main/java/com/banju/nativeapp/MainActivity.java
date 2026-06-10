@@ -3316,6 +3316,13 @@ public class MainActivity extends Activity {
         roomButtonParams.leftMargin = dp(8);
         activeWatchRoomStrip.addView(roomButton, roomButtonParams);
 
+        Button inviteButton = glassButton("邀请");
+        inviteButton.setTextSize(12);
+        inviteButton.setOnClickListener(v -> showPlayerFriendInvitePanel());
+        LinearLayout.LayoutParams inviteButtonParams = new LinearLayout.LayoutParams(dp(68), dp(34));
+        inviteButtonParams.leftMargin = dp(6);
+        activeWatchRoomStrip.addView(inviteButton, inviteButtonParams);
+
         activeWatchRoomBoardStatus = text("互动榜 · 等待同伴选择、点赞或发言", 12, Color.WHITE, Typeface.BOLD);
         activeWatchRoomBoardStatus.setSingleLine(true);
         activeWatchRoomBoardStatus.setPadding(dp(12), dp(7), dp(12), dp(7));
@@ -3333,6 +3340,158 @@ public class MainActivity extends Activity {
         if (activeDanmakuOverlay != null) {
             activeDanmakuOverlay.setPadding(dp(12), dp(188), dp(12), 0);
         }
+    }
+
+    private void showPlayerFriendInvitePanel() {
+        if (activeHighlightPanel == null) {
+            return;
+        }
+        if (activePlayerRoomCode.isEmpty()) {
+            if (activePlayerStatus != null) {
+                activePlayerStatus.setText("请先开启同看房间。");
+            }
+            return;
+        }
+        prepareInteractionPanel();
+        addPanelHeader(
+                activeHighlightPanel,
+                "同看邀请",
+                "邀请好友加入房间",
+                "房间 " + activePlayerRoomCode + " · 好友会收到邀请和聊天链接。",
+                v -> hideHighlightAndScheduleNext()
+        );
+        TextView status = text("正在加载好友...", 12, Color.rgb(104, 112, 130), Typeface.BOLD);
+        LinearLayout.LayoutParams statusParams = matchWrap();
+        statusParams.topMargin = dp(8);
+        activeHighlightPanel.addView(status, statusParams);
+        activeHighlightPanel.setVisibility(View.VISIBLE);
+        activeHighlightPanel.bringToFront();
+        animatePanel(activeHighlightPanel);
+
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject(httpGet(loadBaseUrl() + "/api/users/me/friends", loadToken()));
+                JSONArray friends = payload.optJSONArray("friends");
+                runOnUiThread(() -> renderPlayerFriendInviteRows(friends, status));
+            } catch (Exception error) {
+                runOnUiThread(() -> status.setText("好友加载失败：" + error.getMessage()));
+            }
+        }).start();
+    }
+
+    private void renderPlayerFriendInviteRows(JSONArray friends, TextView status) {
+        if (activeHighlightPanel == null) {
+            return;
+        }
+        if (friends == null || friends.length() == 0) {
+            status.setText("暂无可邀请好友。可以先到聊聊添加好友。");
+            return;
+        }
+        status.setText("选择一个好友发送同看邀请。");
+        int count = Math.min(6, friends.length());
+        for (int i = 0; i < count; i++) {
+            JSONObject friend = friends.optJSONObject(i);
+            if (friend != null) {
+                addPlayerFriendInviteRow(activeHighlightPanel, friend, status);
+            }
+        }
+    }
+
+    private void addPlayerFriendInviteRow(LinearLayout parent, JSONObject friend, TextView status) {
+        JSONObject friendUser = friendUserPayload(friend);
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(12), dp(10), dp(12), dp(10));
+        row.setBackground(inputBackground());
+        LinearLayout.LayoutParams rowParams = matchWrap();
+        rowParams.topMargin = dp(8);
+        parent.addView(row, rowParams);
+
+        addRoomEventAvatar(row, friendUser);
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        copyParams.leftMargin = dp(10);
+        row.addView(copy, copyParams);
+
+        TextView name = text(userName(friendUser), 14, Color.rgb(18, 20, 26), Typeface.BOLD);
+        name.setSingleLine(true);
+        copy.addView(name, matchWrap());
+
+        TextView subtitle = text(userIdentityTitle(friendUser, "短剧同好"), 11, Color.rgb(83, 103, 160), Typeface.BOLD);
+        LinearLayout.LayoutParams subtitleParams = matchWrap();
+        subtitleParams.topMargin = dp(2);
+        copy.addView(subtitle, subtitleParams);
+
+        Button inviteButton = primaryButton("邀请");
+        inviteButton.setOnClickListener(v -> inviteFriendToActivePlayerRoom(friend, status));
+        row.addView(inviteButton, new LinearLayout.LayoutParams(dp(78), dp(38)));
+    }
+
+    private JSONObject friendUserPayload(JSONObject friend) {
+        if (friend == null) {
+            return null;
+        }
+        JSONObject nested = friend.optJSONObject("user");
+        return nested == null ? friend : nested;
+    }
+
+    private int resolvedUserId(JSONObject user) {
+        if (user == null) {
+            return 0;
+        }
+        int id = user.optInt("id", 0);
+        if (id > 0) {
+            return id;
+        }
+        id = user.optInt("user_id", 0);
+        if (id > 0) {
+            return id;
+        }
+        id = user.optInt("friend_user_id", 0);
+        if (id > 0) {
+            return id;
+        }
+        return resolvedUserId(user.optJSONObject("user"));
+    }
+
+    private void inviteFriendToActivePlayerRoom(JSONObject friend, TextView status) {
+        if (friend == null || activePlayerRoomCode.isEmpty()) {
+            return;
+        }
+        JSONObject friendUser = friendUserPayload(friend);
+        int friendId = resolvedUserId(friend);
+        if (friendId <= 0) {
+            status.setText("好友信息缺少 ID，无法邀请。");
+            return;
+        }
+        String roomCode = activePlayerRoomCode;
+        int episodeId = activeEpisodeId;
+        String friendName = userName(friendUser);
+        status.setText("正在邀请 " + friendName + "...");
+        new Thread(() -> {
+            try {
+                JSONObject invitePayload = new JSONObject();
+                invitePayload.put("user_id", friendId);
+                httpPost(loadBaseUrl() + "/api/watch-rooms/" + roomCode + "/invite", invitePayload.toString(), loadToken());
+
+                JSONObject messagePayload = new JSONObject();
+                messagePayload.put("to_user_id", friendId);
+                messagePayload.put("message_type", "watch_link");
+                messagePayload.put("text", "邀请你加入同看房间 " + roomCode);
+                JSONObject linkPayload = new JSONObject();
+                linkPayload.put("room_code", roomCode);
+                linkPayload.put("episode_id", episodeId);
+                messagePayload.put("payload", linkPayload);
+                httpPost(loadBaseUrl() + "/api/chat/messages", messagePayload.toString(), loadToken());
+
+                runOnUiThread(() -> status.setText("已邀请 " + friendName + " 加入房间 " + roomCode));
+            } catch (Exception error) {
+                runOnUiThread(() -> status.setText("邀请失败：" + error.getMessage()));
+            }
+        }).start();
     }
 
     private void scheduleWatchRoomSync() {
