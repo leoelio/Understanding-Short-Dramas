@@ -1971,3 +1971,13 @@
   - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 在片尾 AI 分镜页新增本镜头台词卡，复用 shot.audio_text/subtitle/caption 作为原声和用户声音生成依据，并补齐 remixScriptBackground 样式。构建通过；本轮真机在安装后 adb 设备掉线，片尾 AI 交互复测待设备恢复后补。
 - 下一步：
   - 设备恢复后优先复测片尾 AI 分镜页：点击片尾 AI、进入方向分支、查看台词卡、点击图片翻页、请求原声/我的声音并确认无崩溃。
+
+## 2026-06-11 05:00:39
+
+- 目标：Android 原生片尾 AI 分镜声音生成等待态优化：原声/我的声音请求期间显示更明确的穿梭进剧集动效。
+- Git：`7f7729d` / `native-android-migration`
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口；构建通过，当前 adb devices 仍未识别到手机，片尾 AI 声音等待态交互复测待设备恢复后补。
+- 变更：
+  - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 为片尾 AI 分镜页新增 animateRemixVoiceLoading/isRemixVoiceLoading，声音生成时按钮禁用并展示轻量滑动呼吸状态，生成完成或失败后恢复按钮和状态位移。构建通过；当前 adb devices 仍未识别到手机，真机交互待设备恢复后补。
+- 下一步：
+  - 设备恢复后复测：进入北往第 1 集片尾 AI，选择分支和个性化选项，点击原声讲述/我的声音，确认等待态、单段播放、翻页和退出都稳定。

@@ -5386,7 +5386,8 @@ public class MainActivity extends Activity {
 
     private void setRemixVoiceControlsLoading(String voiceMode) {
         if (activeRemixVoiceStatus != null) {
-            activeRemixVoiceStatus.setText(("user".equals(voiceMode) ? "我的声音" : "原声讲述") + "正在准备...");
+            activeRemixVoiceStatus.setText(("user".equals(voiceMode) ? "我的声音" : "原声讲述") + "正在穿梭进剧集...");
+            animateRemixVoiceLoading(activeRemixVoiceStatus);
         }
         if (activeRemixVoicePublishButton != null) {
             activeRemixVoicePublishButton.setVisibility(View.GONE);
@@ -5402,7 +5403,38 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void animateRemixVoiceLoading(TextView status) {
+        if (status == null) {
+            return;
+        }
+        status.animate().cancel();
+        status.setAlpha(0.62f);
+        status.setTranslationX(-dp(8));
+        status.animate()
+                .alpha(1f)
+                .translationX(dp(8))
+                .setDuration(560)
+                .withEndAction(() -> {
+                    if (status == activeRemixVoiceStatus && isRemixVoiceLoading()) {
+                        animateRemixVoiceLoading(status);
+                    }
+                })
+                .start();
+    }
+
+    private boolean isRemixVoiceLoading() {
+        return activeRemixOriginalVoiceButton != null
+                && activeRemixUserVoiceButton != null
+                && !activeRemixOriginalVoiceButton.isEnabled()
+                && !activeRemixUserVoiceButton.isEnabled();
+    }
+
     private void restoreRemixVoiceButtons() {
+        if (activeRemixVoiceStatus != null) {
+            activeRemixVoiceStatus.animate().cancel();
+            activeRemixVoiceStatus.setAlpha(1f);
+            activeRemixVoiceStatus.setTranslationX(0f);
+        }
         if (activeRemixOriginalVoiceButton != null) {
             activeRemixOriginalVoiceButton.setEnabled(true);
             activeRemixOriginalVoiceButton.setText("原声讲述");
