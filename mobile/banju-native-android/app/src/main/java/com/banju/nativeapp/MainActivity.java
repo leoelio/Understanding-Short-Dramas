@@ -22,6 +22,7 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -176,6 +177,28 @@ public class MainActivity extends Activity {
         window.setNavigationBarColor(Color.rgb(246, 249, 254));
     }
 
+    private void enterPlayerImmersiveMode() {
+        Window window = getWindow();
+        window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        window.setStatusBarColor(Color.TRANSPARENT);
+        window.setNavigationBarColor(Color.BLACK);
+        window.getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        );
+    }
+
+    private void exitPlayerImmersiveMode() {
+        Window window = getWindow();
+        window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        configureWindow();
+    }
+
     private void showLoginScreen(String message) {
         stopActiveVideo();
         ScrollView scrollView = newPage();
@@ -289,7 +312,7 @@ public class MainActivity extends Activity {
         header.setGravity(Gravity.NO_GRAVITY);
         root.addView(header, matchWrap());
 
-        TextView eyebrow = text("Banju Native Stage 2", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
+        TextView eyebrow = text("半句 · 短剧陪伴", 12, Color.rgb(83, 103, 160), Typeface.BOLD);
         header.addView(eyebrow, matchWrap());
 
         TextView title = text("短剧首页", 30, Color.rgb(18, 20, 26), Typeface.BOLD);
@@ -2780,6 +2803,7 @@ public class MainActivity extends Activity {
 
     private void showNativePlayer(String dramaTitle, int firstEpisodeId, String roomCode, int resumeSec) {
         stopActiveVideo();
+        enterPlayerImmersiveMode();
         resetHighlightState();
         activeEpisodeId = firstEpisodeId;
         activePlayerRoomCode = roomCode == null ? "" : roomCode.trim().toUpperCase();
@@ -3038,6 +3062,7 @@ public class MainActivity extends Activity {
     }
 
     private void stopActiveVideo() {
+        exitPlayerImmersiveMode();
         stopProgressWatcher();
         stopDanmakuWatcher();
         stopRemixWatcher();

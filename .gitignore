@@ -24,4 +24,5 @@ dist/
 .gradle-native/
 mobile/banju-android/*.apk
 frontend/assets/downloads/*.apk
+artifacts/
 .DS_Store
