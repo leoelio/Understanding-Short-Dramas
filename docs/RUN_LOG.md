@@ -1911,3 +1911,13 @@
   - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 调整二创分镜声音区：原声/我的声音点击后禁用按钮并显示加载状态，旧请求返回会被忽略，切换分镜会停止上一段音频，声音生成成功后只显示一个可发布到逛逛的声音按钮。构建、安装和真机片尾二创入口/分镜/原声播放验证通过。
 - 下一步：
   - 继续迁移播放页体验：优先补齐原生二创发布到逛逛后的可见反馈、同看房间内 AI 资产分享，以及播放页整体视觉统一细节。
+
+## 2026-06-11 03:17:59
+
+- 目标：Android 原生片尾 AI 二创补齐发布后的可见反馈：发布剧情卡、图片或声音后可直接查看逛逛，并在同看播放场景下可同步房间。
+- Git：`13a533e` / `native-android-migration`
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口，并在真机验证北往第 1 集二创剧情卡发布后可查看逛逛。
+- 变更：
+  - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 在二创发布成功后新增查看逛逛入口；同看播放场景下新增同步房间入口，复用 watch-room interaction 事件承载 AI 二创分享；房间动态文案识别 native_remix_share，显示为 AI 二创分享而不是普通高光选择。构建和安装通过，真机验证北往第1集二创剧情卡发布后出现查看逛逛并可跳转动态流。
+- 下一步：
+  - 继续迁移播放页体验：优先补齐同看房间内 AI 二创同步的真机场景验证、播放页内部视觉统一，以及更多 Web 社交互动细节。

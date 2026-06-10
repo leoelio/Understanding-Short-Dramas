@@ -2090,6 +2090,10 @@ public class MainActivity extends Activity {
     private String roomEventTypeLabel(JSONObject event) {
         String type = event.optString("event_type", "danmaku");
         if ("interaction".equals(type)) {
+            JSONObject payload = event.optJSONObject("payload");
+            if (payload != null && "native_remix_share".equals(payload.optString("source_hint", ""))) {
+                return "AI 二创";
+            }
             return "高光选择";
         }
         if ("danmaku_like".equals(type)) {
@@ -3417,8 +3421,12 @@ public class MainActivity extends Activity {
         if ("interaction".equals(type)) {
             label = payload.optString("label", payload.optString("option_label", payload.optString("option_key", "")));
             if (!label.isEmpty()) {
-                activeRoomChoiceCounts.put(label, activeRoomChoiceCounts.containsKey(label) ? activeRoomChoiceCounts.get(label) + 1 : 1);
-                activeRoomLatestAction = userName(user) + "选了「" + label + "」";
+                if ("native_remix_share".equals(payload.optString("source_hint", ""))) {
+                    activeRoomLatestAction = userName(user) + "分享了「" + label + "」";
+                } else {
+                    activeRoomChoiceCounts.put(label, activeRoomChoiceCounts.containsKey(label) ? activeRoomChoiceCounts.get(label) + 1 : 1);
+                    activeRoomLatestAction = userName(user) + "选了「" + label + "」";
+                }
             }
         } else if ("danmaku_like".equals(type)) {
             activeRoomLatestAction = userName(user) + "赞了一条弹幕";
@@ -3525,6 +3533,9 @@ public class MainActivity extends Activity {
         }
         if ("interaction".equals(type)) {
             String label = payload.optString("label", payload.optString("option_label", ""));
+            if ("native_remix_share".equals(payload.optString("source_hint", ""))) {
+                return label.isEmpty() ? "分享了一条片尾 AI 二创" : "分享了 " + label;
+            }
             return label.isEmpty() ? "完成了一次高光互动" : "选择了 " + label;
         }
         if ("danmaku_like".equals(type)) {
@@ -4878,10 +4889,84 @@ public class MainActivity extends Activity {
                 payload.put("asset_url", imageUrl);
                 payload.put("asset_payload", assetPayload);
                 payload.put("topic", "片尾AI二创");
-                httpPost(loadBaseUrl() + "/api/social/posts", payload.toString(), loadToken());
-                runOnUiThread(() -> status.setText("已发布到逛逛"));
+                String body = httpPost(loadBaseUrl() + "/api/social/posts", payload.toString(), loadToken());
+                JSONObject post = new JSONObject(body).optJSONObject("post");
+                String shareLabel = "AI二创：" + choiceLabel;
+                runOnUiThread(() -> {
+                    status.setText("已发布到逛逛");
+                    addRemixPostActions(status, post, shareLabel, imagePost ? "image" : "story", imageUrl, assetPayload);
+                });
             } catch (Exception error) {
                 runOnUiThread(() -> status.setText("发布失败：" + error.getMessage()));
+            }
+        }).start();
+    }
+
+    private void addRemixPostActions(TextView status, JSONObject post, String label, String assetKind, String assetUrl, JSONObject assetPayload) {
+        if (activeRemixPanel == null || status == null) {
+            return;
+        }
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionsParams = matchWrap();
+        actionsParams.topMargin = dp(8);
+        activeRemixPanel.addView(actions, actionsParams);
+
+        Button viewButton = primaryButton("查看逛逛");
+        viewButton.setOnClickListener(v -> showSocialFeedScreen("已打开逛逛，刚发布的内容会出现在动态流。", "all"));
+        actions.addView(viewButton, weightHeight(1, dp(38)));
+
+        if (!activePlayerRoomCode.isEmpty()) {
+            Button roomButton = secondaryButton("同步房间");
+            roomButton.setOnClickListener(v -> syncRemixPostToWatchRoom(label, post, assetKind, assetUrl, assetPayload, status));
+            LinearLayout.LayoutParams roomParams = weightHeight(1, dp(38));
+            roomParams.leftMargin = dp(8);
+            actions.addView(roomButton, roomParams);
+        }
+    }
+
+    private void syncRemixPostToWatchRoom(String label, JSONObject post, String assetKind, String assetUrl, JSONObject assetPayload, TextView status) {
+        if (activePlayerRoomCode.isEmpty()) {
+            if (status != null) {
+                status.setText("当前不在同看房间，无法同步。");
+            }
+            return;
+        }
+        if (status != null) {
+            status.setText("正在同步到同看房间...");
+        }
+        String roomCode = activePlayerRoomCode;
+        new Thread(() -> {
+            try {
+                JSONObject roomPayload = new JSONObject();
+                roomPayload.put("label", shortText(label, 42));
+                roomPayload.put("option_label", shortText(label, 42));
+                roomPayload.put("option_key", assetKind);
+                roomPayload.put("episode_id", activeEpisodeId);
+                roomPayload.put("source", "native_android");
+                roomPayload.put("source_hint", "native_remix_share");
+                roomPayload.put("asset_kind", assetKind);
+                roomPayload.put("asset_url", assetUrl);
+                roomPayload.put("asset_payload", assetPayload == null ? new JSONObject() : assetPayload);
+                roomPayload.put("reward_message", "已同步片尾二创");
+                if (post != null) {
+                    roomPayload.put("post_id", post.optInt("id", 0));
+                }
+                JSONObject body = new JSONObject();
+                body.put("event_type", "interaction");
+                body.put("payload", roomPayload);
+                httpPost(loadBaseUrl() + "/api/watch-rooms/" + roomCode + "/events", body.toString(), loadToken());
+                runOnUiThread(() -> {
+                    if (status != null) {
+                        status.setText("已同步到同看房间");
+                    }
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    if (status != null) {
+                        status.setText("房间同步失败：" + error.getMessage());
+                    }
+                });
             }
         }).start();
     }
@@ -5062,8 +5147,13 @@ public class MainActivity extends Activity {
                 payload.put("asset_url", audioUrl);
                 payload.put("asset_payload", assetPayload);
                 payload.put("topic", "片尾AI二创");
-                httpPost(loadBaseUrl() + "/api/social/posts", payload.toString(), loadToken());
-                runOnUiThread(() -> status.setText("声音已发布到逛逛"));
+                String body = httpPost(loadBaseUrl() + "/api/social/posts", payload.toString(), loadToken());
+                JSONObject post = new JSONObject(body).optJSONObject("post");
+                String shareLabel = "AI声音：" + label;
+                runOnUiThread(() -> {
+                    status.setText("声音已发布到逛逛");
+                    addRemixPostActions(status, post, shareLabel, "voice", audioUrl, assetPayload);
+                });
             } catch (Exception error) {
                 runOnUiThread(() -> status.setText("声音发布失败：" + error.getMessage()));
             }
