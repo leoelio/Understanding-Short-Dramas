@@ -1881,3 +1881,13 @@
   - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 增加高光 tapstorm 状态、连击面板、动态计数、浮动 +1/总数特效、热态背景和一次性互动上报；真机验证北往第1集首个高光连续点击 4 次后显示欠薪得还 x4 并成功上报。
 - 下一步：
   - 继续迁移播放页体验：把多高光类型的原生贴图/动效进一步贴近 Web 版，并开始补片尾 AI 二创沉浸式分镜页的原生视觉。
+
+## 2026-06-11 02:23:18
+
+- 目标：Android 原生播放页接入 Web 体验配置贴图时间轴：从 /api/episodes/{id}/experience 读取 sticker_timeline，按播放时间投放原生图形贴纸。
+- Git：`ed16522` / `native-android-migration`
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口，北往第1集 `/api/episodes/3/experience` 返回 5 个贴图时间窗。
+- 变更：
+  - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 新增体验配置拉取、贴图调度器、按 asset_id 映射的原生贴纸视觉、随机位置与进入/消失动画；北往第1集接口验证返回 5 个贴图时间窗，Android 构建和安装通过。
+- 下一步：
+  - 手机解锁后补做真机视觉验证；随后继续迁移片尾 AI 二创分镜页的过渡动画和更完整的分享/声音体验。

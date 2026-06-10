@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-11 02:06:02
+更新时间：2026-06-11 02:23:18
 
 ## 当前目标
 
-Android 原生播放页补齐高光连击互动：按高光类型自动切换连击模式，支持计数、MAX、停手自动提交和不点击自动收起。
+Android 原生播放页接入 Web 体验配置贴图时间轴：从 /api/episodes/{id}/experience 读取 sticker_timeline，按播放时间投放原生图形贴纸。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`206ea6b`
+- 最新提交：`ed16522`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -18,7 +18,7 @@ Android 原生播放页补齐高光连击互动：按高光类型自动切换连
 
 - Android 原生工作树不维护业务数据库。
 - 当前客户端通过 `http://127.0.0.1:8000` 消费 Web 主线服务端稳定接口；真机调试使用 `adb reverse tcp:8000 tcp:8000`。
-- 本次验证数据来自 Web 主线服务端：北往第1集可拉取 4 个高光、弹幕和片尾 AI 二创配置。
+- 本次接口验证：北往第1集 `/api/episodes/3/experience` 返回 `sticker_timeline` 5 个时间窗，主题为 `road`。
 
 ## 高光来源
 
@@ -39,11 +39,11 @@ Android 原生播放页补齐高光连击互动：按高光类型自动切换连
 
 ## 本次变更摘要
 
-- mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 增加高光 tapstorm 状态、连击面板、动态计数、浮动 +1/总数特效、热态背景和一次性互动上报；真机验证北往第1集首个高光连续点击 4 次后显示欠薪得还 x4 并成功上报。
+- mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 新增体验配置拉取、贴图调度器、按 asset_id 映射的原生贴纸视觉、随机位置与进入/消失动画；北往第1集接口验证返回 5 个贴图时间窗，Android 构建和安装通过。
 
 ## 下一步建议
 
-- 继续迁移播放页体验：把多高光类型的原生贴图/动效进一步贴近 Web 版，并开始补片尾 AI 二创沉浸式分镜页的原生视觉。
+- 手机解锁后补做真机视觉验证；随后继续迁移片尾 AI 二创分镜页的过渡动画和更完整的分享/声音体验。
 
 ## 安全提醒
 

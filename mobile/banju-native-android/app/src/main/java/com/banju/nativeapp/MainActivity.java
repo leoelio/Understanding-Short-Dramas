@@ -105,6 +105,7 @@ public class MainActivity extends Activity {
     private Runnable roomSyncRunnable;
     private Runnable roomEventsRunnable;
     private Runnable highlightTapRunnable;
+    private Runnable stickerRunnable;
     private LinearLayout activeHighlightPanel;
     private LinearLayout activeDanmakuOverlay;
     private FrameLayout activeHighlightEffectLayer;
@@ -124,6 +125,7 @@ public class MainActivity extends Activity {
     private boolean videoPrepared;
     private JSONArray highlightTimeline = new JSONArray();
     private JSONArray danmakuTimeline = new JSONArray();
+    private JSONArray stickerTimeline = new JSONArray();
     private JSONObject remixOptionsPayload;
     private int nextHighlightIndex;
     private int nextDanmakuIndex;
@@ -132,6 +134,7 @@ public class MainActivity extends Activity {
     private int highlightEffectSeed;
     private int activeHighlightTapCount;
     private boolean activeHighlightTapSubmitted;
+    private long[] stickerSlotLastShownAtMs = new long[0];
     private boolean remixEntryShown;
     private String activeDanmakuMode = "light";
     private final Map<String, Integer> activeRoomChoiceCounts = new HashMap<>();
@@ -2839,6 +2842,7 @@ public class MainActivity extends Activity {
             videoView.start();
             scheduleNextHighlight();
             scheduleDanmakuTrack();
+            scheduleStickerTimeline();
             scheduleRemixEntry();
             scheduleWatchRoomSync();
             scheduleWatchRoomEvents();
@@ -3044,6 +3048,7 @@ public class MainActivity extends Activity {
         videoView.requestFocus();
         fetchEpisodeHighlights(firstEpisodeId, status);
         fetchEpisodeDanmaku(firstEpisodeId);
+        fetchEpisodeExperience(firstEpisodeId);
         fetchRemixOptions(firstEpisodeId);
     }
 
@@ -3072,6 +3077,7 @@ public class MainActivity extends Activity {
         stopWatchRoomSync();
         stopWatchRoomEvents();
         stopHighlightTapWatcher();
+        stopStickerWatcher();
         stopRemixAudio();
         postCurrentWatchHistoryProgress(false);
         if (voiceRecording && voiceRecordFile != null) {
@@ -3200,6 +3206,13 @@ public class MainActivity extends Activity {
         if (danmakuRunnable != null) {
             progressHandler.removeCallbacks(danmakuRunnable);
             danmakuRunnable = null;
+        }
+    }
+
+    private void stopStickerWatcher() {
+        if (stickerRunnable != null) {
+            progressHandler.removeCallbacks(stickerRunnable);
+            stickerRunnable = null;
         }
     }
 
@@ -3525,9 +3538,12 @@ public class MainActivity extends Activity {
         stopWatchRoomSync();
         stopWatchRoomEvents();
         stopHighlightTapWatcher();
+        stopStickerWatcher();
         videoPrepared = false;
         highlightTimeline = new JSONArray();
         danmakuTimeline = new JSONArray();
+        stickerTimeline = new JSONArray();
+        stickerSlotLastShownAtMs = new long[0];
         remixOptionsPayload = null;
         nextHighlightIndex = 0;
         nextDanmakuIndex = 0;
@@ -3932,6 +3948,180 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> showInteractionFeedback("弹幕互动同步失败。"));
             }
         }).start();
+    }
+
+    private void fetchEpisodeExperience(int episodeId) {
+        new Thread(() -> {
+            try {
+                String body = httpGet(loadBaseUrl() + "/api/episodes/" + episodeId + "/experience", loadToken());
+                JSONObject payload = new JSONObject(body);
+                JSONObject config = payload.optJSONObject("config");
+                JSONArray timeline = config == null ? null : config.optJSONArray("sticker_timeline");
+                if (timeline == null) {
+                    timeline = new JSONArray();
+                }
+                JSONArray finalTimeline = timeline;
+                runOnUiThread(() -> {
+                    stickerTimeline = finalTimeline;
+                    stickerSlotLastShownAtMs = new long[stickerTimeline.length()];
+                    for (int i = 0; i < stickerSlotLastShownAtMs.length; i++) {
+                        stickerSlotLastShownAtMs[i] = -100000L;
+                    }
+                    scheduleStickerTimeline();
+                });
+            } catch (Exception ignored) {
+                runOnUiThread(() -> {
+                    stickerTimeline = new JSONArray();
+                    stickerSlotLastShownAtMs = new long[0];
+                });
+            }
+        }).start();
+    }
+
+    private void scheduleStickerTimeline() {
+        if (!videoPrepared || activeVideoView == null || activeHighlightEffectLayer == null || stickerTimeline.length() == 0) {
+            return;
+        }
+        if (stickerSlotLastShownAtMs.length != stickerTimeline.length()) {
+            stickerSlotLastShownAtMs = new long[stickerTimeline.length()];
+            for (int i = 0; i < stickerSlotLastShownAtMs.length; i++) {
+                stickerSlotLastShownAtMs[i] = -100000L;
+            }
+        }
+        stopStickerWatcher();
+        stickerRunnable = () -> {
+            if (!videoPrepared || activeVideoView == null || activeHighlightEffectLayer == null) {
+                return;
+            }
+            if (!isRemixOverlayVisible()) {
+                int positionMs = Math.max(0, activeVideoView.getCurrentPosition());
+                for (int i = 0; i < stickerTimeline.length(); i++) {
+                    JSONObject slot = stickerTimeline.optJSONObject(i);
+                    if (slot == null) {
+                        continue;
+                    }
+                    int startMs = (int) Math.round(slot.optDouble("start_time_sec", -1) * 1000);
+                    int endMs = (int) Math.round(slot.optDouble("end_time_sec", -1) * 1000);
+                    if (startMs < 0 || endMs <= startMs || positionMs < startMs || positionMs > endMs) {
+                        continue;
+                    }
+                    int cadenceMs = Math.max(2200, (int) Math.round(slot.optDouble("cadence_sec", 6) * 1000));
+                    if (positionMs - stickerSlotLastShownAtMs[i] >= cadenceMs) {
+                        stickerSlotLastShownAtMs[i] = positionMs;
+                        showExperienceStickerSlot(slot, i);
+                    }
+                }
+            }
+            progressHandler.postDelayed(stickerRunnable, 650);
+        };
+        progressHandler.post(stickerRunnable);
+    }
+
+    private void showExperienceStickerSlot(JSONObject slot, int slotIndex) {
+        JSONArray assetIds = slot.optJSONArray("asset_ids");
+        if (assetIds == null || assetIds.length() == 0) {
+            return;
+        }
+        int burstCount = Math.max(1, Math.min(3, slot.optInt("burst_count", assetIds.length())));
+        String meaning = slot.optString("meaning", "");
+        for (int i = 0; i < burstCount; i++) {
+            String assetId = assetIds.optString((i + highlightEffectSeed) % assetIds.length(), "");
+            addExperienceSticker(assetId, meaning, slotIndex, i);
+        }
+        highlightEffectSeed++;
+    }
+
+    private void addExperienceSticker(String assetId, String meaning, int slotIndex, int index) {
+        if (activeHighlightEffectLayer == null || assetId == null || assetId.trim().isEmpty()) {
+            return;
+        }
+        LinearLayout sticker = new LinearLayout(this);
+        sticker.setOrientation(LinearLayout.HORIZONTAL);
+        sticker.setGravity(Gravity.CENTER_VERTICAL);
+        sticker.setPadding(dp(10), 0, dp(12), 0);
+        sticker.setBackground(experienceStickerBackground(assetId, index));
+        sticker.setClickable(true);
+        sticker.setRotation(experienceStickerRotation(assetId, index));
+        sticker.setAlpha(0f);
+        sticker.setScaleX(0.72f);
+        sticker.setScaleY(0.72f);
+
+        TextView glyph = text(experienceStickerGlyph(assetId), 23, Color.WHITE, Typeface.BOLD);
+        glyph.setGravity(Gravity.CENTER);
+        sticker.addView(glyph, new LinearLayout.LayoutParams(dp(36), dp(44)));
+
+        TextView label = text(experienceStickerLabel(assetId, meaning), 12, Color.WHITE, Typeface.BOLD);
+        label.setSingleLine(true);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        labelParams.leftMargin = dp(4);
+        sticker.addView(label, labelParams);
+
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                dp(48)
+        );
+        params.leftMargin = experienceStickerLeft(assetId, slotIndex, index);
+        params.topMargin = experienceStickerTop(assetId, slotIndex, index);
+        activeHighlightEffectLayer.addView(sticker, params);
+
+        sticker.setOnClickListener(v -> {
+            animateTap(sticker);
+            addExperienceStickerPulse(assetId, slotIndex, index);
+        });
+
+        float driveX = experienceStickerDriveX(assetId, index);
+        sticker.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationXBy(driveX)
+                .translationYBy(-dp(12 + index * 7))
+                .setStartDelay(index * 120L)
+                .setDuration(220)
+                .withEndAction(() -> sticker.animate()
+                        .alpha(0f)
+                        .translationYBy(-dp(42))
+                        .setStartDelay(1300 + index * 160L)
+                        .setDuration(460)
+                        .withEndAction(() -> {
+                            if (activeHighlightEffectLayer != null) {
+                                activeHighlightEffectLayer.removeView(sticker);
+                            }
+                        })
+                        .start())
+                .start();
+    }
+
+    private void addExperienceStickerPulse(String assetId, int slotIndex, int index) {
+        if (activeHighlightEffectLayer == null) {
+            return;
+        }
+        TextView pulse = text("+1 " + experienceStickerGlyph(assetId), 16, Color.WHITE, Typeface.BOLD);
+        pulse.setSingleLine(true);
+        pulse.setGravity(Gravity.CENTER);
+        pulse.setPadding(dp(12), 0, dp(12), 0);
+        pulse.setBackground(experienceStickerBackground(assetId, index + 4));
+        pulse.setAlpha(0f);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(38));
+        params.leftMargin = experienceStickerLeft(assetId, slotIndex, index);
+        params.topMargin = Math.max(dp(150), experienceStickerTop(assetId, slotIndex, index) - dp(44));
+        activeHighlightEffectLayer.addView(pulse, params);
+        pulse.animate()
+                .alpha(1f)
+                .translationYBy(-dp(24))
+                .setDuration(120)
+                .withEndAction(() -> pulse.animate()
+                        .alpha(0f)
+                        .translationYBy(-dp(46))
+                        .setStartDelay(260)
+                        .setDuration(320)
+                        .withEndAction(() -> {
+                            if (activeHighlightEffectLayer != null) {
+                                activeHighlightEffectLayer.removeView(pulse);
+                            }
+                        })
+                        .start())
+                .start();
     }
 
     private void fetchRemixOptions(int episodeId) {
@@ -5035,6 +5225,145 @@ public class MainActivity extends Activity {
     private float highlightStickerRotation(int index) {
         int value = (highlightEffectSeed + index) % 5;
         return new float[]{-7f, 5f, -3f, 8f, -5f}[value];
+    }
+
+    private String experienceStickerGlyph(String assetId) {
+        String key = assetId == null ? "" : assetId.toLowerCase();
+        if (key.contains("meal")) return "烟";
+        if (key.contains("bill")) return "账";
+        if (key.contains("go") || key.contains("charge")) return "冲";
+        if (key.contains("cash") || key.contains("wage")) return "薪";
+        if (key.contains("phone")) return "家";
+        if (key.contains("lantern")) return "年";
+        if (key.contains("ticket") || key.contains("train")) return "票";
+        if (key.contains("question")) return "?";
+        if (key.contains("rock")) return "摇";
+        if (key.contains("moto") || key.contains("vehicle") || key.contains("car")) return "车";
+        if (key.contains("north")) return "北";
+        if (key.contains("rain") || key.contains("snow")) return "落";
+        if (key.contains("seal")) return "印";
+        if (key.contains("spirit")) return "灵";
+        if (key.contains("treasure") || key.contains("map")) return "宝";
+        if (key.contains("compass")) return "针";
+        if (key.contains("trap")) return "警";
+        if (key.contains("heart") || key.contains("kiss") || key.contains("blush")) return "心";
+        if (key.contains("crow")) return "冷";
+        if (key.contains("wow") || key.contains("laugh")) return "哇";
+        if (key.contains("tear")) return "泪";
+        return "高";
+    }
+
+    private String experienceStickerLabel(String assetId, String meaning) {
+        String key = assetId == null ? "" : assetId;
+        String lower = key.toLowerCase();
+        if (lower.contains("meal")) return "打工人日常";
+        if (lower.contains("nopay") || lower.contains("bill")) return "一分没结";
+        if (lower.contains("gosign") || lower.contains("charge")) return "冲起来";
+        if (lower.contains("debtcash")) return "欠薪结清";
+        if (lower.contains("wage")) return "欠薪得还";
+        if (lower.contains("homephone")) return "想家了";
+        if (lower.contains("lantern")) return "年三十";
+        if (lower.contains("ticket")) return "回家票";
+        if (lower.contains("smoke")) return "悬着心";
+        if (lower.contains("road")) return "回得去吗";
+        if (lower.contains("rockword")) return "贼摇滚";
+        if (lower.contains("rockmoto")) return "摩托回家";
+        if (lower.contains("north")) return "一路北往";
+        if (lower.contains("rain")) return "灵雨压场";
+        if (lower.contains("seal")) return "法阵亮起";
+        if (lower.contains("spirit")) return "灵气现形";
+        if (lower.contains("map")) return "藏宝图";
+        if (lower.contains("compass")) return "罗盘指针";
+        if (lower.contains("trap")) return "机关警报";
+        if (lower.contains("snow")) return "冬至雪";
+        if (lower.contains("kiss")) return "突然亲吻";
+        if (lower.contains("heartbeat")) return "心跳加速";
+        if (lower.contains("broken")) return "心碎";
+        if (lower.contains("blush")) return "脸红";
+        if (lower.contains("choice")) return "选哪边";
+        if (lower.contains("questionlove")) return "爱还是现实";
+        if (lower.contains("hug")) return "抱抱";
+        if (lower.contains("wow")) return "哇塞";
+        if (lower.contains("laugh")) return "笑点";
+        if (lower.contains("tear")) return "心疼";
+        if (meaning != null && !meaning.trim().isEmpty()) {
+            return shortText(meaning, 8);
+        }
+        return shortText(key, 8);
+    }
+
+    private int experienceStickerAccent(String assetId, boolean strong) {
+        String key = assetId == null ? "" : assetId.toLowerCase();
+        if (key.contains("heart") || key.contains("kiss") || key.contains("blush") || key.contains("hug")) {
+            return strong ? Color.rgb(255, 86, 128) : Color.rgb(255, 151, 174);
+        }
+        if (key.contains("winter") || key.contains("snow")) {
+            return strong ? Color.rgb(88, 142, 255) : Color.rgb(165, 210, 255);
+        }
+        if (key.contains("xianxia") || key.contains("rain") || key.contains("seal") || key.contains("spirit")) {
+            return strong ? Color.rgb(98, 101, 238) : Color.rgb(144, 205, 255);
+        }
+        if (key.contains("treasure") || key.contains("map") || key.contains("compass") || key.contains("trap")) {
+            return strong ? Color.rgb(178, 125, 42) : Color.rgb(235, 176, 72);
+        }
+        if (key.contains("question") || key.contains("smoke") || key.contains("road")) {
+            return strong ? Color.rgb(94, 71, 214) : Color.rgb(144, 121, 238);
+        }
+        if (key.contains("ticket") || key.contains("phone") || key.contains("lantern") || key.contains("north")) {
+            return strong ? Color.rgb(44, 113, 210) : Color.rgb(105, 162, 233);
+        }
+        if (key.contains("moto") || key.contains("vehicle") || key.contains("car") || key.contains("rock")) {
+            return strong ? Color.rgb(255, 116, 58) : Color.rgb(255, 161, 83);
+        }
+        return strong ? Color.rgb(18, 20, 26) : Color.rgb(255, 140, 72);
+    }
+
+    private GradientDrawable experienceStickerBackground(String assetId, int index) {
+        int first = experienceStickerAccent(assetId, true);
+        int second = experienceStickerAccent(assetId, false);
+        if (index % 3 == 1) {
+            first = Color.rgb(24, 32, 54);
+        }
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(236, Color.red(first), Color.green(first), Color.blue(first)),
+                        Color.argb(224, Color.red(second), Color.green(second), Color.blue(second))
+                }
+        );
+        drawable.setCornerRadius(dp(21));
+        drawable.setStroke(dp(1), Color.argb(118, 255, 255, 255));
+        return drawable;
+    }
+
+    private int experienceStickerLeft(String assetId, int slotIndex, int index) {
+        int width = Math.max(dp(320), getResources().getDisplayMetrics().widthPixels);
+        int usable = Math.max(dp(160), width - dp(190));
+        int lane = Math.abs((assetId == null ? 0 : assetId.hashCode()) + highlightEffectSeed * 3 + slotIndex * 5 + index * 7) % 5;
+        return Math.max(dp(12), Math.min(width - dp(170), dp(16) + lane * Math.max(dp(46), usable / 5)));
+    }
+
+    private int experienceStickerTop(String assetId, int slotIndex, int index) {
+        int height = Math.max(dp(620), getResources().getDisplayMetrics().heightPixels);
+        int usable = Math.max(dp(260), height - dp(850));
+        int lane = Math.abs((assetId == null ? 0 : assetId.hashCode()) + highlightEffectSeed + slotIndex * 3 + index * 11) % 6;
+        return dp(170) + lane * Math.max(dp(52), usable / 6);
+    }
+
+    private float experienceStickerRotation(String assetId, int index) {
+        int value = Math.abs((assetId == null ? 0 : assetId.hashCode()) + index) % 5;
+        return new float[]{-8f, 4f, -3f, 7f, -5f}[value];
+    }
+
+    private float experienceStickerDriveX(String assetId, int index) {
+        String key = assetId == null ? "" : assetId.toLowerCase();
+        if (key.contains("moto") || key.contains("vehicle") || key.contains("car") || key.contains("rock")) {
+            return dp(38 + index * 16);
+        }
+        if (key.contains("smoke") || key.contains("rain") || key.contains("snow")) {
+            return dp(index % 2 == 0 ? 16 : -16);
+        }
+        return 0f;
     }
 
     private void showHighlight(JSONObject highlight) {
