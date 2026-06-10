@@ -3167,6 +3167,10 @@ public class MainActivity extends Activity {
                 }
                 int positionMs = Math.max(0, activeVideoView.getCurrentPosition());
                 if (positionMs >= startMs) {
+                    if (isRemixOverlayVisible()) {
+                        progressHandler.postDelayed(progressRunnable, 1000);
+                        return;
+                    }
                     nextHighlightIndex++;
                     if (activePlayerStatus != null) {
                         activePlayerStatus.setText("高光已触发，选择你的反应。");
@@ -3943,6 +3947,12 @@ public class MainActivity extends Activity {
         if (activeRemixPanel == null) {
             return;
         }
+        if (activeVideoView != null && activeVideoView.isPlaying()) {
+            activeVideoView.pause();
+        }
+        if (activePlayerStatus != null) {
+            activePlayerStatus.setText("片尾拓展已打开，视频已暂停。");
+        }
         if (activePlayerControls != null) {
             activePlayerControls.setVisibility(View.GONE);
         }
@@ -3962,6 +3972,13 @@ public class MainActivity extends Activity {
         if (activePlayerControls != null) {
             activePlayerControls.setVisibility(View.VISIBLE);
         }
+        resetHighlightIndexToCurrent();
+        updatePlayerStatus();
+        scheduleNextHighlight();
+    }
+
+    private boolean isRemixOverlayVisible() {
+        return activeRemixPanel != null && activeRemixPanel.getVisibility() == View.VISIBLE;
     }
 
     private void addRemixChoiceCard(LinearLayout parent, String kicker, String titleText, String description, View.OnClickListener listener) {
@@ -4594,7 +4611,7 @@ public class MainActivity extends Activity {
 
     private int remixImageHeight() {
         int screenHeight = getResources().getDisplayMetrics().heightPixels;
-        return Math.max(dp(300), Math.min(dp(500), screenHeight - dp(390)));
+        return Math.max(dp(250), Math.min(dp(420), screenHeight - dp(560)));
     }
 
     private String remixShotDots(int activeIndex, int total) {
