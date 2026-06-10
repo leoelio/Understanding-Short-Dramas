@@ -1991,3 +1991,13 @@
   - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 为麦克风直录新增 voiceRecordTicker/voiceRecordStartedAtMs，录音中每秒显示已录时长和 3-8 秒建议；按钮文案改为停止并上传；onPause/stopActiveVideo 会取消录音并删除临时文件；迁移状态文案更新为声音上传、直录、试听和头像裁切已接入。Android 构建通过；当前 adb devices 仍未识别到手机，真机录音授权与上传待设备恢复后复测。
 - 下一步：
   - 设备恢复后优先复测我的页：麦克风权限弹窗、录音计时、停止并上传、声音资产刷新、生成试听；随后继续迁移 Web 端复核/AI 配置能力。
+
+## 2026-06-11 05:39:34
+
+- 目标：Android 原生已有页面视觉优化：统一浅彩玻璃背景、卡片阴影、渐变按钮和点击反馈，提升半句 App 的高级感。
+- Git：`c5eb98b` / `native-android-migration`
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口；构建通过，当前 adb devices 仍未识别到手机，视觉真机复核待设备恢复后补。
+- 变更：
+  - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 集中升级全局 UI 设计系统：pageBackground/cardBackground/inputBackground/buttonBackground/secondaryButtonBackground/controlBarBackground 等改为更有色彩层次的浅彩玻璃渐变；主按钮、次按钮、播放器按钮、高光选项和弹幕模式切换接入 RippleDrawable 点击反馈；卡片增加 elevation；状态栏/导航栏颜色同步。Android 构建通过；当前 adb devices 仍未识别到手机，真机视觉复核待设备恢复后补。
+- 下一步：
+  - 设备恢复后优先安装 APK，检查登录页、短剧首页、我的页、聊聊/逛逛、播放页底部控制栏和片尾 AI 面板的真实观感；如仍显素，再针对首页头图和播放器内部组件做第二轮精修。

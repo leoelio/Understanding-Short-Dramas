@@ -4,13 +4,16 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.net.Uri;
@@ -189,7 +192,7 @@ public class MainActivity extends Activity {
     private void configureWindow() {
         Window window = getWindow();
         window.setStatusBarColor(Color.TRANSPARENT);
-        window.setNavigationBarColor(Color.rgb(246, 249, 254));
+        window.setNavigationBarColor(Color.rgb(235, 241, 250));
     }
 
     private void enterPlayerImmersiveMode() {
@@ -783,7 +786,10 @@ public class MainActivity extends Activity {
 
     private void applyToggleButton(Button button, boolean selected) {
         button.setTextColor(selected ? Color.WHITE : Color.rgb(28, 45, 76));
-        button.setBackground(selected ? buttonBackground() : secondaryButtonBackground());
+        button.setBackground(touchBackground(
+                selected ? buttonBackground() : secondaryButtonBackground(),
+                selected ? Color.argb(90, 255, 255, 255) : Color.argb(56, 10, 102, 255)
+        ));
     }
 
     private void publishSocialPost() {
@@ -3975,11 +3981,11 @@ public class MainActivity extends Activity {
         if (lightDanmakuButton == null || carnivalDanmakuButton == null || immersiveDanmakuButton == null) {
             return;
         }
-        lightDanmakuButton.setBackground(pillButtonBackground("light".equals(activeDanmakuMode)));
+        lightDanmakuButton.setBackground(touchBackground(pillButtonBackground("light".equals(activeDanmakuMode)), Color.argb(82, 255, 255, 255)));
         lightDanmakuButton.setTextColor("light".equals(activeDanmakuMode) ? Color.WHITE : Color.argb(220, 255, 255, 255));
-        carnivalDanmakuButton.setBackground(pillButtonBackground("carnival".equals(activeDanmakuMode)));
+        carnivalDanmakuButton.setBackground(touchBackground(pillButtonBackground("carnival".equals(activeDanmakuMode)), Color.argb(82, 255, 255, 255)));
         carnivalDanmakuButton.setTextColor("carnival".equals(activeDanmakuMode) ? Color.WHITE : Color.argb(220, 255, 255, 255));
-        immersiveDanmakuButton.setBackground(pillButtonBackground("immersive".equals(activeDanmakuMode)));
+        immersiveDanmakuButton.setBackground(touchBackground(pillButtonBackground("immersive".equals(activeDanmakuMode)), Color.argb(82, 255, 255, 255)));
         immersiveDanmakuButton.setTextColor("immersive".equals(activeDanmakuMode) ? Color.WHITE : Color.argb(220, 255, 255, 255));
     }
 
@@ -6609,6 +6615,7 @@ public class MainActivity extends Activity {
         card.setGravity(Gravity.CENTER_HORIZONTAL);
         card.setPadding(dp(24), dp(26), dp(24), dp(24));
         card.setBackground(cardBackground());
+        card.setElevation(dp(7));
         return card;
     }
 
@@ -6640,8 +6647,10 @@ public class MainActivity extends Activity {
         button.setText(label);
         button.setTextColor(Color.WHITE);
         button.setTextSize(15);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         button.setAllCaps(false);
-        button.setBackground(buttonBackground());
+        button.setBackground(touchBackground(buttonBackground(), Color.argb(90, 255, 255, 255)));
+        button.setElevation(dp(3));
         return button;
     }
 
@@ -6650,8 +6659,9 @@ public class MainActivity extends Activity {
         button.setText(label);
         button.setTextColor(Color.rgb(28, 45, 76));
         button.setTextSize(14);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         button.setAllCaps(false);
-        button.setBackground(secondaryButtonBackground());
+        button.setBackground(touchBackground(secondaryButtonBackground(), Color.argb(56, 10, 102, 255)));
         return button;
     }
 
@@ -6663,7 +6673,7 @@ public class MainActivity extends Activity {
         button.setAllCaps(false);
         button.setMinHeight(0);
         button.setPadding(0, 0, 0, 0);
-        button.setBackground(glassButtonBackground());
+        button.setBackground(touchBackground(glassButtonBackground(), Color.argb(80, 255, 255, 255)));
         return button;
     }
 
@@ -6675,7 +6685,7 @@ public class MainActivity extends Activity {
         button.setAllCaps(false);
         button.setMinHeight(0);
         button.setPadding(dp(10), 0, dp(10), 0);
-        button.setBackground(pillButtonBackground(false));
+        button.setBackground(touchBackground(pillButtonBackground(false), Color.argb(82, 255, 255, 255)));
         return button;
     }
 
@@ -6688,7 +6698,7 @@ public class MainActivity extends Activity {
         button.setAllCaps(false);
         button.setMinHeight(0);
         button.setPadding(dp(10), 0, dp(10), 0);
-        button.setBackground(playerActionBackground(primary));
+        button.setBackground(touchBackground(playerActionBackground(primary), Color.argb(84, 255, 255, 255)));
         return button;
     }
 
@@ -6702,7 +6712,7 @@ public class MainActivity extends Activity {
         button.setMinHeight(0);
         button.setGravity(Gravity.CENTER_VERTICAL);
         button.setPadding(dp(18), 0, dp(18), 0);
-        button.setBackground(highlightOptionBackground(highlightType, index));
+        button.setBackground(touchBackground(highlightOptionBackground(highlightType, index), Color.argb(94, 255, 255, 255)));
         return button;
     }
 
@@ -6734,18 +6744,25 @@ public class MainActivity extends Activity {
         return new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 new int[]{
-                        Color.rgb(246, 249, 254),
-                        Color.rgb(238, 243, 251),
-                        Color.rgb(255, 247, 239)
+                        Color.rgb(232, 241, 255),
+                        Color.rgb(250, 245, 255),
+                        Color.rgb(255, 244, 232),
+                        Color.rgb(238, 250, 247)
                 }
         );
     }
 
     private GradientDrawable cardBackground() {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(Color.argb(228, 255, 255, 255));
-        drawable.setCornerRadius(dp(28));
-        drawable.setStroke(dp(1), Color.argb(190, 255, 255, 255));
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.argb(242, 255, 255, 255),
+                        Color.argb(230, 243, 248, 255),
+                        Color.argb(224, 255, 248, 239)
+                }
+        );
+        drawable.setCornerRadius(dp(30));
+        drawable.setStroke(dp(1), Color.argb(210, 255, 255, 255));
         return drawable;
     }
 
@@ -6753,12 +6770,13 @@ public class MainActivity extends Activity {
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 new int[]{
-                        Color.rgb(10, 16, 28),
-                        Color.rgb(28, 45, 76),
-                        Color.rgb(18, 20, 26)
+                        Color.rgb(8, 12, 24),
+                        Color.rgb(25, 45, 85),
+                        Color.rgb(68, 42, 86)
                 }
         );
         drawable.setCornerRadius(dp(18));
+        drawable.setStroke(dp(1), Color.argb(88, 255, 255, 255));
         return drawable;
     }
 
@@ -6777,20 +6795,21 @@ public class MainActivity extends Activity {
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 new int[]{
-                        Color.argb(214, 20, 24, 34),
-                        Color.argb(176, 43, 54, 78)
+                        Color.argb(224, 12, 18, 34),
+                        Color.argb(190, 35, 59, 104),
+                        Color.argb(180, 86, 50, 92)
                 }
         );
-        drawable.setCornerRadius(dp(24));
-        drawable.setStroke(dp(1), Color.argb(70, 255, 255, 255));
+        drawable.setCornerRadius(dp(26));
+        drawable.setStroke(dp(1), Color.argb(92, 255, 255, 255));
         return drawable;
     }
 
     private GradientDrawable glassButtonBackground() {
         GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(Color.argb(92, 255, 255, 255));
+        drawable.setColor(Color.argb(110, 255, 255, 255));
         drawable.setCornerRadius(dp(23));
-        drawable.setStroke(dp(1), Color.argb(90, 255, 255, 255));
+        drawable.setStroke(dp(1), Color.argb(125, 255, 255, 255));
         return drawable;
     }
 
@@ -6811,8 +6830,8 @@ public class MainActivity extends Activity {
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
                 selected
-                        ? new int[]{Color.rgb(0, 122, 255), Color.rgb(86, 156, 255)}
-                        : new int[]{Color.argb(84, 255, 255, 255), Color.argb(46, 255, 255, 255)}
+                        ? new int[]{Color.rgb(0, 122, 255), Color.rgb(111, 86, 236)}
+                        : new int[]{Color.argb(100, 255, 255, 255), Color.argb(52, 255, 255, 255)}
         );
         drawable.setCornerRadius(dp(19));
         drawable.setStroke(dp(1), selected ? Color.argb(100, 255, 255, 255) : Color.argb(54, 255, 255, 255));
@@ -6823,8 +6842,8 @@ public class MainActivity extends Activity {
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
                 primary
-                        ? new int[]{Color.rgb(0, 122, 255), Color.rgb(86, 156, 255)}
-                        : new int[]{Color.argb(118, 255, 255, 255), Color.argb(60, 255, 255, 255)}
+                        ? new int[]{Color.rgb(0, 122, 255), Color.rgb(86, 92, 236), Color.rgb(255, 126, 67)}
+                        : new int[]{Color.argb(132, 255, 255, 255), Color.argb(66, 255, 255, 255)}
         );
         drawable.setCornerRadius(dp(21));
         drawable.setStroke(dp(1), Color.argb(primary ? 118 : 66, 255, 255, 255));
@@ -6832,28 +6851,48 @@ public class MainActivity extends Activity {
     }
 
     private GradientDrawable inputBackground() {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(Color.argb(220, 255, 255, 255));
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(236, 255, 255, 255),
+                        Color.argb(218, 241, 247, 255)
+                }
+        );
         drawable.setCornerRadius(dp(18));
-        drawable.setStroke(dp(1), Color.argb(46, 20, 26, 38));
+        drawable.setStroke(dp(1), Color.argb(68, 83, 103, 160));
         return drawable;
     }
 
     private GradientDrawable buttonBackground() {
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{Color.rgb(10, 102, 255), Color.rgb(0, 71, 198)}
+                new int[]{
+                        Color.rgb(0, 122, 255),
+                        Color.rgb(86, 92, 236),
+                        Color.rgb(255, 126, 67)
+                }
         );
-        drawable.setCornerRadius(dp(18));
+        drawable.setCornerRadius(dp(19));
+        drawable.setStroke(dp(1), Color.argb(102, 255, 255, 255));
         return drawable;
     }
 
     private GradientDrawable secondaryButtonBackground() {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(Color.argb(200, 255, 255, 255));
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(236, 255, 255, 255),
+                        Color.argb(218, 233, 242, 255),
+                        Color.argb(210, 255, 247, 237)
+                }
+        );
         drawable.setCornerRadius(dp(18));
-        drawable.setStroke(dp(1), Color.argb(54, 20, 26, 38));
+        drawable.setStroke(dp(1), Color.argb(78, 83, 103, 160));
         return drawable;
+    }
+
+    private Drawable touchBackground(GradientDrawable content, int rippleColor) {
+        return new RippleDrawable(ColorStateList.valueOf(rippleColor), content, null);
     }
 
     private GradientDrawable highlightBackground() {
