@@ -5876,6 +5876,7 @@ public class MainActivity extends Activity {
                 Button optionButton = highlightOptionButton(label, highlightType, i);
                 optionButton.setOnClickListener(v -> {
                     animateTap(v);
+                    addHighlightImpactPulse(highlightType, 1);
                     showHighlightStickers(highlightType, label, emotion, true);
                     submitInteraction(highlightId, optionKey, label);
                 });
@@ -6011,6 +6012,8 @@ public class MainActivity extends Activity {
         counter.setText(activeHighlightTapCount > 99 ? "MAX" : String.valueOf(activeHighlightTapCount));
         pad.setBackground(highlightImpactPadBackground(highlightType, activeHighlightTapCount >= 5));
         animateTap(pad);
+        animateTap(counter);
+        addHighlightImpactPulse(highlightType, activeHighlightTapCount);
         showHighlightTapBurst(pad, highlightType, optionLabel, emotion, activeHighlightTapCount);
         scheduleHighlightTapSubmit(highlightId, optionKey, optionLabel);
     }
@@ -6046,7 +6049,47 @@ public class MainActivity extends Activity {
         if (count >= 5) {
             boolean heart = isHeartHighlight(highlightType);
             addHighlightTapWord(heart ? (count >= 16 ? "心动MAX" : "爱心变大") : (count >= 16 ? "燃到MAX" : "开始冒火"), highlightType, 2, true);
+            addHighlightTapWord(heart ? "♡ 扩散" : "火力+" + Math.min(count, 99), highlightType, 3, true);
         }
+    }
+
+    private void addHighlightImpactPulse(String highlightType, int count) {
+        if (activeHighlightEffectLayer == null) {
+            return;
+        }
+        int size = dp(Math.min(216, 86 + Math.max(1, Math.min(count, 18)) * 7));
+        TextView pulse = text(isHeartHighlight(highlightType) ? "♡" : "!", 28, Color.WHITE, Typeface.BOLD);
+        pulse.setGravity(Gravity.CENTER);
+        pulse.setAlpha(0.72f);
+        pulse.setScaleX(0.62f);
+        pulse.setScaleY(0.62f);
+        pulse.setBackground(highlightPulseBackground(highlightType, count >= 5));
+
+        int width = Math.max(dp(320), getResources().getDisplayMetrics().widthPixels);
+        int height = Math.max(dp(620), getResources().getDisplayMetrics().heightPixels);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(size, size);
+        params.leftMargin = Math.max(dp(18), (width - size) / 2 + ((count % 3) - 1) * dp(24));
+        params.topMargin = Math.max(dp(360), Math.min(height - dp(760), dp(740 + (count % 4) * 12)));
+        activeHighlightEffectLayer.addView(pulse, params);
+
+        float target = count >= 12 ? 1.55f : count >= 5 ? 1.32f : 1.08f;
+        pulse.animate()
+                .alpha(0.92f)
+                .scaleX(target)
+                .scaleY(target)
+                .setDuration(170)
+                .withEndAction(() -> pulse.animate()
+                        .alpha(0f)
+                        .scaleX(target + 0.44f)
+                        .scaleY(target + 0.44f)
+                        .setDuration(360)
+                        .withEndAction(() -> {
+                            if (activeHighlightEffectLayer != null) {
+                                activeHighlightEffectLayer.removeView(pulse);
+                            }
+                        })
+                        .start())
+                .start();
     }
 
     private void addHighlightTapWord(String value, String highlightType, int index, boolean burst) {
@@ -6773,6 +6816,21 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(19));
         drawable.setStroke(dp(1), Color.argb(96, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable highlightPulseBackground(String highlightType, boolean hot) {
+        int accent = highlightAccentColor(highlightType, hot);
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.argb(hot ? 96 : 70, 255, 255, 255),
+                        Color.argb(hot ? 190 : 138, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                        Color.argb(hot ? 92 : 56, 18, 20, 26)
+                }
+        );
+        drawable.setShape(GradientDrawable.OVAL);
+        drawable.setStroke(dp(hot ? 3 : 2), Color.argb(hot ? 180 : 120, 255, 255, 255));
         return drawable;
     }
 

@@ -1387,7 +1387,7 @@
 
 - 目标：Android 原生迁移继续推进：聊天详情接入发起同看邀请，串联创建房间、邀请好友和发送 watch_link 消息。
 - Git：`0780ff9` / `native-android-migration`
-- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口，并在真机验证北往第 1 集播放、紧凑底部浮层、同看房间创建和片尾 AI 全屏层级。
 - 变更：
   - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
   - 聊天详情新增 邀请同看 按钮。
@@ -1404,7 +1404,7 @@
 
 - 目标：Android 原生迁移继续推进：聊聊页接入同看邀请收件箱，支持查看收到/发出的邀请并接受或拒绝 pending 邀请。
 - Git：`6f0247b` / `native-android-migration`
-- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口，并在真机验证北往第 1 集 16 秒高光弹层、疯狂点击计数、自动提交和无崩溃。
 - 变更：
   - 仅在 短剧理解-android / native-android-migration 工作，未启动 Web 服务端口，未修改 Web worktree。
   - 聊聊页新增 /api/watch-rooms/invitations 数据加载，并把待处理同看邀请计入社交状态。
@@ -1951,3 +1951,13 @@
   - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 将播放页底部控制区改为分段弹幕控制 + 一行主操作，新增播放器专用按钮和分段背景样式；片尾 AI 打开时隐藏同看条、互动榜和弹幕层，关闭后恢复，避免全屏二创流程被播放浮层遮挡。真机验证北往第1集可播放、同看房间可创建、片尾 AI 可打开且无崩溃。
 - 下一步：
   - 继续迁移 Web 端体验到 Android：优先补齐高光弹层视觉细节和片尾 AI 分镜页的图片/语音交互完成度。
+
+## 2026-06-11 04:30:16
+
+- 目标：Android 原生高光互动继续迁移 Web 体验：增强普通选项和疯狂点击的视觉反馈，补齐点击冲击波、计数缩放和火力/心动提示。
+- Git：`89c98de` / `native-android-migration`
+- 数据：0 部短剧，0 集，0 个高光，0 集已复核，0 条弹幕，0 条体验配置，0 条片尾 AI 二创，0 条社交动态，0 条好友申请，0 条聊天消息。
+- 变更：
+  - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 在高光选项和疯狂点击路径加入 highlight impact pulse，点击时生成随次数增强的圆形冲击波；疯狂点击计数器新增独立缩放反馈，5 次以上显示火力或心动扩散提示。真机从北往剧库卡 0 秒进入，16 秒高光弹层正常触发，连续点击后自动提交并收起，无崩溃。
+- 下一步：
+  - 继续迁移 Web 端体验到 Android：优先补齐片尾 AI 分镜页的图片/语音交互细节，以及高光贴图时间窗的更多可配置表现。

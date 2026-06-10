@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-11 04:16:52
+更新时间：2026-06-11 04:30:16
 
 ## 当前目标
 
-Android 原生播放页继续统一移动端观看体验：压缩底部控制层级，将弹幕模式、片尾 AI、同看入口整理成更紧凑的播放器浮层。
+Android 原生高光互动继续迁移 Web 体验：增强普通选项和疯狂点击的视觉反馈，补齐点击冲击波、计数缩放和火力/心动提示。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`db0d609`
+- 最新提交：`89c98de`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -18,7 +18,7 @@ Android 原生播放页继续统一移动端观看体验：压缩底部控制层
 
 - Android 原生工作树不维护业务数据库。
 - 当前客户端通过 `http://127.0.0.1:8000` 消费 Web 主线服务端稳定接口；真机调试使用 `adb reverse tcp:8000 tcp:8000`。
-- 本次真机验证：北往第 1 集可播放；底部控制区改为“弹幕分段控制 + 片尾 AI / 同看”紧凑浮层；点击“同看”创建房间 `D80EDA`；点击“片尾 AI”打开全屏二创层时同看条、互动榜和弹幕层已隐藏，无崩溃。
+- 本次真机验证：从北往剧库卡 0 秒进入第 1 集，16 秒高光弹层正常触发；连续点击疯狂点击区域后计数反馈、冲击波路径和自动提交均正常，无崩溃。
 
 ## 高光来源
 
@@ -39,11 +39,11 @@ Android 原生播放页继续统一移动端观看体验：压缩底部控制层
 
 ## 本次变更摘要
 
-- mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 将播放页底部控制区改为分段弹幕控制 + 一行主操作，新增播放器专用按钮和分段背景样式；片尾 AI 打开时隐藏同看条、互动榜和弹幕层，关闭后恢复，避免全屏二创流程被播放浮层遮挡。真机验证北往第1集可播放、同看房间可创建、片尾 AI 可打开且无崩溃。
+- mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 在高光选项和疯狂点击路径加入 highlight impact pulse，点击时生成随次数增强的圆形冲击波；疯狂点击计数器新增独立缩放反馈，5 次以上显示火力或心动扩散提示。真机从北往剧库卡 0 秒进入，16 秒高光弹层正常触发，连续点击后自动提交并收起，无崩溃。
 
 ## 下一步建议
 
-- 继续迁移 Web 端体验到 Android：优先补齐高光弹层视觉细节和片尾 AI 分镜页的图片/语音交互完成度。
+- 继续迁移 Web 端体验到 Android：优先补齐片尾 AI 分镜页的图片/语音交互细节，以及高光贴图时间窗的更多可配置表现。
 
 ## 安全提醒
 
