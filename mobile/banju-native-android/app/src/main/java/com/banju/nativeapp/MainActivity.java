@@ -3836,6 +3836,28 @@ public class MainActivity extends Activity {
         closeParams.leftMargin = dp(8);
         secondRow.addView(closeButton, closeParams);
 
+        addPanelSectionTitle(activeHighlightPanel, "自定义回复");
+        LinearLayout customRow = new LinearLayout(this);
+        customRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams customRowParams = matchWrap();
+        customRowParams.topMargin = dp(8);
+        activeHighlightPanel.addView(customRow, customRowParams);
+
+        EditText customInput = input("", "写一句不剧透的回复");
+        customRow.addView(customInput, weightHeight(1, dp(42)));
+
+        Button sendCustomButton = primaryButton("发送");
+        LinearLayout.LayoutParams sendCustomParams = new LinearLayout.LayoutParams(dp(78), dp(42));
+        sendCustomParams.leftMargin = dp(8);
+        customRow.addView(sendCustomButton, sendCustomParams);
+
+        TextView customStatus = text("回复会在同看房间同步；普通观看先记为本地互动。", 11, Color.rgb(104, 112, 130), Typeface.NORMAL);
+        LinearLayout.LayoutParams customStatusParams = matchWrap();
+        customStatusParams.topMargin = dp(6);
+        activeHighlightPanel.addView(customStatus, customStatusParams);
+
+        sendCustomButton.setOnClickListener(v -> submitDanmakuCustomReply(comment, customInput, customStatus));
+
         activeHighlightPanel.setVisibility(View.VISIBLE);
         activeHighlightPanel.bringToFront();
         animatePanel(activeHighlightPanel);
@@ -3918,8 +3940,34 @@ public class MainActivity extends Activity {
             submitDanmakuRoomEvent(eventType, comment, replyText);
             return;
         }
-        String message = "danmaku_like".equals(eventType) ? "已点赞弹幕。" : "已回复弹幕。";
+        String message = "danmaku_like".equals(eventType) ? "已点赞弹幕。" : "已回复：" + shortText(replyText, 20);
         showInteractionFeedback(message, "已记录本次互动；进入同看房间后可同步给好友。");
+    }
+
+    private void submitDanmakuCustomReply(JSONObject comment, EditText input, TextView status) {
+        String replyText = input == null ? "" : input.getText().toString().trim();
+        if (replyText.isEmpty()) {
+            if (status != null) {
+                status.setText("先写一句回复。");
+                status.setTextColor(Color.rgb(210, 54, 70));
+            }
+            return;
+        }
+        if (replyText.length() > 48) {
+            if (status != null) {
+                status.setText("回复控制在 48 字以内，避免遮挡观看。");
+                status.setTextColor(Color.rgb(210, 54, 70));
+            }
+            return;
+        }
+        if (replyText.contains("http") || replyText.contains("微信") || replyText.contains("QQ")) {
+            if (status != null) {
+                status.setText("回复里不要带广告或联系方式。");
+                status.setTextColor(Color.rgb(210, 54, 70));
+            }
+            return;
+        }
+        submitDanmakuAction("danmaku_reply", comment, replyText);
     }
 
     private void submitDanmakuRoomEvent(String eventType, JSONObject comment, String replyText) {
@@ -3942,7 +3990,7 @@ public class MainActivity extends Activity {
                 body.put("event_type", eventType);
                 body.put("payload", payload);
                 httpPost(loadBaseUrl() + "/api/watch-rooms/" + activePlayerRoomCode + "/events", body.toString(), loadToken());
-                String message = "danmaku_like".equals(eventType) ? "已点赞弹幕。" : "已回复弹幕。";
+                String message = "danmaku_like".equals(eventType) ? "已点赞弹幕。" : "已回复：" + shortText(replyText, 20);
                 runOnUiThread(() -> showInteractionFeedback(message));
             } catch (Exception error) {
                 runOnUiThread(() -> showInteractionFeedback("弹幕互动同步失败。"));
