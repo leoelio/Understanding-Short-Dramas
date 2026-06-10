@@ -4936,6 +4936,8 @@ public class MainActivity extends Activity {
         voiceTitleParams.topMargin = dp(10);
         activeRemixPanel.addView(voiceTitle, voiceTitleParams);
 
+        addRemixScriptLine(activeRemixPanel, shot);
+
         LinearLayout voiceRow = new LinearLayout(this);
         voiceRow.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams voiceParams = matchWrap();
@@ -4990,6 +4992,43 @@ public class MainActivity extends Activity {
         againParams.topMargin = dp(8);
         activeRemixPanel.addView(againButton, againParams);
         animatePanel(activeRemixPanel);
+    }
+
+    private void addRemixScriptLine(LinearLayout panel, JSONObject shot) {
+        if (panel == null || shot == null) {
+            return;
+        }
+        String audioText = remixShotAudioText(shot);
+        if (audioText.isEmpty()) {
+            return;
+        }
+        LinearLayout script = new LinearLayout(this);
+        script.setOrientation(LinearLayout.VERTICAL);
+        script.setPadding(dp(12), dp(9), dp(12), dp(9));
+        script.setBackground(remixScriptBackground());
+        LinearLayout.LayoutParams scriptParams = matchWrap();
+        scriptParams.topMargin = dp(6);
+        panel.addView(script, scriptParams);
+
+        TextView label = text("本镜头台词", 11, Color.rgb(83, 103, 160), Typeface.BOLD);
+        script.addView(label, matchWrap());
+
+        TextView content = text(audioText, 13, Color.rgb(18, 20, 26), Typeface.BOLD);
+        content.setMaxLines(2);
+        LinearLayout.LayoutParams contentParams = matchWrap();
+        contentParams.topMargin = dp(3);
+        script.addView(content, contentParams);
+    }
+
+    private String remixShotAudioText(JSONObject shot) {
+        if (shot == null) {
+            return "";
+        }
+        String value = shot.optString("audio_text", "").trim();
+        if (value.isEmpty()) {
+            value = shot.optString("subtitle", shot.optString("caption", "")).trim();
+        }
+        return shortText(value, 72);
     }
 
     private void goNextRemixShot(JSONObject result, JSONObject imagePlan, JSONArray shots, int safeIndex, boolean sceneChoiceResolved) {
@@ -5321,7 +5360,7 @@ public class MainActivity extends Activity {
                 String body = httpPost(loadBaseUrl() + "/api/episodes/" + activeEpisodeId + "/remix-voice-clips", payload.toString(), loadToken());
                 JSONObject result = new JSONObject(body);
                 String audioUrl = absoluteUrl(result.optString("audio_url", ""));
-                String audioText = result.optString("text", shot.optString("audio_text", shot.optString("subtitle", "")));
+                String audioText = result.optString("text", remixShotAudioText(shot));
                 runOnUiThread(() -> {
                     if (requestSeq != remixVoiceRequestSeq) {
                         return;
@@ -6985,6 +7024,19 @@ public class MainActivity extends Activity {
         );
         drawable.setCornerRadius(dp(18));
         drawable.setStroke(dp(1), Color.argb(80, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable remixScriptBackground() {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{
+                        Color.argb(232, 255, 255, 255),
+                        Color.argb(214, 237, 244, 255)
+                }
+        );
+        drawable.setCornerRadius(dp(16));
+        drawable.setStroke(dp(1), Color.argb(76, 83, 103, 160));
         return drawable;
     }
 

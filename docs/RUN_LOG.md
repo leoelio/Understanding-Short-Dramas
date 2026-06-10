@@ -1961,3 +1961,13 @@
   - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 在高光选项和疯狂点击路径加入 highlight impact pulse，点击时生成随次数增强的圆形冲击波；疯狂点击计数器新增独立缩放反馈，5 次以上显示火力或心动扩散提示。真机从北往剧库卡 0 秒进入，16 秒高光弹层正常触发，连续点击后自动提交并收起，无崩溃。
 - 下一步：
   - 继续迁移 Web 端体验到 Android：优先补齐片尾 AI 分镜页的图片/语音交互细节，以及高光贴图时间窗的更多可配置表现。
+
+## 2026-06-11 04:43:28
+
+- 目标：Android 原生片尾 AI 分镜页补齐台词卡：每张分镜明确展示本镜头要生成/播放的声音文本。
+- Git：`c7d12f2` / `native-android-migration`
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口；构建通过，真机 adb 当前未识别到设备，片尾 AI 分镜交互复测待设备恢复后补。
+- 变更：
+  - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 在片尾 AI 分镜页新增本镜头台词卡，复用 shot.audio_text/subtitle/caption 作为原声和用户声音生成依据，并补齐 remixScriptBackground 样式。构建通过；本轮真机在安装后 adb 设备掉线，片尾 AI 交互复测待设备恢复后补。
+- 下一步：
+  - 设备恢复后优先复测片尾 AI 分镜页：点击片尾 AI、进入方向分支、查看台词卡、点击图片翻页、请求原声/我的声音并确认无崩溃。
