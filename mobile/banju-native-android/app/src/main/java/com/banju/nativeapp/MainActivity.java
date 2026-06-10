@@ -109,6 +109,7 @@ public class MainActivity extends Activity {
     private LinearLayout activeHighlightPanel;
     private LinearLayout activeDanmakuOverlay;
     private FrameLayout activeHighlightEffectLayer;
+    private FrameLayout activePlayerFrame;
     private LinearLayout activeRemixPanel;
     private LinearLayout activeWatchRoomStrip;
     private LinearLayout activeWatchRoomAvatars;
@@ -121,6 +122,7 @@ public class MainActivity extends Activity {
     private Button carnivalDanmakuButton;
     private Button immersiveDanmakuButton;
     private Button activeRemixEntryButton;
+    private Button activeStartWatchRoomButton;
     private Button activeRemixOriginalVoiceButton;
     private Button activeRemixUserVoiceButton;
     private Button activeRemixVoicePublishButton;
@@ -2867,6 +2869,7 @@ public class MainActivity extends Activity {
             }
         });
         FrameLayout playerFrame = new FrameLayout(this);
+        activePlayerFrame = playerFrame;
         root.addView(playerFrame, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
@@ -2913,56 +2916,7 @@ public class MainActivity extends Activity {
         statusParams.topMargin = dp(2);
         titleBlock.addView(status, statusParams);
 
-        if (!activePlayerRoomCode.isEmpty()) {
-            activeWatchRoomStrip = new LinearLayout(this);
-            activeWatchRoomStrip.setOrientation(LinearLayout.HORIZONTAL);
-            activeWatchRoomStrip.setGravity(Gravity.CENTER_VERTICAL);
-            activeWatchRoomStrip.setPadding(dp(12), dp(8), dp(10), dp(8));
-            activeWatchRoomStrip.setBackground(roomEventBubbleBackground());
-            FrameLayout.LayoutParams roomStripParams = new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    Gravity.TOP
-            );
-            roomStripParams.leftMargin = dp(16);
-            roomStripParams.rightMargin = dp(16);
-            roomStripParams.topMargin = dp(96);
-            playerFrame.addView(activeWatchRoomStrip, roomStripParams);
-
-            activeWatchRoomAvatars = new LinearLayout(this);
-            activeWatchRoomAvatars.setOrientation(LinearLayout.HORIZONTAL);
-            activeWatchRoomAvatars.setGravity(Gravity.CENTER_VERTICAL);
-            activeWatchRoomStrip.addView(activeWatchRoomAvatars, new LinearLayout.LayoutParams(dp(78), dp(40)));
-            addPlayerRoomAvatar(activeWatchRoomAvatars, null, true);
-            addPlayerRoomAvatar(activeWatchRoomAvatars, null, false);
-
-            activeWatchRoomStatus = text("同看房间 " + activePlayerRoomCode + " · 正在同步", 12, Color.WHITE, Typeface.BOLD);
-            activeWatchRoomStatus.setSingleLine(true);
-            LinearLayout.LayoutParams statusInlineParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
-            statusInlineParams.leftMargin = dp(8);
-            activeWatchRoomStrip.addView(activeWatchRoomStatus, statusInlineParams);
-
-            Button roomButton = glassButton("房间");
-            roomButton.setTextSize(12);
-            roomButton.setOnClickListener(v -> showWatchRoomScreen(activePlayerRoomCode, "已打开同看房间。"));
-            LinearLayout.LayoutParams roomButtonParams = new LinearLayout.LayoutParams(dp(68), dp(34));
-            roomButtonParams.leftMargin = dp(8);
-            activeWatchRoomStrip.addView(roomButton, roomButtonParams);
-
-            activeWatchRoomBoardStatus = text("互动榜 · 等待同伴选择、点赞或发言", 12, Color.WHITE, Typeface.BOLD);
-            activeWatchRoomBoardStatus.setSingleLine(true);
-            activeWatchRoomBoardStatus.setPadding(dp(12), dp(7), dp(12), dp(7));
-            activeWatchRoomBoardStatus.setBackground(danmakuBubbleBackground());
-            FrameLayout.LayoutParams boardParams = new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    Gravity.TOP
-            );
-            boardParams.leftMargin = dp(16);
-            boardParams.rightMargin = dp(16);
-            boardParams.topMargin = dp(146);
-            playerFrame.addView(activeWatchRoomBoardStatus, boardParams);
-        }
+        ensurePlayerWatchRoomChrome();
 
         activeDanmakuOverlay = new LinearLayout(this);
         activeDanmakuOverlay.setOrientation(LinearLayout.VERTICAL);
@@ -3029,6 +2983,14 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams remixButtonParams = matchHeight(dp(42));
         remixButtonParams.topMargin = dp(10);
         bottomControls.addView(activeRemixEntryButton, remixButtonParams);
+
+        if (activePlayerRoomCode.isEmpty()) {
+            activeStartWatchRoomButton = pillButton("开启同看");
+            activeStartWatchRoomButton.setOnClickListener(v -> startPlayerWatchRoom());
+            LinearLayout.LayoutParams roomStartParams = matchHeight(dp(40));
+            roomStartParams.topMargin = dp(8);
+            bottomControls.addView(activeStartWatchRoomButton, roomStartParams);
+        }
 
         activeHighlightPanel = buildHighlightPanel();
         FrameLayout.LayoutParams highlightParams = new FrameLayout.LayoutParams(
@@ -3250,6 +3212,126 @@ public class MainActivity extends Activity {
         if (highlightTapRunnable != null) {
             progressHandler.removeCallbacks(highlightTapRunnable);
             highlightTapRunnable = null;
+        }
+    }
+
+    private void startPlayerWatchRoom() {
+        if (activeEpisodeId <= 0 || activeVideoView == null) {
+            if (activePlayerStatus != null) {
+                activePlayerStatus.setText("当前剧集未准备好，暂时不能开启同看。");
+            }
+            return;
+        }
+        if (!activePlayerRoomCode.isEmpty()) {
+            showWatchRoomScreen(activePlayerRoomCode, "已打开同看房间。");
+            return;
+        }
+        if (activeStartWatchRoomButton != null) {
+            activeStartWatchRoomButton.setEnabled(false);
+            activeStartWatchRoomButton.setText("创建中");
+        }
+        if (activePlayerStatus != null) {
+            activePlayerStatus.setText("正在创建同看房间...");
+        }
+        int episodeId = activeEpisodeId;
+        int positionMs = Math.max(0, activeVideoView.getCurrentPosition());
+        String playbackState = activeVideoView.isPlaying() ? "playing" : "paused";
+        new Thread(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("episode_id", episodeId);
+                payload.put("progress_sec", positionMs / 1000.0);
+                payload.put("playback_state", playbackState);
+                JSONObject room = new JSONObject(httpPost(loadBaseUrl() + "/api/watch-rooms", payload.toString(), loadToken()));
+                String roomCode = room.optString("code", "").trim().toUpperCase();
+                if (roomCode.isEmpty()) {
+                    throw new IllegalStateException("同看房间缺少房间码");
+                }
+                runOnUiThread(() -> activatePlayerWatchRoom(roomCode, room));
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    if (activeStartWatchRoomButton != null) {
+                        activeStartWatchRoomButton.setEnabled(true);
+                        activeStartWatchRoomButton.setText("开启同看");
+                    }
+                    if (activePlayerStatus != null) {
+                        activePlayerStatus.setText("同看房间创建失败：" + error.getMessage());
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void activatePlayerWatchRoom(String roomCode, JSONObject room) {
+        activePlayerRoomCode = roomCode;
+        activeRoomCode = roomCode;
+        if (activeStartWatchRoomButton != null) {
+            activeStartWatchRoomButton.setVisibility(View.GONE);
+        }
+        ensurePlayerWatchRoomChrome();
+        updatePlayerWatchRoomStatus(room);
+        scheduleWatchRoomSync();
+        scheduleWatchRoomEvents();
+        if (activePlayerStatus != null) {
+            activePlayerStatus.setText("同看房间 " + roomCode + " 已开启。");
+        }
+    }
+
+    private void ensurePlayerWatchRoomChrome() {
+        if (activePlayerFrame == null || activePlayerRoomCode.isEmpty() || activeWatchRoomStrip != null) {
+            return;
+        }
+        activeWatchRoomStrip = new LinearLayout(this);
+        activeWatchRoomStrip.setOrientation(LinearLayout.HORIZONTAL);
+        activeWatchRoomStrip.setGravity(Gravity.CENTER_VERTICAL);
+        activeWatchRoomStrip.setPadding(dp(12), dp(8), dp(10), dp(8));
+        activeWatchRoomStrip.setBackground(roomEventBubbleBackground());
+        FrameLayout.LayoutParams roomStripParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP
+        );
+        roomStripParams.leftMargin = dp(16);
+        roomStripParams.rightMargin = dp(16);
+        roomStripParams.topMargin = dp(96);
+        activePlayerFrame.addView(activeWatchRoomStrip, roomStripParams);
+
+        activeWatchRoomAvatars = new LinearLayout(this);
+        activeWatchRoomAvatars.setOrientation(LinearLayout.HORIZONTAL);
+        activeWatchRoomAvatars.setGravity(Gravity.CENTER_VERTICAL);
+        activeWatchRoomStrip.addView(activeWatchRoomAvatars, new LinearLayout.LayoutParams(dp(78), dp(40)));
+        addPlayerRoomAvatar(activeWatchRoomAvatars, null, true);
+        addPlayerRoomAvatar(activeWatchRoomAvatars, null, false);
+
+        activeWatchRoomStatus = text("同看房间 " + activePlayerRoomCode + " · 正在同步", 12, Color.WHITE, Typeface.BOLD);
+        activeWatchRoomStatus.setSingleLine(true);
+        LinearLayout.LayoutParams statusInlineParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        statusInlineParams.leftMargin = dp(8);
+        activeWatchRoomStrip.addView(activeWatchRoomStatus, statusInlineParams);
+
+        Button roomButton = glassButton("房间");
+        roomButton.setTextSize(12);
+        roomButton.setOnClickListener(v -> showWatchRoomScreen(activePlayerRoomCode, "已打开同看房间。"));
+        LinearLayout.LayoutParams roomButtonParams = new LinearLayout.LayoutParams(dp(68), dp(34));
+        roomButtonParams.leftMargin = dp(8);
+        activeWatchRoomStrip.addView(roomButton, roomButtonParams);
+
+        activeWatchRoomBoardStatus = text("互动榜 · 等待同伴选择、点赞或发言", 12, Color.WHITE, Typeface.BOLD);
+        activeWatchRoomBoardStatus.setSingleLine(true);
+        activeWatchRoomBoardStatus.setPadding(dp(12), dp(7), dp(12), dp(7));
+        activeWatchRoomBoardStatus.setBackground(danmakuBubbleBackground());
+        FrameLayout.LayoutParams boardParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP
+        );
+        boardParams.leftMargin = dp(16);
+        boardParams.rightMargin = dp(16);
+        boardParams.topMargin = dp(146);
+        activePlayerFrame.addView(activeWatchRoomBoardStatus, boardParams);
+
+        if (activeDanmakuOverlay != null) {
+            activeDanmakuOverlay.setPadding(dp(12), dp(188), dp(12), 0);
         }
     }
 
@@ -3572,6 +3654,7 @@ public class MainActivity extends Activity {
         activeHighlightPanel = null;
         activeDanmakuOverlay = null;
         activeHighlightEffectLayer = null;
+        activePlayerFrame = null;
         activeRemixPanel = null;
         activeWatchRoomStrip = null;
         activeWatchRoomAvatars = null;
@@ -3584,6 +3667,7 @@ public class MainActivity extends Activity {
         carnivalDanmakuButton = null;
         immersiveDanmakuButton = null;
         activeRemixEntryButton = null;
+        activeStartWatchRoomButton = null;
         activePlayerRoomCode = "";
         activeRoomChoiceCounts.clear();
         activeRoomLatestAction = "";

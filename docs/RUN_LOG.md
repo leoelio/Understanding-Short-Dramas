@@ -1921,3 +1921,13 @@
   - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 在二创发布成功后新增查看逛逛入口；同看播放场景下新增同步房间入口，复用 watch-room interaction 事件承载 AI 二创分享；房间动态文案识别 native_remix_share，显示为 AI 二创分享而不是普通高光选择。构建和安装通过，真机验证北往第1集二创剧情卡发布后出现查看逛逛并可跳转动态流。
 - 下一步：
   - 继续迁移播放页体验：优先补齐同看房间内 AI 二创同步的真机场景验证、播放页内部视觉统一，以及更多 Web 社交互动细节。
+
+## 2026-06-11 03:34:31
+
+- 目标：Android 原生播放页补齐同看房间内 AI 二创同步闭环：普通播放页可一键开启同看，二创发布后可同步到房间互动榜。
+- Git：`40219d7` / `native-android-migration`
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口，并在真机验证同看房间创建、二创发布和房间同步。
+- 变更：
+  - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 新增播放页开启同看按钮、动态创建房间、动态挂载同看状态条和互动榜；复用原有 watch-room sync/events 轮询；片尾 AI 二创发布后在同看场景显示同步房间按钮。构建和真机验证通过：北往第1集开启同看房间 C205E0，发布二创剧情卡后同步房间，互动榜显示普通用户分享了 AI二创：车坏在半路。
+- 下一步：
+  - 继续迁移 Web 端体验到 Android：优先统一播放页内部视觉细节，并补齐同看邀请/好友选择在播放页里的便捷入口。
