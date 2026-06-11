@@ -1,0 +1,122 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 18,
+  "drama_title": "荒年全村啃树皮，我有系统满仓肉",
+  "episode_title": "第2集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 52,
+      "title": "荒年里难得的撒糖瞬间",
+      "description": "生存压力拉满的荒年背景下，男女主出现难得的温柔近距离互动，暧昧氛围快速升温",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "心动"
+        },
+        {
+          "key": "together",
+          "label": "锁死"
+        }
+      ],
+      "annotation_reason": "苦境中诞生的温情互动反差感极强，极易戳中观众磕点，触发情绪表达",
+      "evidence_text": "基于锚定时间61.23-69.23的高光点，荒年生存线中穿插的男女主甜蜜互动片段"
+    },
+    {
+      "id": 53,
+      "title": "全村啃树皮惨状戳心",
+      "description": "荒年缺粮到极致，全村村民只能靠啃树皮勉强果腹，生存处境极度凄惨",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "hurt",
+          "label": "太心疼了"
+        },
+        {
+          "key": "cry",
+          "label": "破防了"
+        },
+        {
+          "key": "hug",
+          "label": "抱抱大家"
+        }
+      ],
+      "annotation_reason": "极端生存困境下普通人的苦难场景代入感极强，很容易引发观众共情",
+      "evidence_text": "基于锚定时间144.74-152.74的高光点，荒年村民缺粮啃树皮的虐心片段"
+    },
+    {
+      "id": 54,
+      "title": "系统满仓物资惊艳全场",
+      "description": "主角激活随身荒年系统，亮出满仓存粮直接解决全村缺粮危机，狠狠打脸之前质疑他的村民",
+      "highlight_type": "爽点逆袭",
+      "emotion": "爽",
+      "options": [
+        {
+          "key": "shuang",
+          "label": "太爽了"
+        },
+        {
+          "key": "again",
+          "label": "再来一波"
+        },
+        {
+          "key": "support",
+          "label": "站主角"
+        }
+      ],
+      "annotation_reason": "压抑多集的缺粮困境瞬间被破解，爽感直接拉满，适合触发观众爽值反馈",
+      "evidence_text": "基于锚定时间217.11-225.11的高光点，主角亮出系统满仓物资的核心爽点片段"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 61.23,
+      "end_time_sec": 69.23,
+      "asset_ids": [
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "对应甜蜜互动场景，弹出脸红心跳贴纸烘托暧昧撒糖氛围",
+      "asset_prompt": "软萌动态脸红贴纸搭配跳动的心跳特效贴纸，适配苦境撒糖的温情场景"
+    },
+    {
+      "start_time_sec": 144.74,
+      "end_time_sec": 152.74,
+      "asset_ids": [
+        "tear"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "对应村民啃树皮的虐心场景，弹出心疼贴纸传递观众共情情绪",
+      "asset_prompt": "软乎乎的哭脸心疼动态贴纸，适配虐心共情的苦难场景"
+    },
+    {
+      "start_time_sec": 217.11,
+      "end_time_sec": 225.11,
+      "asset_ids": [
+        "harvestSystem",
+        "charge"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 4,
+      "meaning": "对应主角亮出系统满仓物资的爽点场景，放大逆袭打脸的爽感",
+      "asset_prompt": "金光闪闪的系统满仓弹窗贴纸搭配热血冲的动态特效贴纸，适配高能爽点场景"
+    }
+  ],
+  "draft_notes": [
+    "本集has_rich_segments为false，所有高光升级均基于现有锚定属性，未编造脱离荒年系统剧集设定的新剧情",
+    "所有贴图资源均来自给定asset_catalog库，未使用不在白名单内的素材",
+    "所有交互按钮label均控制在8个中文字符以内，符合移动端快速点击的交互要求",
+    "整集仅设置3个贴图时间窗，符合稀疏分布要求，不会干扰正常观剧体验"
+  ]
+}

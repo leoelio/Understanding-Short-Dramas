@@ -1,0 +1,17 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="n" cx="42%" cy="32%" r="70%">
+      <stop stop-color="#2BE7FF"/>
+      <stop offset=".48" stop-color="#2932A8"/>
+      <stop offset="1" stop-color="#14030D"/>
+    </radialGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="14" y="18" width="100" height="88" rx="26" fill="url(#n)"/>
+  <path d="M82 30c-18 2-31 18-29 36 2 17 17 29 34 29-6 6-15 10-25 10-23 0-42-19-42-42s19-42 42-42c8 0 14 3 20 9z" fill="#E9FBFF" opacity=".92"/>
+  <path d="M25 76h78M34 92h58M41 47h44" stroke="#FF336D" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+  <text x="64" y="70" text-anchor="middle" font-size="24" font-weight="900" fill="#fff" font-family="Arial, sans-serif" filter="url(#glow)">撕夜</text>
+</svg>

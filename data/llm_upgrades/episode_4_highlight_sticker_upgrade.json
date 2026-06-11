@@ -1,0 +1,132 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 4,
+  "drama_title": "北往",
+  "episode_title": "第2集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 10,
+      "title": "剧情突现神反转",
+      "description": "此处出现意料之外的剧情走向，完全打破观众此前的预判，冲击感极强",
+      "highlight_type": "反转揭秘",
+      "emotion": "震惊",
+      "options": [
+        {
+          "key": "shock",
+          "label": "太震惊了"
+        },
+        {
+          "key": "unexpected",
+          "label": "完全没想到"
+        },
+        {
+          "key": "rewatch",
+          "label": "倒回去看"
+        }
+      ],
+      "annotation_reason": "该反转是本集首个强情绪冲击点，极易引发用户讨论和二次回看意愿，适合触发互动",
+      "evidence_text": "基于人工锚定的29.39-37.39秒高光锚点，无额外剧情补充"
+    },
+    {
+      "id": 11,
+      "title": "欠薪对峙冲突升级",
+      "description": "讨薪主角和欠薪方的矛盾彻底激化，双方正面对峙剑拔弩张，张力拉满",
+      "highlight_type": "冲突对抗",
+      "emotion": "愤怒",
+      "options": [
+        {
+          "key": "angry",
+          "label": "气到发抖"
+        },
+        {
+          "key": "fight",
+          "label": "直接怼他"
+        },
+        {
+          "key": "protect",
+          "label": "护着主角"
+        }
+      ],
+      "annotation_reason": "冲突场景代入感极强，用户极易产生站队共情，互动触发门槛极低",
+      "evidence_text": "基于人工锚定的69.48-77.48秒高光锚点，无额外剧情补充"
+    },
+    {
+      "id": 12,
+      "title": "返乡路暖心互动",
+      "description": "紧绷的冲突过后出现的柔软治愈桥段，陌生人的善意瞬间戳中人心",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "太心动了"
+        },
+        {
+          "key": "together",
+          "label": "要好好的"
+        }
+      ],
+      "annotation_reason": "强冲突后的甜暖桥段反差感突出，很容易触发用户正向情绪反馈",
+      "evidence_text": "基于人工锚定的104.22-112.22秒高光锚点，无额外剧情补充"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 29.39,
+      "end_time_sec": 37.39,
+      "asset_ids": [
+        "smokeQuestion"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "反转出现时弹出错愕感贴纸，烘托观众意外的情绪",
+      "asset_prompt": "北往主题反转错愕感的烟状问号趣味动态贴纸"
+    },
+    {
+      "start_time_sec": 69.48,
+      "end_time_sec": 77.48,
+      "asset_ids": [
+        "noPayBill",
+        "wageStamp"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "欠薪对峙场景弹出讨薪相关贴纸，强化观众共情情绪",
+      "asset_prompt": "北往主题讨薪对峙的欠薪单据、还钱印章趣味动态贴纸"
+    },
+    {
+      "start_time_sec": 104.22,
+      "end_time_sec": 112.22,
+      "asset_ids": [
+        "homeTicket",
+        "homeLantern"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "暖心互动场景弹出返乡相关贴纸，烘托温暖治愈的氛围",
+      "asset_prompt": "北往主题暖心返乡的回家车票、喜庆灯笼趣味动态贴纸"
+    },
+    {
+      "start_time_sec": 125.0,
+      "end_time_sec": 133.61,
+      "asset_ids": [
+        "roadQuestion"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "本集结尾弹出归途疑问贴纸，给下一集留足悬念感",
+      "asset_prompt": "北往主题结尾悬念的归途疑问趣味动态贴纸"
+    }
+  ],
+  "draft_notes": [
+    "本集has_rich_segments为false，所有高光升级均未编造新剧情，完全基于原有锚点优化表达",
+    "所有贴图均选用北往返乡主题资产，未跨主题调用其他分类贴纸，符合剧集调性",
+    "所有互动按钮label均控制在8字以内，符合移动端快速点击的交互规范"
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 9,
+  "drama_title": "天下第一纨绔",
+  "episode_title": "第1集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 25,
+      "title": "主角受辱委屈落泪",
+      "description": "主角当众被恶意刁难，受尽委屈情绪崩溃，戳中观众共情点",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "hurt",
+          "label": "心疼他"
+        },
+        {
+          "key": "cry",
+          "label": "破防了"
+        },
+        {
+          "key": "hug",
+          "label": "抱抱"
+        }
+      ],
+      "annotation_reason": "虐心片段极易触发观众情绪共鸣，引导用户表达心疼情绪完成互动",
+      "evidence_text": "基于67.98-75.98秒人工锚定的虐心高光点，未新增编造剧情"
+    },
+    {
+      "id": 26,
+      "title": "男主出手打脸反派",
+      "description": "一直扮猪吃虎的纨绔男主不再伪装，当众强势压制此前嚣张的反派，完成高能打脸",
+      "highlight_type": "爽点逆袭",
+      "emotion": "爽",
+      "options": [
+        {
+          "key": "shuang",
+          "label": "太爽了"
+        },
+        {
+          "key": "jieqi",
+          "label": "解气"
+        },
+        {
+          "key": "zan",
+          "label": "太牛了"
+        }
+      ],
+      "annotation_reason": "打脸爽点是短剧核心高能场景，用户互动意愿极强，可放大爽感体验",
+      "evidence_text": "基于160.67-168.67秒人工锚定的爽点高光点，未新增编造剧情"
+    },
+    {
+      "id": 27,
+      "title": "隐藏身份全场震惊",
+      "description": "所有人都看不起的废柴纨绔，真实身份居然是权倾朝野的顶级大佬，身份曝光全场人瞬间惊呆",
+      "highlight_type": "反转揭秘",
+      "emotion": "震惊",
+      "options": [
+        {
+          "key": "shock",
+          "label": "我傻了"
+        },
+        {
+          "key": "unexpected",
+          "label": "还能这样"
+        },
+        {
+          "key": "rewatch",
+          "label": "倒回去看"
+        }
+      ],
+      "annotation_reason": "强反转完全打破观众此前的预判，适合触发用户的意外反应互动，提升沉浸感",
+      "evidence_text": "基于241.01-249.01秒人工锚定的反转高光点，未新增编造剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 67.98,
+      "end_time_sec": 75.98,
+      "asset_ids": [
+        "tear"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "配合虐心剧情弹出心疼落泪贴纸，烘托共情氛围",
+      "asset_prompt": "古风风格心疼落泪的动态情绪贴纸"
+    },
+    {
+      "start_time_sec": 160.67,
+      "end_time_sec": 168.67,
+      "asset_ids": [
+        "charge"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "打脸爽点时刻弹出热血冲的贴纸，放大逆袭爽感",
+      "asset_prompt": "古风风格向前冲的热血动态贴纸"
+    },
+    {
+      "start_time_sec": 241.01,
+      "end_time_sec": 249.01,
+      "asset_ids": [
+        "nobleMask",
+        "question"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "身份反转时刻弹出纨绔面具掉落+问号贴纸，强化观众的意外错愕感",
+      "asset_prompt": "古风纨绔面具碎裂掉落的动态贴纸，搭配疑惑问号表情"
+    }
+  ],
+  "draft_notes": [
+    "本集has_rich_segments为false，所有高光升级均未编造新剧情，完全基于原有锚点优化文案",
+    "所有贴图素材均来自asset_catalog，适配《天下第一纨绔》古风题材属性",
+    "原有高光id 25/26/27全部保留未做增删合并，所有时间锚点完全未修改"
+  ]
+}

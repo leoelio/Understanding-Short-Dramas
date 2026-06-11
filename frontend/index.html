@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>半句 - 短剧陪伴</title>
     <link rel="icon" href="/assets/brand/banju-icon.png" />
-    <link rel="stylesheet" href="/styles.css?v=20260605-danmaku-chat" />
+    <link rel="stylesheet" href="/styles.css?v=20260611-winter-heart-danmaku-v3" />
   </head>
   <body>
     <div class="app-shell">
@@ -15,7 +15,7 @@
           <h1>半句</h1>
         </div>
         <nav class="tabs">
-          <button id="homeTab" class="tab active" type="button">短剧</button>
+          <button id="homeTab" class="tab" type="button">短剧</button>
           <button id="chatTab" class="tab social-tab" type="button">聊聊<span id="chatUnreadBadge" class="nav-badge" hidden>0</span></button>
           <button id="discoverTab" class="tab" type="button">逛逛</button>
           <button id="profileTab" class="tab" type="button">我的</button>
@@ -39,7 +39,10 @@
             <div class="auth-hero-grid">
               <div class="auth-copy">
                 <p class="eyebrow">Product V2</p>
-                <h2>登录半句，进入你的短剧陪伴空间。</h2>
+                <h2 class="auth-title">
+                  <span>登录半句，</span>
+                  <span>进入你的短剧陪伴空间。</span>
+                </h2>
                 <p>
                   高光识别、同看房间、弹幕互动、勋章成长和片尾 AI 二创会沉淀到同一个账号里，形成可展示、可复用的产品闭环。
                 </p>
@@ -51,6 +54,7 @@
                 <div class="auth-product-stage" aria-hidden="true">
                   <div class="auth-device">
                     <div class="auth-device-bar"></div>
+                    <div id="authDeviceClock" class="auth-device-clock">--:--</div>
                     <div class="auth-device-title">
                       <span>今晚热推</span>
                       <strong>北派寻宝</strong>
@@ -88,10 +92,6 @@
                   <article>
                     <strong>AI 二创</strong>
                     <span>片尾剧情预测会生成可点击分镜卡。</span>
-                  </article>
-                  <article>
-                    <strong>成长展馆</strong>
-                    <span>积分、称号和 Q 版徽章沉淀到个人主页。</span>
                   </article>
                 </div>
               </div>
@@ -135,11 +135,11 @@
             <div class="home-hero-copy">
               <p class="eyebrow">Drama Hub</p>
               <h2>选择今晚要进入的剧情。</h2>
-              <p>每一部短剧都会带着高光时间轴、弹幕氛围、同看房间和片尾 AI 二创能力进入播放页。</p>
+              <p>高光时间轴、弹幕氛围、同看房间和片尾 AI 二创，都会随剧集进入<span class="text-nowrap">沉浸播放器</span>。</p>
               <div class="home-hero-stats" aria-label="内容状态">
-                <span id="dramaCount">加载中</span>
-                <span>高光互动</span>
-                <span>同看房间</span>
+                <span><b id="dramaCount">加载中</b><em>内容库</em></span>
+                <span><b>高光互动</b><em>按剧情触发</em></span>
+                <span><b>同看房间</b><em>好友同步</em></span>
               </div>
             </div>
             <div class="home-hero-panel" aria-label="产品能力">
@@ -153,6 +153,7 @@
               </div>
             </div>
           </div>
+          <div id="hotDramaRecommendations" class="hot-drama-recommendations" aria-label="热剧推荐"></div>
           <div class="home-section-title">
             <div>
               <span>Continue</span>
@@ -161,11 +162,12 @@
             <small>保留进度，直接回到剧情高光前后。</small>
           </div>
           <div id="watchHistory" class="watch-history"></div>
-          <div class="home-section-title">
+          <div class="home-section-title library-section-title">
             <div>
               <span>Library</span>
               <h3>短剧片库</h3>
             </div>
+            <div id="dramaCategoryTabs" class="drama-category-tabs" aria-label="短剧分类"></div>
             <small>选择一部短剧进入移动端播放互动体验。</small>
           </div>
           <div id="dramaGrid" class="drama-grid"></div>
@@ -237,28 +239,44 @@
             <div class="social-compose-grid">
               <label class="social-select-card">
                 <span>可见范围</span>
-                <select id="socialVisibility" class="episode-select social-select" aria-label="选择动态可见范围">
+                <select id="socialVisibility" class="episode-select social-select native-hidden-select" aria-label="选择动态可见范围" tabindex="-1">
                   <option value="public">所有人可见</option>
                   <option value="friends">仅好友可见</option>
                   <option value="private">仅自己可见</option>
                 </select>
+                <div class="social-choice-group" data-social-select-target="socialVisibility">
+                  <button class="active" type="button" data-value="public">所有人</button>
+                  <button type="button" data-value="friends">好友</button>
+                  <button type="button" data-value="private">自己</button>
+                </div>
               </label>
               <label class="social-select-card">
                 <span>分享内容</span>
-                <select id="socialSourceType" class="episode-select social-select" aria-label="选择分享类型">
+                <select id="socialSourceType" class="episode-select social-select native-hidden-select" aria-label="选择分享类型" tabindex="-1">
                   <option value="voice">AI 声音</option>
                   <option value="image">AI 图片</option>
                   <option value="story">AI 剧情卡</option>
                   <option value="thought">文字感受</option>
                 </select>
+                <div class="social-choice-group" data-social-select-target="socialSourceType">
+                  <button class="active" type="button" data-value="voice">声音</button>
+                  <button type="button" data-value="image">图片</button>
+                  <button type="button" data-value="story">剧情卡</button>
+                  <button type="button" data-value="thought">文字</button>
+                </div>
               </label>
               <label class="social-select-card wide">
                 <span>动态专题</span>
-                <select id="socialTopic" class="episode-select social-select" aria-label="选择动态专题">
+                <select id="socialTopic" class="episode-select social-select native-hidden-select" aria-label="选择动态专题" tabindex="-1">
                   <option value="beiwang_voice">北往 AI 声音专题</option>
                   <option value="winter_voice_match">冬天男主模仿赛</option>
                   <option value="story_bottle">剧情漂流瓶</option>
                 </select>
+                <div class="social-choice-group topic-choice-group" data-social-select-target="socialTopic">
+                  <button class="active" type="button" data-value="beiwang_voice">北往 AI 声音</button>
+                  <button type="button" data-value="winter_voice_match">冬至模仿赛</button>
+                  <button type="button" data-value="story_bottle">剧情漂流瓶</button>
+                </div>
               </label>
             </div>
             <input id="socialPostTitle" class="social-input" maxlength="120" placeholder="给这条动态起个标题" />
@@ -281,7 +299,7 @@
           <div class="profile-page-head">
             <div>
               <p class="eyebrow">My Gallery</p>
-              <h2>我的成长展馆</h2>
+              <h2>我的空间</h2>
               <p>把同看竞猜、弹幕互动和高光选择沉淀成积分、称号与剧集专属徽章。</p>
             </div>
             <button id="refreshProfile" class="primary-button" type="button">刷新展馆</button>
@@ -310,18 +328,39 @@
             <div class="video-wrap">
               <video id="player" playsinline preload="metadata"></video>
               <div id="playerStatus" class="player-status" hidden></div>
+              <span id="videoProgressMarker" class="video-progress-marker" aria-hidden="true"></span>
               <div id="danmakuLayer" class="danmaku-layer"></div>
               <div id="stickerLayer" class="sticker-layer" aria-hidden="true"></div>
               <div id="interactionLayer" class="interaction-layer hidden"></div>
               <div id="endingRemixLayer" class="ending-remix-layer hidden"></div>
+              <div id="companionBubble" class="companion-bubble hidden" aria-live="polite"></div>
+              <div id="coWatchOverlay" class="co-watch-overlay" hidden>
+                <button id="coWatchOverlayToggle" class="co-watch-overlay-toggle" type="button" aria-expanded="false">
+                  <span id="coWatchOverlayAvatars" class="co-watch-avatar-stack"></span>
+                </button>
+                <div id="coWatchOverlayPanel" class="co-watch-overlay-panel">
+                  <div>
+                    <span>同看聊天</span>
+                    <strong id="coWatchOverlayTitle">和好友同步中</strong>
+                  </div>
+                  <div id="coWatchOverlayMessages" class="co-watch-overlay-messages"></div>
+                  <form id="roomQuickChatForm" class="room-quick-chat">
+                    <input id="roomQuickChatInput" maxlength="42" placeholder="和同看好友说一句" />
+                    <button class="primary-button" type="submit">发送</button>
+                  </form>
+                </div>
+              </div>
               <div id="themeControls" class="theme-controls">
                 <button id="playToggle" class="theme-icon-button" type="button" aria-label="播放">▶</button>
                 <div class="progress-track-shell">
+                  <div id="highlightHeatTrack" class="highlight-heat-track" aria-hidden="true"></div>
                   <input id="progressSlider" class="theme-progress" type="range" min="0" max="1000" value="0" />
+                  <span id="progressHoverPreview" class="progress-hover-preview" hidden>00:00</span>
                   <span class="progress-home-marker" aria-hidden="true">家</span>
                 </div>
                 <span id="playerTime" class="player-time">00:00 / 00:00</span>
                 <button id="muteToggle" class="theme-icon-button" type="button" aria-label="静音">♪</button>
+                <button id="fullscreenToggle" class="theme-icon-button fullscreen-toggle" type="button" aria-label="全屏">⛶</button>
               </div>
             </div>
             <div class="watch-tools">
@@ -329,6 +368,11 @@
                 <button class="mode-button active" type="button" data-mode="light">轻聊</button>
                 <button class="mode-button" type="button" data-mode="carnival">狂欢</button>
                 <button class="mode-button" type="button" data-mode="immerse">沉浸</button>
+              </div>
+              <div id="aiModeToggle" class="ai-mode-toggle" role="group" aria-label="是否开启小半">
+                <span>是否开启小半</span>
+                <button class="ai-mode-button active" type="button" data-ai-mode="on" aria-pressed="true">是</button>
+                <button class="ai-mode-button" type="button" data-ai-mode="off" aria-pressed="false">否</button>
               </div>
               <button id="danmakuSettingsToggle" class="ghost-button icon-button" type="button">弹幕</button>
             </div>
@@ -344,8 +388,8 @@
                 <button id="demoRoomButton" class="ghost-button demo-room-button" type="button">演示同看</button>
                 <button id="leaveRoomButton" class="ghost-button" type="button" hidden>离开</button>
               </div>
-              <div id="roomMemberList" class="room-member-list"></div>
               <div id="roomInvitePanel" class="room-invite-panel"></div>
+              <div id="roomMemberList" class="room-member-list"></div>
             </div>
             <div id="roomFeed" class="room-feed"></div>
             <div id="rewardPanel" class="reward-panel"></div>
@@ -358,13 +402,16 @@
                   <option value="large">大</option>
                 </select>
               </label>
-              <label>
+              <label class="danmaku-speed-field">
                 速度
-                <select id="danmakuSpeed" class="episode-select">
-                  <option value="slow">慢</option>
-                  <option value="normal">中</option>
-                  <option value="fast">快</option>
-                </select>
+                <div class="danmaku-speed-control">
+                  <input id="danmakuSpeed" type="range" min="0" max="2" step="1" value="1" />
+                  <div class="danmaku-speed-labels" aria-hidden="true">
+                    <span data-speed-label="slow">慢</span>
+                    <span data-speed-label="normal">中</span>
+                    <span data-speed-label="fast">快</span>
+                  </div>
+                </div>
               </label>
               <label>
                 区域
@@ -375,13 +422,30 @@
                 </select>
               </label>
               <label>
-                透明度
+                对比度
                 <input id="danmakuOpacity" type="range" min="35" max="100" value="82" />
               </label>
             </div>
             <form id="danmakuForm" class="danmaku-form">
+              <button id="danmakuComposerToggle" class="ghost-button danmaku-composer-toggle" type="button" aria-expanded="false">＋</button>
               <input id="danmakuInput" maxlength="40" placeholder="发一条弹幕" />
               <button class="primary-button" type="submit">发送</button>
+              <div id="danmakuComposerPanel" class="danmaku-composer-panel" hidden>
+                <div>
+                  <span>颜色</span>
+                  <button type="button" data-danmaku-color="#f5f7fb" style="--swatch:#f5f7fb"></button>
+                  <button type="button" data-danmaku-color="#ffb36b" style="--swatch:#ffb36b"></button>
+                  <button type="button" data-danmaku-color="#79e8c6" style="--swatch:#79e8c6"></button>
+                  <button type="button" data-danmaku-color="#9fd8ff" style="--swatch:#9fd8ff"></button>
+                </div>
+                <div>
+                  <span>表情</span>
+                  <button type="button" data-danmaku-emoji="哈哈哈">哈哈哈</button>
+                  <button type="button" data-danmaku-emoji="救命">救命</button>
+                  <button type="button" data-danmaku-emoji="绷不住">绷不住</button>
+                  <button type="button" data-danmaku-emoji="东北魂">东北魂</button>
+                </div>
+              </div>
             </form>
             <div id="danmakuFeedback" class="danmaku-feedback" aria-live="polite"></div>
             <div id="timeline" class="timeline"></div>
@@ -434,6 +498,9 @@
             <button id="formatReview" class="ghost-button" type="button" hidden>格式化高光数据</button>
           </div>
           <div id="reviewWorkbenchTabs" class="review-workbench-tabs" aria-label="选择复核内容">
+            <button type="button" data-review-section="understanding">
+              剧情理解 <span id="reviewUnderstandingCount">0</span>
+            </button>
             <button class="active" type="button" data-review-section="highlights">
               高光点 <span id="reviewHighlightCount">0</span>
             </button>
@@ -447,6 +514,15 @@
               片尾二创 <span id="reviewRemixCount">0</span>
             </button>
           </div>
+          <section class="review-section" data-review-section-panel="understanding" hidden>
+            <div class="experience-head">
+              <div>
+                <h3>剧情理解可视化</h3>
+                <p>把高光、情绪、互动、弹幕治理和片尾二创串成一条可解释链路；默认收起，点击后用于复核和答辩展示。</p>
+              </div>
+            </div>
+            <div id="understandingPreview" class="understanding-preview"></div>
+          </section>
           <section class="review-section active" data-review-section-panel="highlights">
             <textarea id="reviewJson" class="review-raw-json" spellcheck="false" aria-label="高光点 JSON" hidden></textarea>
             <div>
@@ -478,6 +554,7 @@
               </div>
               <div>
                 <button id="runDanmakuGovernance" class="ghost-button" type="button">运行治理</button>
+                <button id="trainDanmakuSmallModel" class="ghost-button" type="button">训练小模型</button>
                 <button id="reloadDanmakuReview" class="primary-button" type="button">刷新列表</button>
               </div>
             </div>
@@ -527,6 +604,6 @@
       </div>
     </div>
 
-    <script defer src="/app.js?v=20260605-danmaku-chat"></script>
+    <script defer src="/app.js?v=20260611-winter-heart-danmaku-v3"></script>
   </body>
 </html>

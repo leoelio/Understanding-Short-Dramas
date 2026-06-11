@@ -1,0 +1,134 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 8,
+  "drama_title": "十八岁太奶奶驾到，重整家族荣耀第三部",
+  "episode_title": "第2集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 22,
+      "title": "青涩暧昧瞬间甜度拉满",
+      "description": "男女主近距离相处氛围升温，满是少年人独有的悸动氛围感，嗑感十足",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "心动"
+        },
+        {
+          "key": "together",
+          "label": "锁死"
+        }
+      ],
+      "annotation_reason": "高甜互动极易触发观众嗑CP情绪，引导用户即时表达当下的心动感受",
+      "evidence_text": "基于锚定的60.5s-68.5s甜蜜互动高光点，未新增额外剧情"
+    },
+    {
+      "id": 23,
+      "title": "角色受虐瞬间戳中泪点",
+      "description": "主角遭遇不公处境情绪崩溃流露，委屈感扑面而来，观众共情度极高",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "hurt",
+          "label": "太心疼"
+        },
+        {
+          "key": "cry",
+          "label": "破防了"
+        },
+        {
+          "key": "hug",
+          "label": "求抱抱"
+        }
+      ],
+      "annotation_reason": "虐心桥段极易引发观众情绪共鸣，引导用户输出当下的共情反馈",
+      "evidence_text": "基于锚定的143.01s-151.01s虐心高光点，未新增额外剧情"
+    },
+    {
+      "id": 24,
+      "title": "太奶奶出手强势打脸",
+      "description": "十八岁太奶奶直接压制挑事的反派亲戚，此前的憋屈局面瞬间扭转，大快人心",
+      "highlight_type": "爽点逆袭",
+      "emotion": "解气",
+      "options": [
+        {
+          "key": "shuang",
+          "label": "太爽了"
+        },
+        {
+          "key": "again",
+          "label": "再来一次"
+        },
+        {
+          "key": "support",
+          "label": "站死她"
+        }
+      ],
+      "annotation_reason": "打脸爽点是本集情绪最高点，适合引导用户释放爽感完成互动",
+      "evidence_text": "基于锚定的214.51s-222.51s爽点高光点，未新增额外剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 60.5,
+      "end_time_sec": 68.5,
+      "asset_ids": [
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "对应暧昧心动场景，弹出脸红心跳贴纸烘托甜宠氛围",
+      "asset_prompt": "粉扑扑的脸红特效+跳动的爱心贴纸，适配青涩心动的甜感场景"
+    },
+    {
+      "start_time_sec": 143.01,
+      "end_time_sec": 151.01,
+      "asset_ids": [
+        "tear",
+        "winterBrokenHeart"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "对应虐心桥段，弹出心碎流泪贴纸放大观众共情情绪",
+      "asset_prompt": "闪着泪光的碎心贴纸，适配悲伤委屈的虐心场景"
+    },
+    {
+      "start_time_sec": 214.51,
+      "end_time_sec": 222.51,
+      "asset_ids": [
+        "familyMedal",
+        "charge"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "对应打脸爽点，弹出家族荣耀+冲的贴纸烘托逆袭爽感",
+      "asset_prompt": "金光闪闪的家族荣耀徽章+向前冲的动感贴纸，适配强势打脸的爽感场景"
+    },
+    {
+      "start_time_sec": 262.0,
+      "end_time_sec": 272.0,
+      "asset_ids": [
+        "familyTable"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 1,
+      "meaning": "对应本集收尾家族众人围坐商议后续的场景，铺垫下集期待感",
+      "asset_prompt": "暖黄灯光下的家庭餐桌贴纸，适配家族日常烟火氛围"
+    }
+  ],
+  "draft_notes": [
+    "所有高光完全保留原有id与锚定时间点，未做新增删除合并操作",
+    "因has_rich_segments为false，所有高光内容均基于原有锚点属性升级，未编造额外剧情",
+    "贴纸全部选用asset_catalog内对应主题资源，单集仅4个贴纸时间窗，分布稀疏不干扰正常观看",
+    "所有互动按钮label均控制在1-8个中文字符范围内，符合移动端快速点击交互要求"
+  ]
+}

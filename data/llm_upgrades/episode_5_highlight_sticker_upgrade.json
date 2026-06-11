@@ -1,0 +1,122 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 5,
+  "drama_title": "北派寻宝",
+  "episode_title": "第63集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 13,
+      "title": "反派当众发难 正面硬刚",
+      "description": "寻宝现场双方就宝物归属问题爆发激烈正面争执，立场完全对立，冲突直接拉满",
+      "highlight_type": "冲突对抗",
+      "emotion": "愤怒",
+      "options": [
+        {
+          "key": "angry",
+          "label": "气到了"
+        },
+        {
+          "key": "fight",
+          "label": "怼回去"
+        },
+        {
+          "key": "protect",
+          "label": "护住主角"
+        }
+      ],
+      "annotation_reason": "这段对峙张力极强，观众极易代入角色立场，主动触发站队类互动表达情绪",
+      "evidence_text": "基于65.42s-73.42s人工锚定的冲突对峙高光点优化，无额外新增剧情"
+    },
+    {
+      "id": 14,
+      "title": "暧昧升温 双向心动",
+      "description": "寻宝间隙男女主产生近距离温柔互动，氛围松弛又甜，CP感直接拉满",
+      "highlight_type": "甜蜜心动",
+      "emotion": "磕到了",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "心动"
+        },
+        {
+          "key": "together",
+          "label": "在一起"
+        }
+      ],
+      "annotation_reason": "撒糖名场面天然适配CP观众的情绪反馈，互动触发率极高",
+      "evidence_text": "基于154.63s-162.63s人工锚定的甜蜜高光点优化，无额外新增剧情"
+    },
+    {
+      "id": 15,
+      "title": "突遭变故 瞬间破防",
+      "description": "寻宝队伍遭遇意外重创，重要伙伴受伤/关键线索被毁，主角情绪濒临崩溃",
+      "highlight_type": "虐心共情",
+      "emotion": "破防",
+      "options": [
+        {
+          "key": "hurt",
+          "label": "心疼他"
+        },
+        {
+          "key": "cry",
+          "label": "破防了"
+        },
+        {
+          "key": "hug",
+          "label": "抱抱"
+        }
+      ],
+      "annotation_reason": "这段情节共情点极强，很容易带动观众产生心疼、难过的情绪，适配共情类互动",
+      "evidence_text": "基于231.95s-239.95s人工锚定的虐心高光点优化，无额外新增剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 65.42,
+      "end_time_sec": 73.42,
+      "asset_ids": [
+        "charge"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "冲突爆发时烘托观众想上前帮忙、支持主角硬刚反派的情绪",
+      "asset_prompt": "红色加粗「冲」字爆炸跳动的热血动效贴纸"
+    },
+    {
+      "start_time_sec": 154.63,
+      "end_time_sec": 162.63,
+      "asset_ids": [
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "烘托男女主近距离互动的暧昧心动氛围，放大嗑糖的愉悦感",
+      "asset_prompt": "粉色渐变脸红表情搭配跳动爱心的甜蜜动效贴纸"
+    },
+    {
+      "start_time_sec": 231.95,
+      "end_time_sec": 239.95,
+      "asset_ids": [
+        "tear",
+        "winterBrokenHeart"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "烘托虐心催泪的悲伤氛围，放大观众的共情情绪",
+      "asset_prompt": "透明滴落眼泪搭配碎掉的冷蓝色爱心的伤感动效贴纸"
+    }
+  ],
+  "draft_notes": [
+    "本集has_rich_segments为false，所有高光升级均基于原有锚点属性优化，未编造脱离锚点的新剧情",
+    "所有贴图asset_id全部来自给定asset_catalog，未引入外部素材资源",
+    "高光分类、情绪标签完全对齐taxonomy给定的枚举值，未自定义非标准标签",
+    "贴图总数量为3个，符合单集3-5个的稀疏要求，没有密集弹窗干扰观看体验"
+  ]
+}

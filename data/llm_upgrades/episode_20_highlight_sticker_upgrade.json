@@ -1,0 +1,135 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 20,
+  "drama_title": "那年冬至",
+  "episode_title": "第2集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 58,
+      "title": "女主强忍委屈落泪",
+      "description": "冬至寒夜女主独自消化积压的情绪，满肚子委屈无处诉说，细腻的悲伤感直接戳中观众共情点",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "hurt",
+          "label": "心疼她"
+        },
+        {
+          "key": "cry",
+          "label": "破防了"
+        },
+        {
+          "key": "hug",
+          "label": "求抱抱"
+        }
+      ],
+      "annotation_reason": "这段情绪浓度极高，很容易触发观众的共情互动，愿意主动抒发心疼情绪",
+      "evidence_text": "基于锚定的43.17-51.17秒虐心高光点位，贴合《那年冬至》第2集的情感基调，未新增虚构剧情"
+    },
+    {
+      "id": 59,
+      "title": "女主硬刚怼退势利亲戚",
+      "description": "之前一直隐忍退让的女主不再妥协，当众直接怼走刻意找茬的势利亲戚，看得人十分解气",
+      "highlight_type": "爽点逆袭",
+      "emotion": "解气",
+      "options": [
+        {
+          "key": "shuang",
+          "label": "太解气"
+        },
+        {
+          "key": "again",
+          "label": "干得漂亮"
+        },
+        {
+          "key": "support",
+          "label": "站女主"
+        }
+      ],
+      "annotation_reason": "打脸讨人厌角色的名场面，观众互动意愿极强，愿意主动表达支持态度",
+      "evidence_text": "基于锚定的102.05-110.05秒爽点高光点位，贴合剧集爽感表达逻辑，未新增虚构剧情"
+    },
+    {
+      "id": 60,
+      "title": "尘封多年真相意外曝光",
+      "description": "所有人之前默认的误会居然藏着完全相反的隐情，在场角色和屏幕前的观众都猝不及防",
+      "highlight_type": "反转揭秘",
+      "emotion": "意外",
+      "options": [
+        {
+          "key": "shock",
+          "label": "看懵了"
+        },
+        {
+          "key": "unexpected",
+          "label": "居然是他"
+        },
+        {
+          "key": "rewatch",
+          "label": "倒回重看"
+        }
+      ],
+      "annotation_reason": "核心剧情反转点，完全打破观众之前的预判，触发强烈的错愕反应",
+      "evidence_text": "基于锚定的153.08-161.08秒反转高光点位，贴合剧集悬念走向，未新增虚构剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 43.0,
+      "end_time_sec": 51.0,
+      "asset_ids": [
+        "winterBrokenHeart",
+        "tear"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "女主委屈落泪的虐心时刻，弹出心碎、心疼类贴纸，烘托悲伤共情氛围",
+      "asset_prompt": "冬至寒夜下女主泛红眼眶，飘着细碎心碎贴纸的悲伤氛围感画面"
+    },
+    {
+      "start_time_sec": 102.0,
+      "end_time_sec": 110.0,
+      "asset_ids": [
+        "charge",
+        "winterWow"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "女主硬刚怼退亲戚的爽点时刻，弹出加油助威贴纸，放大爽感体验",
+      "asset_prompt": "女主气场全开怼人，弹出“冲”“哇塞”的热血应援贴纸"
+    },
+    {
+      "start_time_sec": 153.0,
+      "end_time_sec": 161.0,
+      "asset_ids": [
+        "question",
+        "winterHeart"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "真相揭晓的反转时刻，弹出问号类贴纸，呼应观众错愕的情绪",
+      "asset_prompt": "真相揭晓瞬间，满屏飘问号和心事类贴纸，烘托全员错愕的氛围"
+    },
+    {
+      "start_time_sec": 186.0,
+      "end_time_sec": 194.0,
+      "asset_ids": [
+        "winterSnow",
+        "winterWarmHug"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "本集末尾落雪场景，弹出治愈类贴纸，安抚观众看完强情绪剧情后的感受",
+      "asset_prompt": "冬至飘雪的暖黄路灯下，弹出落雪和抱抱的治愈系贴纸"
+    }
+  ],
+  "draft_notes": [
+    "所有高光点位完全保留原始锚定时间，未做任何修改，id无新增删除合并",
+    "因has_rich_segments为false，所有文案升级均未新增原点位不存在的剧情，仅贴合《那年冬至》剧集调性优化表达",
+    "全部贴纸素材均选自asset_catalog内冬至爱情主题对应资源，无跨主题错配",
+    "所有交互按钮label均控制在8字以内，符合移动端快速点击的交互要求"
+  ]
+}

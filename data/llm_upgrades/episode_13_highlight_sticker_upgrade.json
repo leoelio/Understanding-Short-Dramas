@@ -1,0 +1,133 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 13,
+  "drama_title": "幸得相遇离婚时",
+  "episode_title": "第1集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 37,
+      "title": "离婚真相意外曝光",
+      "description": "原本看似平静的婚姻日常场景突然出现颠覆性反转，此前刻意隐藏的离婚相关真相直接暴露，打破观众前期预判",
+      "highlight_type": "反转揭秘",
+      "emotion": "震惊",
+      "options": [
+        {
+          "key": "shock",
+          "label": "太震惊了"
+        },
+        {
+          "key": "unexpected",
+          "label": "完全没想到"
+        },
+        {
+          "key": "rewatch",
+          "label": "倒回去重看"
+        }
+      ],
+      "annotation_reason": "该反转是全集首个强冲击剧情点，情绪落差极大，非常适合触发用户即时的情绪反馈",
+      "evidence_text": "基于锚定的33.14-41.14反转高光锚点，结合剧集《幸得相遇离婚时》第1集都市情感属性优化，未新增编造剧情"
+    },
+    {
+      "id": 38,
+      "title": "夫妻正面激烈对峙",
+      "description": "男女主关于婚姻存续、过往矛盾的冲突彻底爆发，双方情绪激动正面对峙，矛盾等级快速升级",
+      "highlight_type": "冲突对抗",
+      "emotion": "愤怒",
+      "options": [
+        {
+          "key": "angry",
+          "label": "气炸了"
+        },
+        {
+          "key": "fight",
+          "label": "怼回去"
+        },
+        {
+          "key": "protect",
+          "label": "护女主"
+        }
+      ],
+      "annotation_reason": "核心冲突爆发点用户代入感极强，适合引导用户站队表达自身立场，提升互动参与感",
+      "evidence_text": "基于锚定的78.33-86.33冲突高光锚点，结合都市情感剧婚姻冲突属性优化，未新增编造剧情"
+    },
+    {
+      "id": 39,
+      "title": "男主温柔守护女主",
+      "description": "在女主情绪最低落的时刻男主突然出现给出温柔陪伴，暧昧氛围拉满，两人的关系出现升温迹象",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "心动了"
+        },
+        {
+          "key": "together",
+          "label": "锁死"
+        }
+      ],
+      "annotation_reason": "全集首个高甜互动名场面，精准戳中CP粉情绪点，适合触发用户的心动类互动反馈",
+      "evidence_text": "基于锚定的117.49-125.49甜蜜高光锚点，结合都市情感剧撒糖属性优化，未新增编造剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 33.14,
+      "end_time_sec": 41.14,
+      "asset_ids": [
+        "winterWow"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "反转真相曝光时弹出哇塞贴纸，烘托观众看到反转的意外震惊情绪",
+      "asset_prompt": "夸张的彩色哇塞表情贴纸，快速弹出烘托真相曝光的强冲击感"
+    },
+    {
+      "start_time_sec": 78.33,
+      "end_time_sec": 86.33,
+      "asset_ids": [
+        "divorceRose",
+        "winterBrokenHeart"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "夫妻激烈对峙时弹出离婚玫瑰和心碎贴纸，烘托争吵场景下的压抑悲伤氛围",
+      "asset_prompt": "半透明破碎玫瑰和心碎表情贴纸交替弹出，强化婚姻濒临破裂的冲突感"
+    },
+    {
+      "start_time_sec": 117.49,
+      "end_time_sec": 125.49,
+      "asset_ids": [
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "男女主甜蜜互动时弹出脸红和心跳贴纸，烘托暧昧心动的高甜氛围",
+      "asset_prompt": "粉扑扑的脸红光晕和跳动的粉色爱心贴纸陆续弹出，放大撒糖的甜蜜感"
+    },
+    {
+      "start_time_sec": 140.0,
+      "end_time_sec": 150.63,
+      "asset_ids": [
+        "winterWarmHug"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "本集结尾处弹出抱抱贴纸，烘托治愈感同时引导用户对后续剧情产生期待",
+      "asset_prompt": "暖色调软乎乎的拥抱贴纸弹出，铺垫下一集的情感走向"
+    }
+  ],
+  "draft_notes": [
+    "本集has_rich_segments为false，所有高光优化均未脱离现有锚点属性，没有编造额外剧情",
+    "所有贴图资产全部来自给定asset_catalog的都市情感、冬至爱情主题分类，完全适配剧集调性",
+    "所有互动按钮label均控制在8个中文字符以内，符合移动端快速点击交互要求",
+    "高光分类严格匹配taxonomy给定的highlight_types官方标签，未自定义新增分类"
+  ]
+}

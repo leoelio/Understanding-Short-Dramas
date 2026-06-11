@@ -1,0 +1,50 @@
+{
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episodes": [
+    {
+      "episode_id": 16,
+      "drama_title": "撕夜",
+      "source": "llm_seed",
+      "highlights": 3,
+      "sticker_slots": 3,
+      "rich_context": false,
+      "output": "C:\\Users\\Administrator\\Desktop\\短剧理解\\data\\llm_upgrades\\episode_16_highlight_sticker_upgrade.json"
+    },
+    {
+      "episode_id": 17,
+      "drama_title": "荒年全村啃树皮，我有系统满仓肉",
+      "source": "llm_seed",
+      "highlights": 3,
+      "sticker_slots": 3,
+      "rich_context": false,
+      "output": "C:\\Users\\Administrator\\Desktop\\短剧理解\\data\\llm_upgrades\\episode_17_highlight_sticker_upgrade.json"
+    },
+    {
+      "episode_id": 18,
+      "drama_title": "荒年全村啃树皮，我有系统满仓肉",
+      "source": "llm_seed",
+      "highlights": 3,
+      "sticker_slots": 3,
+      "rich_context": false,
+      "output": "C:\\Users\\Administrator\\Desktop\\短剧理解\\data\\llm_upgrades\\episode_18_highlight_sticker_upgrade.json"
+    },
+    {
+      "episode_id": 19,
+      "drama_title": "那年冬至",
+      "source": "llm_seed",
+      "highlights": 4,
+      "sticker_slots": 4,
+      "rich_context": false,
+      "output": "C:\\Users\\Administrator\\Desktop\\短剧理解\\data\\llm_upgrades\\episode_19_highlight_sticker_upgrade.json"
+    },
+    {
+      "episode_id": 20,
+      "drama_title": "那年冬至",
+      "source": "llm_seed",
+      "highlights": 3,
+      "sticker_slots": 4,
+      "rich_context": false,
+      "output": "C:\\Users\\Administrator\\Desktop\\短剧理解\\data\\llm_upgrades\\episode_20_highlight_sticker_upgrade.json"
+    }
+  ]
+}

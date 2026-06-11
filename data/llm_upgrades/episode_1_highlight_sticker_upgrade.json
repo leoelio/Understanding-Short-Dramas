@@ -1,0 +1,138 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 1,
+  "drama_title": "云渺1：我修仙多年强亿点怎么了",
+  "episode_title": "第1集",
+  "has_rich_segments": true,
+  "highlight_updates": [
+    {
+      "id": 78,
+      "title": "女子硬闯老宅要见病重老爷",
+      "description": "雨天白衣女子撑伞上门，被门房劝退仍执意要见卧病三月的周家老爷，身份不明引发正面对峙，悬念感拉满",
+      "highlight_type": "冲突对抗",
+      "emotion": "紧张",
+      "options": [
+        {
+          "key": "support_enter",
+          "label": "支持她进去"
+        },
+        {
+          "key": "persuade_leave",
+          "label": "劝她离开"
+        }
+      ],
+      "annotation_reason": "该片段明确呈现门房阻拦身份不明的女子探视病重老爷的冲突场景，双方立场对立，符合冲突类高光的互动特征，极易触发用户站队选择",
+      "evidence_text": "冲突点：女子被劝退但坚持要见人，透露老爷病重三个月。候选高光：白衣女子被门房劝退却坚持见病重老爷，冲突来自身份不明与门房阻拦，适合悬念/冲突互动。"
+    },
+    {
+      "id": 79,
+      "title": "病床前亲人哭诉不舍",
+      "description": "守在病危老人床边的亲人，对着吊了三个月气的老人倾诉自幼以他为傲的过往与满心不舍，悲伤情绪扑面而来",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "cry",
+          "label": "太好哭了"
+        },
+        {
+          "key": "pray",
+          "label": "祈祷好转"
+        }
+      ],
+      "annotation_reason": "片段明确呈现亲人对病危老人依依不舍的悲伤场景，情绪感染力极强，属于典型虐点高光，能快速触发用户共情反馈",
+      "evidence_text": "虐点：家人对病危老人依依不舍，适合心疼/破防类互动。候选高光：病危老人吊着一口气三个月，亲人哭诉不愿放手，情绪很虐。"
+    },
+    {
+      "id": 80,
+      "title": "亲人穷尽办法崩溃大哭",
+      "description": "亲人坦言已经请遍所有和老人相关的亲朋旧故，用尽所有办法仍没能唤醒昏迷的老人，情绪彻底崩溃",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "pity",
+          "label": "太心疼了"
+        },
+        {
+          "key": "hope",
+          "label": "盼奇迹出现"
+        }
+      ],
+      "annotation_reason": "该片段是全段悲伤情绪的峰值，亲人穷尽所有努力仍无力回天的崩溃状态，共情属性拉满，符合虐点高光特征",
+      "evidence_text": "情绪峰值：亲人崩溃，强调已经请遍故人仍无效。候选高光：亲人说已经把所有相关故人请来但仍无用，情绪崩溃达到峰值。"
+    },
+    {
+      "id": 81,
+      "title": "神秘访客放话老爷看不见她",
+      "description": "门房匆匆入内禀报有特殊客人上门，对方声称老爷根本看不到她，瞬间把修仙世界观的悬念拉到顶峰",
+      "highlight_type": "悬念钩子",
+      "emotion": "震惊",
+      "options": [
+        {
+          "key": "who",
+          "label": "她是谁？"
+        },
+        {
+          "key": "weird",
+          "label": "太诡异了"
+        }
+      ],
+      "annotation_reason": "片段明确给出神秘访客的反常表述，身份悬念极强，完全贴合修仙剧的设定，是引导用户追看下一集的核心钩子",
+      "evidence_text": "反转/悬念点：来访女子说老爷看不到她，暗示她身份超常或不是普通故人。候选高光：门房禀报神秘客人上门，而且她说老爷看不到她，身份悬念强。"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 0,
+      "end_time_sec": 30.0,
+      "asset_ids": [
+        "xianxiaRain"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "适配开场雨天女子撑伞上门的仙侠氛围感，灵雨贴纸贴合场景调性",
+      "asset_prompt": "古风仙侠雨天飘落的淡蓝色半透明灵雨动态贴纸，朦胧氛围感拉满"
+    },
+    {
+      "start_time_sec": 30.0,
+      "end_time_sec": 60.0,
+      "asset_ids": [
+        "charge"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "烘托女子执意要进门的对峙情绪，用冲的贴纸强化人物的坚决态度",
+      "asset_prompt": "红色加粗“冲”字动态贴纸，烘托人物坚定的情绪"
+    },
+    {
+      "start_time_sec": 90.0,
+      "end_time_sec": 120.0,
+      "asset_ids": [
+        "tear"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "适配亲人病床前哭诉的虐心场景，泪目贴纸烘托观众共情氛围",
+      "asset_prompt": "半透明流泪心疼表情贴纸，适配悲伤虐心场景"
+    },
+    {
+      "start_time_sec": 150.0,
+      "end_time_sec": 173.55,
+      "asset_ids": [
+        "xianxiaSpirit"
+      ],
+      "cadence_sec": 4,
+      "burst_count": 3,
+      "meaning": "适配神秘访客身份反常的悬念点，灵气现形贴纸暗示女子修仙者的特殊身份",
+      "asset_prompt": "淡金色半透明灵气飘散动态贴纸，烘托修仙世界观的神秘悬念感"
+    }
+  ],
+  "draft_notes": [
+    "所有高光未修改原有锚定时间，保留全部原有id未增减合并，符合硬规则要求",
+    "贴图全部选用仙侠主题和通用情绪类合规asset，未超出给定asset_catalog范围",
+    "所有按钮label均控制在8字以内，符合用户快速点击表达情绪的交互要求",
+    "所有内容完全基于给定segments剧情生成，未编造额外脱离证据的剧情内容"
+  ]
+}

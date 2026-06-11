@@ -1,0 +1,122 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 7,
+  "drama_title": "十八岁太奶奶驾到，重整家族荣耀第三部",
+  "episode_title": "第1集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 19,
+      "title": "近距离撒糖心动",
+      "description": "男女角色间温柔暧昧互动，氛围瞬间拉满，青涩感溢出屏幕",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "心动"
+        },
+        {
+          "key": "together",
+          "label": "在一起"
+        }
+      ],
+      "annotation_reason": "本集首个撒糖名场面，极易触发观众磕CP的互动意愿，适配心动反应交互",
+      "evidence_text": "基于锚定的54.09-62.09秒甜蜜高光锚点，无额外新增编造剧情"
+    },
+    {
+      "id": 20,
+      "title": "主角委屈破防",
+      "description": "主角遭遇不公对待情绪崩溃，满屏都是无助委屈的虐心氛围感",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "hurt",
+          "label": "心疼她"
+        },
+        {
+          "key": "cry",
+          "label": "破防了"
+        },
+        {
+          "key": "hug",
+          "label": "抱抱"
+        }
+      ],
+      "annotation_reason": "强共情虐心桥段，观众情绪极易被带动，适配情绪共情卡交互",
+      "evidence_text": "基于锚定的127.84-135.84秒虐心高光锚点，无额外新增编造剧情"
+    },
+    {
+      "id": 21,
+      "title": "太奶奶强势打脸",
+      "description": "十八岁太奶奶出手压制挑衅反派，直接完成高能翻盘爽点",
+      "highlight_type": "爽点逆袭",
+      "emotion": "爽",
+      "options": [
+        {
+          "key": "shuang",
+          "label": "爽"
+        },
+        {
+          "key": "again",
+          "label": "再来一次"
+        },
+        {
+          "key": "support",
+          "label": "站她"
+        }
+      ],
+      "annotation_reason": "本集核心高能爽点，观众情绪达到峰值，适配爽值连击交互",
+      "evidence_text": "基于锚定的191.76-199.76秒爽点高光锚点，无额外新增编造剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 54.0,
+      "end_time_sec": 62.0,
+      "asset_ids": [
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "对应甜蜜心动桥段，弹出脸红心跳贴纸烘托暧昧撒糖氛围",
+      "asset_prompt": "粉扑扑脸红动态贴纸、跳动的粉色爱心心跳贴纸"
+    },
+    {
+      "start_time_sec": 127.84,
+      "end_time_sec": 135.84,
+      "asset_ids": [
+        "tear",
+        "winterWarmHug"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "对应虐心共情桥段，弹出心疼抱抱贴纸安抚观众共情情绪",
+      "asset_prompt": "流泪心疼贴纸、暖黄色抱抱安慰动态贴纸"
+    },
+    {
+      "start_time_sec": 191.76,
+      "end_time_sec": 199.76,
+      "asset_ids": [
+        "familyMedal",
+        "charge"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "对应爽点逆袭桥段，弹出家族荣耀冲贴纸烘托燃爽打脸氛围",
+      "asset_prompt": "闪金光的家族荣耀徽章贴纸、红底白字冲字热血动态贴纸"
+    }
+  ],
+  "draft_notes": [
+    "本集has_rich_segments为false，所有高光升级均未编造新剧情，完全基于原有锚点优化表达",
+    "所有贴图asset_id均来自给定asset_catalog，未使用不在资源库内的素材",
+    "所有互动按钮label均控制在8字以内，符合移动端快速点击交互规范"
+  ]
+}

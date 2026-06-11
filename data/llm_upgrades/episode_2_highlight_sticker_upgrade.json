@@ -1,0 +1,168 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 2,
+  "drama_title": "云渺1：我修仙多年强亿点怎么了",
+  "episode_title": "第2集",
+  "has_rich_segments": true,
+  "highlight_updates": [
+    {
+      "id": 65,
+      "title": "全员追问神秘女子下落",
+      "description": "周家众人围坐厅堂议事，围绕病危老爷子执意要见的神秘女子身份展开追问，上集遗留的悬念持续发酵",
+      "highlight_type": "悬念钩子",
+      "emotion": "好奇",
+      "options": [
+        {
+          "key": "guess",
+          "label": "猜她是谁"
+        },
+        {
+          "key": "wait",
+          "label": "等后续揭秘"
+        }
+      ],
+      "annotation_reason": "该高光承接上集神秘访客的遗留悬念，观众对神秘女子身份充满探究欲，适配悬念类剧情预测互动",
+      "evidence_text": "周家众人坐在厅堂里议事，黑衣男子询问神秘女子在哪里；两名女性围绕神秘女子和病危老爷是否见面产生争执。候选高光：上集神秘访客引发的悬念延续，周家人开始追问她是谁、为什么老爷非见不可，适合悬念/紧张互动"
+    },
+    {
+      "id": 66,
+      "title": "亲属当众互相讥讽拆台",
+      "description": "周家亲属在病危老人面前还互相拆台，黑衣女性当众嘲笑老太太找大师的行为，厅堂内火药味快速升级",
+      "highlight_type": "冲突对抗",
+      "emotion": "愤怒",
+      "options": [
+        {
+          "key": "angry",
+          "label": "太气人了"
+        },
+        {
+          "key": "stop",
+          "label": "快别吵了"
+        }
+      ],
+      "annotation_reason": "亲属不顾病危老人的状态当众互相讥讽，冲突感和讽刺感极强，适配站队吐槽类互动",
+      "evidence_text": "黑衣女性语气尖锐地议论老爷和老太太，绿色衣服女子不满反驳；一群人在厅堂中火药味渐浓。候选高光：亲属在病危老人面前还互相讥讽，黑衣女性嘲笑老太太找大师，冲突和讽刺感明显，适合愤怒/吐槽互动"
+    },
+    {
+      "id": 67,
+      "title": "老爷子临终不肯闭眼",
+      "description": "九十二岁高龄的病危老爷子迟迟不肯咽气，全家族人都在议论他只为见神秘女子最后一面的执念",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "sad",
+          "label": "太好哭了"
+        },
+        {
+          "key": "curious",
+          "label": "想见谁啊"
+        }
+      ],
+      "annotation_reason": "老人临终仍抱着强烈执念不肯合眼，自带强烈虐感，适配情绪共情类互动",
+      "evidence_text": "众人继续议论病危老人迟迟不咽气的原因，话题集中到他临终还执意要见那个神秘女子。候选高光：病危老人临终不肯闭眼，只为见神秘女子一面，情绪上带悬念和虐感，适合心疼/好奇互动"
+    },
+    {
+      "id": 68,
+      "title": "老太太要见老爷心上人",
+      "description": "老太太手持念珠表情严肃，当众放话要亲自看看让老爷临终惦记了这么久的心上人到底是谁",
+      "highlight_type": "冲突对抗",
+      "emotion": "震惊",
+      "options": [
+        {
+          "key": "bold",
+          "label": "太敢说了"
+        },
+        {
+          "key": "eatmelon",
+          "label": "坐等吃瓜"
+        }
+      ],
+      "annotation_reason": "老太太的表态让身份悬念和家庭情感冲突同时升级，适配震惊反应类互动",
+      "evidence_text": "老太太手里拿着佛珠或念珠，表情严肃，说自己倒想看看让老爷临终惦记的人到底是谁。候选高光：老太太决定亲自看看老爷临终惦记的“心上人”，身份悬念和家庭情感冲突同时升级，适合震惊/期待互动"
+    },
+    {
+      "id": 69,
+      "title": "剧情戛然而止留悬念",
+      "description": "剧集结尾刚好卡在老太太即将见到神秘女子的关键节点，画面弹出未完待续字样，吊足观众胃口",
+      "highlight_type": "悬念钩子",
+      "emotion": "期待",
+      "options": [
+        {
+          "key": "next",
+          "label": "快看下一集"
+        },
+        {
+          "key": "update",
+          "label": "蹲后续更新"
+        }
+      ],
+      "annotation_reason": "剧情停在最高潮的关键节点，是天然的追更引导点，适配剧情预测类互动",
+      "evidence_text": "老太太表情凝重，画面出现未完待续字样，悬念停在她要见神秘女子之前。候选高光：剧集结尾卡在老太太即将见神秘女子的节点，适合作为剧尾悬念互动或追更引导"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 0,
+      "end_time_sec": 30.0,
+      "asset_ids": [
+        "xianxiaRain"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "悬念初起，灵雨飘落烘托神秘未知的修仙世界观氛围",
+      "asset_prompt": "仙侠世界里细密的灵雨缓缓飘落，烘托未知神秘氛围感的动态贴纸"
+    },
+    {
+      "start_time_sec": 30.0,
+      "end_time_sec": 60.0,
+      "asset_ids": [
+        "xianxiaSeal"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "家族冲突升级，法阵亮起点燃对峙的火药味",
+      "asset_prompt": "金色法阵纹路闪烁亮起，烘托剑拔弩张冲突感的动态贴纸"
+    },
+    {
+      "start_time_sec": 60.0,
+      "end_time_sec": 90.0,
+      "asset_ids": [
+        "xianxiaSpirit"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "老爷子执念不散，淡灵气萦绕烘托临终执念的虐感",
+      "asset_prompt": "淡金色灵气缓缓浮现飘动，烘托老人执念深重氛围感的动态贴纸"
+    },
+    {
+      "start_time_sec": 90.0,
+      "end_time_sec": 120.0,
+      "asset_ids": [
+        "xianxiaSeal"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "老太太放话要见神秘人，矛盾进一步激化",
+      "asset_prompt": "法阵纹路快速流转闪烁，烘托矛盾升级氛围感的动态贴纸"
+    },
+    {
+      "start_time_sec": 120.0,
+      "end_time_sec": 148.01,
+      "asset_ids": [
+        "xianxiaSpirit"
+      ],
+      "cadence_sec": 4,
+      "burst_count": 2,
+      "meaning": "结尾戛然而止，灵气虚影若隐若现留足悬念",
+      "asset_prompt": "半透明的灵气虚影一闪而过，烘托未完待续悬念感的动态贴纸"
+    }
+  ],
+  "draft_notes": [
+    "所有原有高光id完整保留，未新增删除合并高光，原有时间锚点完全未改动",
+    "贴图全部选用仙侠悬念分类下的资产，贴合本剧修仙世界观，全剧共5个贴图时间窗符合稀疏要求",
+    "所有交互按钮label均控制在1-8个中文字符，符合用户快速点击的交互规范",
+    "高光类型、情绪字段全部严格匹配给定taxonomy枚举值，无自定义违规内容"
+  ]
+}

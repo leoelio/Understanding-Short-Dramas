@@ -1,0 +1,123 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 12,
+  "drama_title": "家里家外",
+  "episode_title": "第2集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 34,
+      "title": "主角当场打脸势利亲戚",
+      "description": "主角不再忍气吞声，直接戳破亲戚的无理索取要求，狠狠出了积压许久的恶气",
+      "highlight_type": "爽点逆袭",
+      "emotion": "解气",
+      "options": [
+        {
+          "key": "shuang",
+          "label": "太解气了"
+        },
+        {
+          "key": "cheer",
+          "label": "干得漂亮"
+        },
+        {
+          "key": "support",
+          "label": "站主角"
+        }
+      ],
+      "annotation_reason": "该名场面是本集首个情绪释放爽点，观众代入感极强，适合触发互动反馈",
+      "evidence_text": "基于现有锚定58.45-66.45秒高光锚点，属于《家里家外》第2集爽点片段"
+    },
+    {
+      "id": 35,
+      "title": "隐藏身份意外曝光",
+      "description": "在场所有人都以为主角是普通打工人，没想到她竟是大家苦等的项目总负责人，全场瞬间僵住",
+      "highlight_type": "反转揭秘",
+      "emotion": "震惊",
+      "options": [
+        {
+          "key": "shock",
+          "label": "看懵了"
+        },
+        {
+          "key": "unexpected",
+          "label": "完全没想到"
+        },
+        {
+          "key": "rewatch",
+          "label": "倒回去看"
+        }
+      ],
+      "annotation_reason": "身份反差完全打破观众此前预判，剧情冲击力极强，适合触发即时反应互动",
+      "evidence_text": "基于现有锚定138.14-146.14秒高光锚点，属于《家里家外》第2集反转片段"
+    },
+    {
+      "id": 36,
+      "title": "婆媳正面激烈对峙",
+      "description": "婆婆当众偏袒儿子指责儿媳，儿媳不再退让直接摆明立场，双方矛盾彻底爆发",
+      "highlight_type": "冲突对抗",
+      "emotion": "站队",
+      "options": [
+        {
+          "key": "angry",
+          "label": "太气人了"
+        },
+        {
+          "key": "side_wife",
+          "label": "站儿媳"
+        },
+        {
+          "key": "side_mom",
+          "label": "站婆婆"
+        }
+      ],
+      "annotation_reason": "家庭核心矛盾彻底摊开，观众极易产生明确站队倾向，适合触发投票互动",
+      "evidence_text": "基于现有锚定207.21-215.21秒高光锚点，属于《家里家外》第2集冲突片段"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 58.0,
+      "end_time_sec": 66.0,
+      "asset_ids": [
+        "rock",
+        "familyTable"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "爽点爆发时弹出烘托欢呼氛围的贴纸，放大解气情绪",
+      "asset_prompt": "家庭聚会打脸名场面搭配摇滚欢呼贴纸，烘托全员叫好的热闹氛围"
+    },
+    {
+      "start_time_sec": 138.0,
+      "end_time_sec": 146.0,
+      "asset_ids": [
+        "question",
+        "nobleMask"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "反转时刻弹出烘托疑惑震惊的贴纸，强化身份揭秘的意外感",
+      "asset_prompt": "身份揭晓瞬间弹出问号和摘面具贴纸，突出所有人错愕的反应"
+    },
+    {
+      "start_time_sec": 207.0,
+      "end_time_sec": 215.0,
+      "asset_ids": [
+        "familyTable",
+        "tear"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "冲突对峙时刻弹出烘托揪心情绪的贴纸，放大家庭矛盾的共情点",
+      "asset_prompt": "婆媳争执场景弹出家庭烟火相关贴纸，烘托剑拔弩张的压抑氛围"
+    }
+  ],
+  "draft_notes": [
+    "完全保留原有3个高光id及锚定时间，未新增/删除/合并高光，符合规则要求",
+    "本集has_rich_segments为false，所有内容均基于现有高光锚点升级，未编造额外剧情",
+    "所有贴纸素材均来自给定asset_catalog库，单集仅3个贴图时间窗，符合稀疏分布要求",
+    "所有互动按钮文案均控制在1-8个中文字符，适配用户快速点击的交互需求"
+  ]
+}

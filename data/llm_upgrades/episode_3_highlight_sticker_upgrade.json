@@ -1,0 +1,158 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 3,
+  "drama_title": "北往",
+  "episode_title": "第1集",
+  "has_rich_segments": true,
+  "highlight_updates": [
+    {
+      "id": 70,
+      "title": "组团上门讨薪对峙",
+      "description": "一群工友揣着一年没结的工钱怨气上门，和欠薪方正面撞上，原本剑拔弩张的局面突然迎来转机，当场拿到拖欠的薪资",
+      "highlight_type": "冲突对抗",
+      "emotion": "愤怒",
+      "options": [
+        {
+          "key": "debt_pay",
+          "label": "欠薪得还"
+        },
+        {
+          "key": "stand_workers",
+          "label": "站工友"
+        },
+        {
+          "key": "stop_delay",
+          "label": "别拖了"
+        }
+      ],
+      "annotation_reason": "开篇直接把打工人欠薪积压的情绪拉满，用户极易代入共情，触发站队互动意愿极强",
+      "evidence_text": "字幕和画面包含「一年到头一分没结呢」「走」「门没锁啊」「你这是干什么」，工友带着长杆上门，与管理者正面对峙，后续顺利拿到拖欠薪资"
+    },
+    {
+      "id": 71,
+      "title": "母子通话戳中泪点",
+      "description": "和家里视频时爸妈怕拖累儿子主动劝他别回来过年，男主一口咬定年三十铁定到家，挂了电话独自坐在路边，笑里全是苦意",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "miss_home",
+          "label": "想家了"
+        },
+        {
+          "key": "heart_hurt",
+          "label": "太心疼"
+        },
+        {
+          "key": "hug_him",
+          "label": "抱抱他"
+        }
+      ],
+      "annotation_reason": "打工人和老家父母双向体谅的桥段极易戳中观众共情点，是全片情绪浓度最高的亲情段落",
+      "evidence_text": "字幕包含「啥时候回来呀」「不回来过年」「给我和你爸添麻烦」「有钱没钱回家过年嘛」「年三十我指定到家啦」，母亲含泪叮嘱，男主笑里带苦"
+    },
+    {
+      "id": 72,
+      "title": "返乡前路悬而未决",
+      "description": "刚和家人许下回家的承诺，转头看着账户余额、身边陌生的过路车辆，到底能不能顺利踏上归途成了观众最挂心的疑问",
+      "highlight_type": "悬念钩子",
+      "emotion": "好奇",
+      "options": [
+        {
+          "key": "can_go_home",
+          "label": "能回去吗"
+        },
+        {
+          "key": "still_hanging",
+          "label": "悬着了"
+        },
+        {
+          "key": "dont_stop",
+          "label": "别骗我"
+        }
+      ],
+      "annotation_reason": "承接前面的亲情情绪落点，把观众的注意力从「想回家」引导到「怎么回」的悬念上，为后续揭晓返乡方式做铺垫",
+      "evidence_text": "通话后男主和工友在银行外聊天抽烟，画面节奏变缓，新人物和车辆进入，形成返乡方式和能否回家的疑问"
+    },
+    {
+      "id": 73,
+      "title": "解锁摇滚返乡方式",
+      "description": "路人调侃男主的返乡装备太有摇滚味儿，互动先让观众猜他选什么交通工具回家，最后揭晓骑摩托千里返乡的名场面",
+      "highlight_type": "反转揭秘",
+      "emotion": "意外",
+      "options": [
+        {
+          "key": "vehicle_train",
+          "label": "火车"
+        },
+        {
+          "key": "vehicle_car",
+          "label": "小车"
+        },
+        {
+          "key": "vehicle_motorcycle",
+          "label": "摩托车"
+        }
+      ],
+      "annotation_reason": "打破观众对返乡交通的常规预判，用「摇滚」的反差感强化名场面记忆点，互动选择趣味性极强",
+      "evidence_text": "字幕包含「你这玩意叫摇滚啊」「啦啦掉的呀」，随后男主带着大包行李出发，画面揭示摩托车返乡"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 16.0,
+      "end_time_sec": 22.0,
+      "asset_ids": [
+        "noPayBill",
+        "goSign"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "对应讨薪开场，烘托打工人积压一年怨气终于上门要说法的情绪",
+      "asset_prompt": "打工人组团上门讨薪，欠薪一年终于要争取血汗钱的热血氛围动态贴纸"
+    },
+    {
+      "start_time_sec": 45.0,
+      "end_time_sec": 52.0,
+      "asset_ids": [
+        "debtCash",
+        "wageStamp"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "对应拿到欠薪的爽点时刻，强化工钱终于结清的释放感",
+      "asset_prompt": "拖欠的薪资全额到账，打工人拿到血汗钱的开心解压氛围贴纸"
+    },
+    {
+      "start_time_sec": 142.0,
+      "end_time_sec": 175.0,
+      "asset_ids": [
+        "homePhone",
+        "homeTicket"
+      ],
+      "cadence_sec": 4,
+      "burst_count": 2,
+      "meaning": "对应和家人视频通话承诺回家的共情时刻，烘托想家的暖心情绪",
+      "asset_prompt": "和老家父母打视频，许下过年一定回家承诺的暖想家氛围贴纸"
+    },
+    {
+      "start_time_sec": 285.0,
+      "end_time_sec": 300.0,
+      "asset_ids": [
+        "rockMoto",
+        "rockWord"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "对应结尾揭晓骑摩托返乡的名场面，强化「摇滚返乡」的反差记忆点",
+      "asset_prompt": "男主骑着摩托驮着行李踏上千里返乡路，充满烟火气的热血名场面贴纸"
+    }
+  ],
+  "draft_notes": [
+    "所有高光原始锚点时间完全保留未修改，仅优化文案适配移动端短剧互动体验",
+    "全部贴图资产选自「北往返乡」主题类目，完全贴合剧集现实返乡调性无违和",
+    "所有互动按钮文案控制在2-7字区间，符合用户1秒快速点击表达情绪的交互要求",
+    "全片仅设置4个贴图时间窗，分布稀疏不干扰正片观看节奏，符合短剧轻量化互动规范"
+  ]
+}

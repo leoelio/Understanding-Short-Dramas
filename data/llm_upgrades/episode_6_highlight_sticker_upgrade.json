@@ -1,0 +1,135 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 6,
+  "drama_title": "北派寻宝",
+  "episode_title": "第64集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 16,
+      "title": "反派当众发难冲突升级",
+      "description": "正反双方立场对立正面对峙，言语争执矛盾瞬间激化，张力拉满",
+      "highlight_type": "冲突对抗",
+      "emotion": "愤怒",
+      "options": [
+        {
+          "key": "angry",
+          "label": "气到了"
+        },
+        {
+          "key": "fight",
+          "label": "怼回去"
+        },
+        {
+          "key": "protect",
+          "label": "护住主角"
+        }
+      ],
+      "annotation_reason": "这段正面对峙桥段情绪浓度极高，用户极易产生站队倾向，触发互动意愿强烈",
+      "evidence_text": "基于人工锚定的62.77-70.77秒冲突高光点优化，未新增编造剧情"
+    },
+    {
+      "id": 17,
+      "title": "男女主暧昧撒糖心动",
+      "description": "男女主近距离温柔互动，氛围暧昧甜度拉满，关系快速升温",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "心动"
+        },
+        {
+          "key": "together",
+          "label": "在一起"
+        }
+      ],
+      "annotation_reason": "这段撒糖名场面精准戳中观众磕糖需求，极易触发观众表达心动情绪",
+      "evidence_text": "基于人工锚定的148.37-156.37秒甜蜜高光点优化，未新增编造剧情"
+    },
+    {
+      "id": 18,
+      "title": "主角受委屈虐心破防",
+      "description": "角色遭遇不公处境委屈，情绪瞬间崩溃，极易引发观众共情",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "hurt",
+          "label": "心疼她"
+        },
+        {
+          "key": "cry",
+          "label": "破防了"
+        },
+        {
+          "key": "hug",
+          "label": "抱抱"
+        }
+      ],
+      "annotation_reason": "这段虐心桥段充分调动观众共情情绪，用户愿意通过互动表达对角色的心疼",
+      "evidence_text": "基于人工锚定的222.56-230.56秒虐心高光点优化，未新增编造剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 62.77,
+      "end_time_sec": 70.77,
+      "asset_ids": [
+        "charge",
+        "smokeQuestion"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "冲突升级阶段烘托紧张对峙的愤怒情绪",
+      "asset_prompt": "冲突对峙场景下烘托愤怒紧张氛围的动态弹幕贴纸"
+    },
+    {
+      "start_time_sec": 148.37,
+      "end_time_sec": 156.37,
+      "asset_ids": [
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "甜蜜互动阶段烘托暧昧心动的撒糖氛围",
+      "asset_prompt": "撒糖场景下烘托脸红心跳心动感的可爱动态贴纸"
+    },
+    {
+      "start_time_sec": 222.56,
+      "end_time_sec": 230.56,
+      "asset_ids": [
+        "tear",
+        "winterWarmHug"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "虐心桥段阶段烘托心疼共情的情绪",
+      "asset_prompt": "虐心场景下烘托心疼情绪、传递安慰感的共情类动态贴纸"
+    },
+    {
+      "start_time_sec": 272.0,
+      "end_time_sec": 280.0,
+      "asset_ids": [
+        "question",
+        "goSign"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "本集结尾烘托悬念感，引导观众期待下集剧情",
+      "asset_prompt": "结尾钩子场景下烘托好奇期待感的动态提示贴纸"
+    }
+  ],
+  "draft_notes": [
+    "本集has_rich_segments为false，所有高光优化均未超出原有锚点的冲突/甜蜜/虐心基础设定，未编造新剧情",
+    "所有贴图asset_id均来自给定asset_catalog，未使用外部资源",
+    "所有高光原有start_time_sec/end_time_sec完全保留未做修改",
+    "所有互动按钮label均控制在1-8个中文字符范围内，符合交互要求"
+  ]
+}

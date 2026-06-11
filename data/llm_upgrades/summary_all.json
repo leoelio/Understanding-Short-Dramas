@@ -1,0 +1,381 @@
+{
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episodes": [
+    {
+      "episode_id": 1,
+      "drama_title": "云渺1：我修仙多年强亿点怎么了",
+      "episode_title": "第1集",
+      "episode_no": 1,
+      "highlight_count": 4,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "charge",
+        "tear",
+        "xianxiaRain",
+        "xianxiaSpirit"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 2,
+      "drama_title": "云渺1：我修仙多年强亿点怎么了",
+      "episode_title": "第2集",
+      "episode_no": 2,
+      "highlight_count": 5,
+      "sticker_slot_count": 5,
+      "sticker_assets": [
+        "xianxiaRain",
+        "xianxiaSeal",
+        "xianxiaSpirit"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 3,
+      "drama_title": "北往",
+      "episode_title": "第1集",
+      "episode_no": 1,
+      "highlight_count": 4,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "debtCash",
+        "goSign",
+        "homePhone",
+        "homeTicket",
+        "noPayBill",
+        "rockMoto",
+        "rockWord",
+        "wageStamp"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 4,
+      "drama_title": "北往",
+      "episode_title": "第2集",
+      "episode_no": 2,
+      "highlight_count": 3,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "homeLantern",
+        "homeTicket",
+        "noPayBill",
+        "roadQuestion",
+        "smokeQuestion",
+        "wageStamp"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 5,
+      "drama_title": "北派寻宝",
+      "episode_title": "第63集",
+      "episode_no": 63,
+      "highlight_count": 3,
+      "sticker_slot_count": 3,
+      "sticker_assets": [
+        "charge",
+        "tear",
+        "winterBlush",
+        "winterBrokenHeart",
+        "winterHeartbeat"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 6,
+      "drama_title": "北派寻宝",
+      "episode_title": "第64集",
+      "episode_no": 64,
+      "highlight_count": 3,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "charge",
+        "goSign",
+        "question",
+        "smokeQuestion",
+        "tear",
+        "winterBlush",
+        "winterHeartbeat",
+        "winterWarmHug"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 7,
+      "drama_title": "十八岁太奶奶驾到，重整家族荣耀第三部",
+      "episode_title": "第1集",
+      "episode_no": 1,
+      "highlight_count": 3,
+      "sticker_slot_count": 3,
+      "sticker_assets": [
+        "charge",
+        "familyMedal",
+        "tear",
+        "winterBlush",
+        "winterHeartbeat",
+        "winterWarmHug"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 8,
+      "drama_title": "十八岁太奶奶驾到，重整家族荣耀第三部",
+      "episode_title": "第2集",
+      "episode_no": 2,
+      "highlight_count": 3,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "charge",
+        "familyMedal",
+        "familyTable",
+        "tear",
+        "winterBlush",
+        "winterBrokenHeart",
+        "winterHeartbeat"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 9,
+      "drama_title": "天下第一纨绔",
+      "episode_title": "第1集",
+      "episode_no": 1,
+      "highlight_count": 3,
+      "sticker_slot_count": 3,
+      "sticker_assets": [
+        "charge",
+        "nobleMask",
+        "question",
+        "tear"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 10,
+      "drama_title": "天下第一纨绔",
+      "episode_title": "第2集",
+      "episode_no": 2,
+      "highlight_count": 3,
+      "sticker_slot_count": 3,
+      "sticker_assets": [
+        "charge",
+        "nobleMask",
+        "question",
+        "rock",
+        "tear"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 11,
+      "drama_title": "家里家外",
+      "episode_title": "第1集",
+      "episode_no": 1,
+      "highlight_count": 3,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "charge",
+        "familyTable",
+        "question",
+        "tear"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 12,
+      "drama_title": "家里家外",
+      "episode_title": "第2集",
+      "episode_no": 2,
+      "highlight_count": 3,
+      "sticker_slot_count": 3,
+      "sticker_assets": [
+        "familyTable",
+        "nobleMask",
+        "question",
+        "rock",
+        "tear"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 13,
+      "drama_title": "幸得相遇离婚时",
+      "episode_title": "第1集",
+      "episode_no": 1,
+      "highlight_count": 3,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "divorceRose",
+        "winterBlush",
+        "winterBrokenHeart",
+        "winterHeartbeat",
+        "winterWarmHug",
+        "winterWow"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 14,
+      "drama_title": "幸得相遇离婚时",
+      "episode_title": "第2集",
+      "episode_no": 2,
+      "highlight_count": 3,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "divorceRose",
+        "winterBlush",
+        "winterBrokenHeart",
+        "winterHeartbeat",
+        "winterWow"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 15,
+      "drama_title": "撕夜",
+      "episode_title": "第1集",
+      "episode_no": 1,
+      "highlight_count": 3,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "charge",
+        "nightNeon",
+        "question",
+        "tear",
+        "winterBlush",
+        "winterHeartbeat",
+        "winterWarmHug"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 16,
+      "drama_title": "撕夜",
+      "episode_title": "第2集",
+      "episode_no": 2,
+      "highlight_count": 3,
+      "sticker_slot_count": 3,
+      "sticker_assets": [
+        "charge",
+        "nightNeon",
+        "tear",
+        "winterBlush",
+        "winterBrokenHeart",
+        "winterHeartbeat"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 17,
+      "drama_title": "荒年全村啃树皮，我有系统满仓肉",
+      "episode_title": "第1集",
+      "episode_no": 1,
+      "highlight_count": 3,
+      "sticker_slot_count": 3,
+      "sticker_assets": [
+        "charge",
+        "harvestSystem",
+        "tear",
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 18,
+      "drama_title": "荒年全村啃树皮，我有系统满仓肉",
+      "episode_title": "第2集",
+      "episode_no": 2,
+      "highlight_count": 3,
+      "sticker_slot_count": 3,
+      "sticker_assets": [
+        "charge",
+        "harvestSystem",
+        "tear",
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 19,
+      "drama_title": "那年冬至",
+      "episode_title": "第1集",
+      "episode_no": 1,
+      "highlight_count": 4,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "question",
+        "tear",
+        "winterBlush",
+        "winterBrokenHeart",
+        "winterChoice",
+        "winterCrow",
+        "winterHeartbeat",
+        "winterKiss",
+        "winterWow"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    },
+    {
+      "episode_id": 20,
+      "drama_title": "那年冬至",
+      "episode_title": "第2集",
+      "episode_no": 2,
+      "highlight_count": 3,
+      "sticker_slot_count": 4,
+      "sticker_assets": [
+        "charge",
+        "question",
+        "tear",
+        "winterBrokenHeart",
+        "winterHeart",
+        "winterSnow",
+        "winterWarmHug",
+        "winterWow"
+      ],
+      "config_source": "llm_seed",
+      "model_version": "highlight-sticker-upgrade-v1",
+      "review_status": "llm_draft"
+    }
+  ]
+}

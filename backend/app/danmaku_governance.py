@@ -5,6 +5,7 @@ import json
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
@@ -14,7 +15,7 @@ from .config import DATA_DIR
 from .models import DanmakuComment, Drama, Episode
 
 
-MODEL_VERSION = "danmaku-governance-v1"
+MODEL_VERSION = "danmaku-governance-v2-seven-layer"
 SMALL_MODEL_PATH = DATA_DIR / "danmaku_small_model.json"
 
 ABUSE_WORDS = ("傻逼", "垃圾", "滚", "死全家", "恶心死", "贱", "婊", "脑残")
@@ -213,7 +214,36 @@ def small_model_layer(text: str, model: dict | None = None) -> dict:
     for token, weight in negative.items():
         if token and token in compact:
             score -= float(weight)
-    return {"pass_score": clamp(score), "model_version": model.get("version", "small-model-default")}
+    pass_score = clamp(score)
+    return {
+        "pass_score": pass_score,
+        "confidence": clamp(abs(pass_score - 0.5) * 2),
+        "model_version": model.get("version", "small-model-default"),
+    }
+
+
+def llm_review_layer(rule: dict, time: dict, semantic: dict, small: dict, cluster_size: int, like_count: int) -> dict:
+    reasons: list[str] = []
+    medium_rule_risk = 0.28 <= float(rule["risk"]) < 0.85
+    time_risk = float(time["spoiler"]) >= 0.4
+    low_relevance = float(semantic["relevance"]) < 0.5
+    low_confidence = float(small.get("confidence", 0)) < 0.22
+    high_value = cluster_size >= 2 or like_count >= 8
+    if medium_rule_risk:
+        reasons.append("规则风险中等")
+    if time_risk:
+        reasons.append("疑似时间点剧透")
+    if low_relevance:
+        reasons.append("语义相关度偏低")
+    if low_confidence and high_value:
+        reasons.append("重复/高赞且小模型置信度低")
+    candidate = bool(reasons)
+    return {
+        "candidate": candidate,
+        "provider": "offline_llm_batch",
+        "action": "queue_for_llm_review" if candidate else "skip",
+        "issues": reasons,
+    }
 
 
 def decide_status(rule: dict, time: dict, semantic: dict, small: dict, cluster_size: int, like_count: int) -> str:
@@ -241,6 +271,14 @@ def evaluate_comment(comment: DanmakuComment, cluster_size: int, model: dict | N
     time = time_layer(comment.text, episode, float(comment.time_sec or 0))
     semantic = semantic_layer_local(comment.text, episode)
     small = small_model_layer(comment.text, model)
+    llm_review = llm_review_layer(
+        rule,
+        time,
+        semantic,
+        small,
+        cluster_size,
+        int(comment.source_like_count or 0),
+    )
     key = cluster_key(comment.text)
     status = decide_status(rule, time, semantic, small, cluster_size, int(comment.source_like_count or 0))
     mode = comment.mode if comment.mode in {"light", "carnival", "curated", "seed"} else "light"
@@ -258,6 +296,7 @@ def evaluate_comment(comment: DanmakuComment, cluster_size: int, model: dict | N
         "semantic": semantic,
         "cluster": {"cluster_key": key, "cluster_size": cluster_size},
         "small_model": small,
+        "llm_review": llm_review,
         "human_review": {"required": status == "needs_review"},
     }
     return GovernanceResult(
@@ -335,6 +374,8 @@ def train_small_model_from_db(db: Session, output_path: Path = SMALL_MODEL_PATH)
             if count >= 2
         },
         "trained_rows": len(rows),
+        "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "training_source": "danmaku_comments.review_status",
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

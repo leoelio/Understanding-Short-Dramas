@@ -17,6 +17,34 @@ const VOICE_PREVIEW_TEXTS = {
   user: "片尾拓展已开启，我会用你的声音陪你猜下一段剧情。",
 };
 
+const SPECIAL_DANMAKU_EVENTS = [
+  {
+    id: "winter-ep1-kiss-heart-barrage",
+    episodeId: 19,
+    time_sec: 175,
+    mode: "curated",
+    force_show: true,
+    effect: "heart_barrage",
+    trigger_window_sec: 7,
+    text: "突然亲上了",
+    items: ["亲上了", "哇塞", "心动", "磕到了", "别眨眼", "这也太甜", "冬至心跳", "锁死"],
+  },
+];
+
+const COMPANION_PERSONA = {
+  name: "小半",
+  role: "AI 陪看员",
+  intro: "我会帮你盯住高光，也会在片尾整理同看战报。",
+};
+
+const EMPTY_EPISODE_REPORT = {
+  episodeId: null,
+  startedAt: 0,
+  taps: 0,
+  choices: [],
+  rewards: [],
+};
+
 const AVATAR_PRESETS = [
   { key: "preset:road", label: "返乡", hint: "北往返乡感" },
   { key: "preset:treasure", label: "寻宝", hint: "机关探索感" },
@@ -44,6 +72,23 @@ const DRAMA_POSTER_ASSETS = [
   { match: ["荒年全村", "满仓肉"], slug: "famine_village" },
   { match: ["家里家外"], slug: "home_inside_out" },
   { match: ["撕夜"], slug: "siye" },
+];
+
+const DRAMA_CATEGORY_FILTERS = [
+  { key: "all", label: "全部" },
+  { key: "romance", label: "爱情" },
+  { key: "family", label: "家庭" },
+  { key: "suspense", label: "悬疑" },
+  { key: "satisfy", label: "爽点" },
+  { key: "road", label: "返乡" },
+];
+
+const DRAMA_CATEGORY_RULES = [
+  { key: "romance", match: ["那年冬至", "幸得相遇离婚时", "幸福相遇离婚时", "撕夜"] },
+  { key: "family", match: ["北往", "家里家外", "十八岁太奶", "荒年全村", "离婚时"] },
+  { key: "suspense", match: ["北派寻宝", "撕夜", "天下第一纨绔"] },
+  { key: "satisfy", match: ["云渺", "天下第一纨绔", "十八岁太奶", "荒年全村", "北派寻宝"] },
+  { key: "road", match: ["北往", "家里家外", "荒年全村"] },
 ];
 
 const DANMAKU_MODES = {
@@ -244,16 +289,27 @@ function safeRandomId(prefix = "id") {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+if ("scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
+}
+
 const state = {
   dramas: [],
   episodes: [],
   currentEpisode: null,
   currentExperience: null,
+  episodeReport: { ...EMPTY_EPISODE_REPORT },
+  companionCueIds: new Set(),
+  companionTimer: null,
   endingRemixEntryShown: false,
   endingRemixShown: false,
   remixOptions: null,
   remixResult: null,
   remixLoading: false,
+  remixForcedFullscreen: false,
+  remixChoiceTimer: null,
+  pendingRemixStartIndex: 0,
+  pendingRemixSceneChoiceResolved: false,
   sessionId: readStorage("session_id") || safeRandomId("session"),
   firedHighlights: new Set(),
   firedDanmaku: new Set(),
@@ -275,6 +331,8 @@ const state = {
   adminUsers: [],
   authToken: readStorage("auth_token") || "",
   authMode: "login",
+  dramaCategory: "all",
+  aiCompanionEnabled: readStorage("ai_companion_enabled") !== "false",
   watchHistory: [],
   watchHistoryTimer: null,
   pendingResume: null,
@@ -295,6 +353,7 @@ const state = {
   roomInvitations: { received: [], sent: [] },
   roomSocialStatus: "",
   roomSocialStatusError: false,
+  coWatchExpanded: false,
   friendHubStatus: "",
   friendHubStatusError: false,
   socialInbox: { unread_count: 0, room_invitations: [], notifications: [] },
@@ -305,9 +364,12 @@ const state = {
   avatarFilter: "featured",
   avatarSearch: "",
   avatarPage: 0,
+  avatarRecommendationsOpen: false,
   avatarUploadFile: null,
   avatarCropPreviewUrl: "",
   avatarCrop: { scale: 1.15, x: 0, y: 0 },
+  danmakuComposerOpen: false,
+  danmakuColor: "#f5f7fb",
   roomApplyingRemote: false,
   demoRoomActive: false,
   demoRoomSerial: 900000,
@@ -368,11 +430,15 @@ const player = $("#player");
 const interactionLayer = $("#interactionLayer");
 const endingRemixLayer = $("#endingRemixLayer");
 const endingRemixLayerHome = endingRemixLayer?.parentElement || null;
+const companionBubble = $("#companionBubble");
 const danmakuLayer = $("#danmakuLayer");
 const stickerLayer = $("#stickerLayer");
 const playToggle = $("#playToggle");
 const muteToggle = $("#muteToggle");
+const fullscreenToggle = $("#fullscreenToggle");
 const progressSlider = $("#progressSlider");
+const highlightHeatTrack = $("#highlightHeatTrack");
+const progressHoverPreview = $("#progressHoverPreview");
 const playerTime = $("#playerTime");
 const episodePanel = $("#episodePanel");
 const playerStatus = $("#playerStatus");
@@ -381,6 +447,8 @@ const roomCodeInput = $("#roomCodeInput");
 const roomMemberList = $("#roomMemberList");
 const roomInvitePanel = $("#roomInvitePanel");
 const roomFeed = $("#roomFeed");
+const coWatchOverlay = $("#coWatchOverlay");
+const coWatchOverlayToggle = $("#coWatchOverlayToggle");
 const rewardPanel = $("#rewardPanel");
 const routeTransition = $("#routeTransition");
 const publicProfileModal = $("#publicProfileModal");
@@ -433,9 +501,22 @@ function avatarPresetName(avatarUrl = "") {
   return String(avatarUrl || "").startsWith("preset:") ? avatarUrl.split(":")[1] : "stage";
 }
 
+const WHITE_PADDED_AVATAR_FILES = new Set([
+  "2f4b829648cd2f67926700df84e330.jpg",
+  "2c5aeb0a197b7f6d97fcc8a390df63.jpg",
+  "2bd80257b71cc283f6b22cd8bb8115.jpg",
+  "1baa38604bad38f86b6fe6e38ae4e0.jpg",
+]);
+
+function shouldUseUploadedAvatar(avatarUrl = "") {
+  if (!avatarUrl.startsWith("/media/avatars/") && !avatarUrl.startsWith("/media/avatar-pool/")) return false;
+  const filename = avatarUrl.split("/").pop();
+  return !WHITE_PADDED_AVATAR_FILES.has(filename);
+}
+
 function avatarHTML(user = {}, className = "user-avatar") {
   const avatarUrl = String(user.avatar_url || "");
-  if (avatarUrl.startsWith("/media/avatars/") || avatarUrl.startsWith("/media/avatar-pool/")) {
+  if (shouldUseUploadedAvatar(avatarUrl)) {
     return `<span class="${className} uploaded"><img src="${escapeHTML(avatarUrl)}" alt="${escapeHTML(
       user.display_name || "用户头像"
     )}" /></span>`;
@@ -548,6 +629,42 @@ function getHighlightKey(type) {
 
 function saveDanmakuSettings() {
   writeStorage("danmaku_settings", JSON.stringify(state.danmakuSettings));
+}
+
+function syncAiModeToggle() {
+  const enabled = state.aiCompanionEnabled !== false;
+  const toggle = $("#aiModeToggle");
+  if (!toggle) return;
+  toggle.classList.toggle("off", !enabled);
+  toggle.querySelectorAll("[data-ai-mode]").forEach((button) => {
+    const active = (button.dataset.aiMode === "on") === enabled;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  toggle.title = enabled ? "小半会触发高光互动、竞猜和片尾 AI 二创" : "纯净看剧：关闭高光互动、竞猜、贴图和片尾 AI";
+}
+
+function setAiCompanionEnabled(enabled) {
+  state.aiCompanionEnabled = Boolean(enabled);
+  writeStorage("ai_companion_enabled", state.aiCompanionEnabled ? "true" : "false");
+  syncAiModeToggle();
+  renderTimeline();
+  if (state.aiCompanionEnabled) {
+    scheduleAmbientStickers();
+    setDanmakuFeedback("小半已开启，高光互动和问答会按剧情触发。");
+    return;
+  }
+  const shouldResume = state.vehicleResumeAfterChoice && player.paused;
+  hideInteraction();
+  clearStickerLayer();
+  clearEndingRemix();
+  window.clearTimeout(state.ambientStickerTimer);
+  window.clearTimeout(state.companionTimer);
+  companionBubble?.classList.add("hidden");
+  state.endingRemixEntryShown = false;
+  state.endingRemixShown = false;
+  if (shouldResume) playPlayer();
+  setDanmakuFeedback("已关闭小半，进入纯净看剧模式。");
 }
 
 async function fetchJSON(url, options = {}) {
@@ -679,6 +796,7 @@ function clearAuth() {
   state.avatarFilter = "featured";
   state.avatarSearch = "";
   state.avatarPage = 0;
+  state.avatarRecommendationsOpen = false;
   clearAvatarCrop();
   state.profileStatus = "";
   state.profileStatusError = false;
@@ -713,6 +831,31 @@ function syncAuthMode() {
   $("#authSubmit").textContent = isRegister ? "注册并登录" : "登录";
   $("#toggleAuthMode").textContent = isRegister ? "返回登录" : "注册新用户";
   $("#authPassword").autocomplete = isRegister ? "new-password" : "current-password";
+}
+
+function syncAuthDeviceClock() {
+  const clock = $("#authDeviceClock");
+  if (!clock) return;
+  const now = new Date();
+  const value = now.toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+  const previous = clock.dataset.clockValue || "";
+  if (previous === value && clock.children.length) return;
+  clock.dataset.clockValue = value;
+  clock.replaceChildren(
+    ...Array.from(value).map((char, index) => {
+      const span = document.createElement("span");
+      span.textContent = char;
+      span.className = char === ":" ? "auth-clock-colon" : "auth-clock-digit";
+      if (previous && previous[index] !== char && char !== ":") {
+        span.classList.add("flip");
+      }
+      return span;
+    })
+  );
 }
 
 async function restoreAuth() {
@@ -772,6 +915,7 @@ async function routeAfterAuth() {
   } else if (location.hash === "#profile") {
     setView("profile");
   } else if (Number.isFinite(episodeId) && episodeId > 0) {
+    syncTabsForView("watch");
     await openEpisodeFromUrl(episodeId, Number.isFinite(resumeTime) ? resumeTime : 0, { openRemix });
   } else {
     setView("home");
@@ -855,6 +999,14 @@ function stopPlaybackForExit() {
   recordWatchHistory(player.currentTime || 0, true);
 }
 
+function resetWatchScroll() {
+  if (document.body.dataset.view !== "watch") return;
+  if (!globalThis.matchMedia?.("(min-width: 900px)").matches) return;
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
 function setView(name) {
   const previousView = document.body.dataset.view || "";
   if (name !== "auth" && !state.currentUser) {
@@ -868,12 +1020,7 @@ function setView(name) {
   }
   Object.entries(views).forEach(([key, element]) => element.classList.toggle("active", key === name));
   document.body.dataset.view = name;
-  homeTab.classList.toggle("active", name === "home");
-  chatTab.classList.toggle("active", name === "chat");
-  discoverTab.classList.toggle("active", name === "discover");
-  profileTab.classList.toggle("active", name === "profile");
-  adminTab.classList.toggle("active", name === "admin");
-  reviewTab.classList.toggle("active", name === "review");
+  syncTabsForView(name);
   if (name !== "watch") {
     window.clearTimeout(state.ambientStickerTimer);
   } else {
@@ -904,6 +1051,20 @@ function setView(name) {
     void activeView.offsetWidth;
     activeView.classList.add("view-enter");
   }
+  if (name === "watch") {
+    requestAnimationFrame(resetWatchScroll);
+    window.setTimeout(resetWatchScroll, 120);
+    window.setTimeout(resetWatchScroll, 420);
+  }
+}
+
+function syncTabsForView(name) {
+  homeTab.classList.toggle("active", name === "home");
+  chatTab.classList.toggle("active", name === "chat");
+  discoverTab.classList.toggle("active", name === "discover");
+  profileTab.classList.toggle("active", name === "profile");
+  adminTab.classList.toggle("active", name === "admin");
+  reviewTab.classList.toggle("active", name === "review");
 }
 
 function showRouteTransition(label = "准备进入互动播放器") {
@@ -919,15 +1080,19 @@ function hideRouteTransition() {
   routeTransition.classList.remove("active");
 }
 
-function authTapEffect(event) {
-  const button = event.target.closest("#authView button");
+function pressEffect(event) {
+  if (!(event.target instanceof Element)) return;
+  const button = event.target.closest(
+    ".primary-button, .ghost-button, .danger-button, .tab, .mode-button, .ai-mode-button, .theme-icon-button, .drama-action-button, .chat-tool-button, .chat-inline-button, .remix-choice-card, .remix-variant-card, .remix-scene-choice-options button, .interaction-options button, .danmaku-actions button, .voice-mode-toggle button, .demo-accounts button"
+  );
   if (!button) return;
+  if (button.disabled || button.getAttribute("aria-disabled") === "true") return;
   const rect = button.getBoundingClientRect();
   button.style.setProperty("--tap-x", `${event.clientX - rect.left}px`);
   button.style.setProperty("--tap-y", `${event.clientY - rect.top}px`);
-  button.classList.remove("tap-animate");
+  button.classList.remove("tap-animate", "press-animate");
   void button.offsetWidth;
-  button.classList.add("tap-animate");
+  button.classList.add("press-animate");
 }
 
 function syncEpisodeUrl(episodeId) {
@@ -983,7 +1148,7 @@ function applyPlayerTheme(episode) {
   shell.classList.add(theme.className);
   shell.style.setProperty("--player-accent", theme.accent);
   shell.style.setProperty("--player-soft", theme.soft);
-  $("#watchGenre").textContent = `${episode.drama.genre || "短剧播放"} · ${theme.name}`;
+  $("#watchGenre").textContent = `${displayDramaGenre(episode.drama, "短剧播放")} · ${theme.name}`;
   const badge = $("#themeBadge");
   if (badge) {
     badge.textContent = theme.badge || theme.name;
@@ -996,17 +1161,180 @@ function updatePlayerControls() {
   const theme = getCurrentPlayerTheme();
   playToggle.textContent = player.paused ? theme.playIcon : theme.pauseIcon;
   muteToggle.textContent = player.muted ? theme.mutedIcon : theme.muteIcon;
+  if (fullscreenToggle) fullscreenToggle.textContent = playerWrapElement()?.classList.contains("is-fullscreen") ? "×" : "⛶";
   const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode?.duration_sec || 0;
   const ratio = duration ? Math.min(1000, Math.max(0, (player.currentTime / duration) * 1000)) : 0;
   progressSlider.value = String(ratio);
   progressSlider.style.setProperty("--progress", `${ratio / 10}%`);
   $("#themeControls")?.style.setProperty("--progress", `${ratio / 10}%`);
+  playerWrapElement()?.style.setProperty("--progress", `${ratio / 10}%`);
   playerTime.textContent = `${formatTime(player.currentTime)} / ${formatTime(duration)}`;
+  updateHighlightHeatProgress(player.currentTime);
+}
+
+let playerControlsIdleTimer = null;
+
+function playerWrapElement() {
+  return document.querySelector(".video-wrap");
+}
+
+function setPlayerControlsIdle(idle) {
+  playerWrapElement()?.classList.toggle("controls-idle", idle);
+  if (idle) hideProgressHover(false);
+}
+
+function revealPlayerControls(sticky = false) {
+  window.clearTimeout(playerControlsIdleTimer);
+  setPlayerControlsIdle(false);
+  if (!sticky && !player.paused) {
+    playerControlsIdleTimer = window.setTimeout(() => setPlayerControlsIdle(true), 3000);
+  }
+}
+
+function holdPlayerControls() {
+  window.clearTimeout(playerControlsIdleTimer);
+  setPlayerControlsIdle(false);
+}
+
+function hidePlayerControlsSoon(delayMs = 900) {
+  window.clearTimeout(playerControlsIdleTimer);
+  if (!player.paused) {
+    playerControlsIdleTimer = window.setTimeout(() => setPlayerControlsIdle(true), delayMs);
+  }
+}
+
+function progressHoverRatio(event) {
+  const rect = progressSlider.getBoundingClientRect();
+  if (!rect.width) return 0;
+  return Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+}
+
+function showProgressHover(event) {
+  const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode?.duration_sec || 0;
+  if (!duration || !progressHoverPreview) return;
+  const ratio = progressHoverRatio(event);
+  const hoverTime = duration * ratio;
+  const hoverHighlight = highlightAtTime(hoverTime);
+  progressHoverPreview.hidden = false;
+  progressHoverPreview.textContent = hoverHighlight
+    ? `${formatTime(hoverTime)} · ${getHighlightUI(hoverHighlight.highlight_type).label}`
+    : formatTime(hoverTime);
+  progressHoverPreview.style.left = `${ratio * 100}%`;
+  progressSlider.style.setProperty("--hover-progress", `${ratio * 100}%`);
+  holdPlayerControls();
+}
+
+function hideProgressHover(reveal = true) {
+  if (progressHoverPreview) progressHoverPreview.hidden = true;
+  progressSlider.style.removeProperty("--hover-progress");
+  if (reveal) revealPlayerControls();
+}
+
+function pointerInProgressShell(event) {
+  const shell = progressSlider?.closest(".progress-track-shell");
+  const rect = shell?.getBoundingClientRect();
+  if (!rect) return false;
+  const verticalPadding = 14;
+  return (
+    event.clientX >= rect.left &&
+    event.clientX <= rect.right &&
+    event.clientY >= rect.top - verticalPadding &&
+    event.clientY <= rect.bottom + verticalPadding
+  );
+}
+
+function handlePlayerPointerMove(event) {
+  revealPlayerControls();
+  if (pointerInProgressShell(event)) {
+    showProgressHover(event);
+  } else if (progressHoverPreview && !progressHoverPreview.hidden) {
+    hideProgressHover();
+  }
+}
+
+function syncFullscreenState() {
+  const wrap = playerWrapElement();
+  const isFullscreen = document.fullscreenElement === wrap || wrap?.classList.contains("pseudo-fullscreen");
+  wrap?.classList.toggle("is-fullscreen", isFullscreen);
+  document.body.classList.toggle("watch-player-fullscreen", isFullscreen);
+  if (wrap && !wrap.classList.contains("pseudo-fullscreen")) {
+    wrap.style.removeProperty("--pseudo-fullscreen-x");
+    wrap.style.removeProperty("--pseudo-fullscreen-y");
+  }
+  if (wrap?.classList.contains("pseudo-fullscreen")) {
+    wrap.style.setProperty("--pseudo-fullscreen-x", "0px");
+    wrap.style.setProperty("--pseudo-fullscreen-y", "0px");
+    requestAnimationFrame(() => {
+      if (!wrap.classList.contains("pseudo-fullscreen")) return;
+      const rect = wrap.getBoundingClientRect();
+      wrap.style.setProperty("--pseudo-fullscreen-x", `${Math.round(-rect.x)}px`);
+      wrap.style.setProperty("--pseudo-fullscreen-y", `${Math.round(-rect.y)}px`);
+    });
+  }
+  if (fullscreenToggle) {
+    fullscreenToggle.textContent = isFullscreen ? "×" : "⛶";
+    fullscreenToggle.setAttribute("aria-label", isFullscreen ? "退出全屏" : "全屏");
+  }
+  revealPlayerControls(true);
+}
+
+function enterRemixPresentationMode() {
+  const wrap = playerWrapElement();
+  if (!wrap || document.fullscreenElement === wrap || wrap.classList.contains("is-fullscreen")) return;
+  wrap.classList.add("pseudo-fullscreen");
+  state.remixForcedFullscreen = true;
+  syncFullscreenState();
+}
+
+function exitRemixPresentationMode() {
+  const wrap = playerWrapElement();
+  if (!wrap || !state.remixForcedFullscreen) return;
+  wrap.classList.remove("pseudo-fullscreen");
+  state.remixForcedFullscreen = false;
+  syncFullscreenState();
+}
+
+async function togglePlayerFullscreen() {
+  const wrap = playerWrapElement();
+  if (!wrap) return;
+  if (wrap.classList.contains("pseudo-fullscreen")) {
+    wrap.classList.remove("pseudo-fullscreen");
+    state.remixForcedFullscreen = false;
+    syncFullscreenState();
+    return;
+  }
+  try {
+    if (document.fullscreenElement === wrap) {
+      await document.exitFullscreen();
+    } else {
+      await wrap.requestFullscreen();
+      window.setTimeout(() => {
+        if (document.fullscreenElement !== wrap) {
+          wrap.classList.add("pseudo-fullscreen");
+          syncFullscreenState();
+        }
+      }, 180);
+    }
+  } catch {
+    wrap.classList.add("pseudo-fullscreen");
+    syncFullscreenState();
+  }
 }
 
 function playPlayer(markUserStarted = false) {
   if (markUserStarted) state.userStartedPlayback = true;
-  return player.play().catch(() => {});
+  return player.play().catch((error) => {
+    if (error?.name === "NotAllowedError" && !player.muted) {
+      player.muted = true;
+      updatePlayerControls();
+      setDanmakuFeedback("浏览器拦截声音，已静音启动，可点击声音键恢复。");
+      return player.play().catch(() => {
+        setDanmakuFeedback("播放被浏览器拦截，请再点一次播放。", true);
+      });
+    }
+    setDanmakuFeedback("播放被浏览器拦截，请再点一次播放。", true);
+    return null;
+  });
 }
 
 function stableRatio(value) {
@@ -1021,11 +1349,15 @@ function stableRatio(value) {
 function applyDanmakuSettings() {
   const settings = state.danmakuSettings;
   const mode = getDanmakuMode();
+  const speedToRange = { slow: "0", normal: "1", fast: "2" };
   document.querySelectorAll(".mode-button").forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === settings.mode);
   });
   $("#danmakuFontSize").value = settings.fontSize;
-  $("#danmakuSpeed").value = settings.speed;
+  $("#danmakuSpeed").value = speedToRange[settings.speed] || "1";
+  document.querySelectorAll("[data-speed-label]").forEach((label) => {
+    label.classList.toggle("active", label.dataset.speedLabel === settings.speed);
+  });
   $("#danmakuArea").value = settings.area;
   $("#danmakuOpacity").value = settings.opacity;
   danmakuLayer.className = `danmaku-layer area-${settings.area} size-${settings.fontSize}`;
@@ -1046,6 +1378,7 @@ function shouldShowDanmaku(comment) {
   if (String(comment.className || "").includes("room-danmaku")) return true;
   const mode = getDanmakuMode();
   const commentMode = comment.mode || "light";
+  if (comment.force_show) return mode.enabled && mode.includeModes.includes(commentMode);
   return (
     mode.enabled &&
     mode.includeModes.includes(commentMode) &&
@@ -1155,6 +1488,7 @@ function emitDanmaku(comment) {
   bubble.className = `danmaku-item ${comment.className || ""}`;
   bubble.type = "button";
   bubble.innerHTML = `<b>${escapeHTML(danmakuUser(comment))}</b><span>${escapeHTML(comment.text)}</span><em>♡${stats.likes || 0}</em>`;
+  if (comment.color) bubble.style.setProperty("--danmaku-color", comment.color);
   const lanes = state.danmakuSettings.area === "full" ? 8 : state.danmakuSettings.area === "middle" ? 4 : 3;
   const lane = Math.floor(stableRatio(`${comment.id}-${comment.text}`) * lanes);
   bubble.style.setProperty("--lane", lane);
@@ -1165,6 +1499,41 @@ function emitDanmaku(comment) {
   });
   danmakuLayer.appendChild(bubble);
   window.setTimeout(() => bubble.remove(), danmakuDuration() + 400);
+}
+
+function emitHeartBarrage(comment) {
+  if (!shouldShowDanmaku(comment)) return;
+  const wrap = document.createElement("div");
+  wrap.className = "danmaku-heart-barrage";
+  wrap.innerHTML = `<strong>${escapeHTML(comment.text || "心动高光")}</strong>`;
+  const words = comment.items?.length ? comment.items : [comment.text || "心动"];
+  const count = 28;
+
+  Array.from({ length: count }).forEach((_, index) => {
+    const t = (Math.PI * 2 * index) / count;
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    const bubbleComment = {
+      ...comment,
+      id: `${comment.id}-${index}`,
+      text: words[index % words.length],
+    };
+    const bubble = document.createElement("button");
+    bubble.type = "button";
+    bubble.className = "danmaku-heart-bubble";
+    bubble.style.setProperty("--heart-x", `${50 + x * 2.15}%`);
+    bubble.style.setProperty("--heart-y", `${53 - y * 2.05}%`);
+    bubble.style.setProperty("--heart-delay", `${index * 38}ms`);
+    bubble.innerHTML = `<span>${escapeHTML(bubbleComment.text)}</span>`;
+    bubble.addEventListener("click", (event) => {
+      event.stopPropagation();
+      showDanmakuActions(bubbleComment, bubble);
+    });
+    wrap.appendChild(bubble);
+  });
+
+  danmakuLayer.appendChild(wrap);
+  window.setTimeout(() => wrap.remove(), 9000);
 }
 
 function emitHighlightDanmaku(highlight, ui) {
@@ -1180,8 +1549,14 @@ function emitHighlightDanmaku(highlight, ui) {
 }
 
 async function loadDanmaku(episodeId) {
-  state.danmaku = await fetchJSON(`/api/episodes/${episodeId}/danmaku`);
+  const comments = await fetchJSON(`/api/episodes/${episodeId}/danmaku`);
+  state.danmaku = danmakuWithSpecialEvents(episodeId, comments);
   clearDanmakuLayer();
+}
+
+function danmakuWithSpecialEvents(episodeId, comments = []) {
+  const specialEvents = SPECIAL_DANMAKU_EVENTS.filter((item) => Number(item.episodeId) === Number(episodeId));
+  return [...comments, ...specialEvents].sort((a, b) => Number(a.time_sec || 0) - Number(b.time_sec || 0));
 }
 
 function renderDanmakuHint() {
@@ -1258,6 +1633,12 @@ const STICKER_ASSETS = {
   winterHoldBack: { src: "/assets/stickers/winter_hold_back.svg", label: "别冲动" },
   winterQuestionLove: { src: "/assets/stickers/winter_question_love.svg", label: "爱还是现实" },
   winterWarmHug: { src: "/assets/stickers/winter_warm_hug.svg", label: "抱抱" },
+  familyMedal: { src: "/assets/stickers/family_medal.svg", label: "家族荣耀" },
+  familyTable: { src: "/assets/stickers/family_table.svg", label: "家里家外" },
+  divorceRose: { src: "/assets/stickers/divorce_rose.svg", label: "别错过" },
+  nightNeon: { src: "/assets/stickers/night_neon.svg", label: "撕夜霓虹" },
+  harvestSystem: { src: "/assets/stickers/harvest_system.svg", label: "系统满仓" },
+  nobleMask: { src: "/assets/stickers/noble_mask.svg", label: "纨绔反转" },
   vehicleTrain: { src: "/assets/stickers/vehicle_train.svg", label: "火车" },
   vehicleCar: { src: "/assets/stickers/vehicle_car.svg", label: "小车" },
   vehicleMotorcycle: { src: "/assets/stickers/vehicle_motorcycle.svg", label: "摩托车" },
@@ -1308,6 +1689,11 @@ const STICKER_ASSET_GROUPS = [
       "winterQuestionLove",
       "winterWarmHug",
     ],
+  },
+  {
+    key: "special",
+    label: "专属题材",
+    assetIds: ["familyMedal", "familyTable", "divorceRose", "nightNeon", "harvestSystem", "nobleMask"],
   },
   { key: "vehicle", label: "交通选择", assetIds: ["vehicleTrain", "vehicleCar", "vehicleMotorcycle"] },
   { key: "common", label: "通用情绪", assetIds: ["charge", "question", "laugh", "rock", "tear"] },
@@ -1725,6 +2111,80 @@ const STICKER_RULES = [
     maxScale: 2.08,
   },
   {
+    asset: "familyMedal",
+    className: "sticker-special",
+    keywords: ["家族", "荣耀", "太奶", "重整", "逆袭", "辈分"],
+    tapWords: ["撑场面", "家族+1", "有排面"],
+    positions: [
+      { left: "58%", top: "24%" },
+      { left: "11%", top: "43%" },
+    ],
+    durationMs: 3200,
+    clickHoldMs: 1600,
+  },
+  {
+    asset: "familyTable",
+    className: "sticker-special",
+    keywords: ["家里家外", "家庭", "饭桌", "烟火", "亲情", "日子"],
+    tapWords: ["太真实", "饭桌局", "家味儿"],
+    positions: [
+      { left: "12%", top: "28%" },
+      { left: "58%", top: "44%" },
+    ],
+    durationMs: 3200,
+    clickHoldMs: 1600,
+  },
+  {
+    asset: "divorceRose",
+    className: "sticker-special",
+    keywords: ["离婚", "相遇", "错过", "复合", "爱情", "心动"],
+    tapWords: ["别错过", "心疼", "要说清"],
+    positions: [
+      { left: "58%", top: "20%" },
+      { left: "10%", top: "42%" },
+    ],
+    durationMs: 3000,
+    clickHoldMs: 1500,
+    heartEffect: true,
+    maxScale: 2.12,
+  },
+  {
+    asset: "nightNeon",
+    className: "sticker-special",
+    keywords: ["撕夜", "夜", "悬疑", "危险", "秘密", "对峙"],
+    tapWords: ["夜色拉满", "有秘密", "别眨眼"],
+    positions: [
+      { left: "10%", top: "24%" },
+      { left: "60%", top: "44%" },
+    ],
+    durationMs: 3300,
+    clickHoldMs: 1700,
+  },
+  {
+    asset: "harvestSystem",
+    className: "sticker-special",
+    keywords: ["荒年", "系统", "满仓", "粮", "肉", "全村"],
+    tapWords: ["开系统", "满仓了", "有救了"],
+    positions: [
+      { left: "58%", top: "26%" },
+      { left: "12%", top: "45%" },
+    ],
+    durationMs: 3300,
+    clickHoldMs: 1700,
+  },
+  {
+    asset: "nobleMask",
+    className: "sticker-special",
+    keywords: ["纨绔", "面具", "反转", "古风", "身份", "爽点"],
+    tapWords: ["有反转", "藏得深", "爽起来"],
+    positions: [
+      { left: "12%", top: "22%" },
+      { left: "60%", top: "42%" },
+    ],
+    durationMs: 3300,
+    clickHoldMs: 1700,
+  },
+  {
     asset: "vehicleTrain",
     className: "sticker-vehicle",
     keywords: ["火车", "买票", "车票", "交通工具"],
@@ -1811,6 +2271,22 @@ function clearStickerLayer(clearTimer = true) {
   state.stickerHideTimers.clear();
   state.stickerCombo = 0;
   if (stickerLayer) stickerLayer.innerHTML = "";
+}
+
+function pruneStickerLayer(maxCount = 5) {
+  if (!stickerLayer) return;
+  const stickers = Array.from(stickerLayer.querySelectorAll(".scene-sticker"));
+  const overflow = stickers.length - maxCount;
+  if (overflow <= 0) return;
+  stickers.slice(0, overflow).forEach((sticker) => {
+    const id = sticker.dataset.stickerId;
+    if (id) {
+      window.clearTimeout(state.stickerHideTimers.get(id));
+      state.stickerHideTimers.delete(id);
+    }
+    sticker.classList.add("leaving");
+    window.setTimeout(() => sticker.remove(), 260);
+  });
 }
 
 function highlightText(highlight) {
@@ -2055,7 +2531,15 @@ function spawnHighlightStickers(highlight) {
   const slot = stickerSlotForTime(Number(highlight.start_time_sec || 0));
   const count = slot?.burstCount || slot?.burst_count || 4;
   [...rules, ...rules].slice(0, count).forEach((rule, index) => {
-    window.setTimeout(() => spawnVideoSticker(rule, index, { durationMs: rule.durationMs || 3800 }), index * 220);
+    const delay = index === 0 ? 0 : 360 + index * 310;
+    window.setTimeout(
+      () =>
+        spawnVideoSticker(rule, index, {
+          durationMs: rule.durationMs || 4400,
+          delayMs: 0,
+        }),
+      delay
+    );
   });
 }
 
@@ -2076,7 +2560,14 @@ function ambientStickerRule() {
 
 function scheduleAmbientStickers() {
   window.clearTimeout(state.ambientStickerTimer);
-  if (!state.currentEpisode || state.activeHighlight || player.paused || views.watch.classList.contains("active") === false) return;
+  if (
+    !state.aiCompanionEnabled ||
+    !state.currentEpisode ||
+    state.activeHighlight ||
+    player.paused ||
+    views.watch.classList.contains("active") === false
+  )
+    return;
   const mode = getDanmakuMode();
   const baseDelay = state.danmakuSettings.mode === "carnival" ? 1250 : state.danmakuSettings.mode === "immerse" ? 3600 : 2300;
   state.ambientStickerTimer = window.setTimeout(() => {
@@ -2091,10 +2582,12 @@ function scheduleAmbientStickers() {
 
 function checkDanmaku(currentTime) {
   for (const comment of state.danmaku) {
-    const due = currentTime >= comment.time_sec && currentTime <= comment.time_sec + 2.4;
+    const triggerWindow = Number(comment.trigger_window_sec || 2.4);
+    const due = currentTime >= comment.time_sec && currentTime <= comment.time_sec + triggerWindow;
     if (due && !state.firedDanmaku.has(comment.id)) {
       state.firedDanmaku.add(comment.id);
-      emitDanmaku(comment);
+      if (comment.effect === "heart_barrage") emitHeartBarrage(comment);
+      else emitDanmaku(comment);
     }
   }
 }
@@ -2109,6 +2602,81 @@ function dramaSignals(drama) {
   if (genre.includes("悬疑") || genre.includes("寻宝")) return ["悬念投票", "反转弹幕", "线索复盘"];
   if (genre.includes("修仙") || genre.includes("系统")) return ["爽点连击", "热度爆发", "升级徽章"];
   return ["高光互动", "弹幕氛围", "同看竞猜"];
+}
+
+function dramaCategoryKeys(drama) {
+  const title = String(drama?.title || "");
+  const keys = DRAMA_CATEGORY_RULES.filter((rule) => rule.match.some((keyword) => title.includes(keyword))).map((rule) => rule.key);
+  return ["all", ...new Set(keys)];
+}
+
+function dramaMatchesCategory(drama, category) {
+  return !category || category === "all" || dramaCategoryKeys(drama).includes(category);
+}
+
+function renderDramaCategoryTabs() {
+  const host = $("#dramaCategoryTabs");
+  if (!host) return;
+  host.innerHTML = DRAMA_CATEGORY_FILTERS.map((item) => {
+    const count = state.dramas.filter((drama) => dramaMatchesCategory(drama, item.key)).length;
+    const active = state.dramaCategory === item.key;
+    return `<button class="${active ? "active" : ""}" type="button" data-drama-category="${escapeHTML(item.key)}">
+      <span>${escapeHTML(item.label)}</span><em>${count}</em>
+    </button>`;
+  }).join("");
+  host.querySelectorAll("[data-drama-category]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.dramaCategory = button.dataset.dramaCategory || "all";
+      renderDramas();
+    });
+  });
+}
+
+function findDramaByTitle(keyword) {
+  return state.dramas.find((drama) => String(drama.title || "").includes(keyword));
+}
+
+function renderHotDramas() {
+  const host = $("#hotDramaRecommendations");
+  if (!host) return;
+  const picks = [
+    { keyword: "北往", rank: "主推", title: "北往", copy: "返乡路、兄弟同看和片尾二创最完整，适合直接展示产品闭环。" },
+    { keyword: "那年冬至", rank: "次推", title: "那年冬至", copy: "爱情高光、竞猜选择和心动特效完整，适合展示情绪互动。" },
+  ]
+    .map((item) => ({ ...item, drama: findDramaByTitle(item.keyword) }))
+    .filter((item) => item.drama);
+  if (!picks.length) {
+    host.innerHTML = "";
+    return;
+  }
+  host.innerHTML = `
+    <section class="hot-drama-panel">
+      <div class="hot-drama-head">
+        <span>Hot Picks</span>
+        <strong>热剧推荐</strong>
+      </div>
+      <div class="hot-drama-grid">
+        ${picks
+          .map((item) => {
+            const signals = dramaSignals(item.drama);
+            return `
+              <button class="hot-drama-card ${item.rank === "主推" ? "primary" : ""}" type="button" data-hot-drama-id="${item.drama.id}" style="--card-hue:${dramaHue(item.drama)}deg">
+                ${renderDramaPoster(item.drama, signals)}
+                <div>
+                  <em>${escapeHTML(item.rank)}</em>
+                  <strong>${escapeHTML(item.title)}</strong>
+                  <span>${escapeHTML(item.copy)}</span>
+                </div>
+              </button>
+            `;
+          })
+          .join("")}
+      </div>
+    </section>
+  `;
+  host.querySelectorAll("[data-hot-drama-id]").forEach((button) => {
+    button.addEventListener("click", () => openDrama(Number(button.dataset.hotDramaId)));
+  });
 }
 
 function dramaPosterAsset(drama) {
@@ -2127,7 +2695,7 @@ function posterImageFallbackScript() {
 
 function renderDramaPoster(drama, signals) {
   const title = drama.title || "短剧";
-  const genre = drama.genre || "互动短剧";
+  const genre = displayDramaGenre(drama, "互动短剧");
   const poster = dramaPosterAsset(drama);
   return `
     <div class="thumb-poster ${poster ? "has-image" : ""}" data-poster-shell aria-hidden="true">
@@ -2146,18 +2714,28 @@ function renderDramaPoster(drama, signals) {
 function renderHistoryPoster(drama) {
   const title = drama.title || "剧";
   const poster = dramaPosterAsset(drama);
+  const genre = displayDramaGenre(drama, "短剧");
   return `
     <span class="history-poster ${poster ? "has-image" : ""}" data-poster-shell>
       ${poster ? `<img src="${escapeHTML(poster.history)}" alt="" loading="lazy" onerror="${posterImageFallbackScript()}" />` : ""}
       <b>${escapeHTML(title.slice(0, 1))}</b>
-      <i>${escapeHTML(drama.genre || "短剧")}</i>
+      <i>${escapeHTML(genre)}</i>
     </span>
   `;
 }
 
+function displayDramaGenre(drama, fallback = "短剧") {
+  const genre = String(drama?.genre || "").trim();
+  return genre && genre !== "待标注" ? genre : fallback;
+}
+
 function renderDramas() {
   $("#dramaCount").textContent = `${state.dramas.length} 部短剧`;
-  $("#dramaGrid").innerHTML = state.dramas
+  renderHotDramas();
+  renderDramaCategoryTabs();
+  const visibleDramas = state.dramas.filter((drama) => dramaMatchesCategory(drama, state.dramaCategory));
+  $("#dramaGrid").innerHTML = visibleDramas.length
+    ? visibleDramas
     .map(
       (drama) => {
         const history = state.watchHistory.find((item) => item.drama.id === drama.id);
@@ -2204,7 +2782,8 @@ function renderDramas() {
       `;
       }
     )
-    .join("");
+    .join("")
+    : `<div class="drama-grid-empty">当前分类还没有短剧。</div>`;
 
   document.querySelectorAll(".drama-card").forEach((card) => {
     card.addEventListener("click", () => openDrama(Number(card.dataset.id)));
@@ -2239,10 +2818,10 @@ function renderWatchHistory() {
       .map(
         (item) => `
           <button class="history-row" type="button" data-episode-id="${item.episode_id}" style="--card-hue:${dramaHue(item.drama)}deg">
-            ${renderHistoryPoster(item.drama)}
+              ${renderHistoryPoster(item.drama)}
             <div>
               <strong>${escapeHTML(item.drama.title)} · ${escapeHTML(item.episode_title)}</strong>
-              <span>${escapeHTML(item.drama.genre)} · 进度 ${formatTime(item.progress_sec)}</span>
+              <span>${escapeHTML(historyProgressLabel(item))}</span>
               <span class="history-progress"><i style="width:${Math.min(100, Math.max(0, Number(item.progress_percent || 0)))}%"></i></span>
             </div>
             <em aria-hidden="true">›</em>
@@ -2255,6 +2834,12 @@ function renderWatchHistory() {
     const item = state.watchHistory.find((row) => row.episode_id === Number(button.dataset.episodeId));
     button.addEventListener("click", () => openEpisodeFromUrl(Number(button.dataset.episodeId), Number(item?.progress_sec || 0)));
   });
+}
+
+function historyProgressLabel(item) {
+  const genre = String(item?.drama?.genre || "").trim();
+  const progress = `进度 ${formatTime(item?.progress_sec || 0)}`;
+  return genre && genre !== "待标注" ? `${genre} · ${progress}` : progress;
 }
 
 async function loadWatchHistory() {
@@ -2343,6 +2928,7 @@ function renderWatchRoom() {
     roomStatus.classList.remove("live");
     if (roomMemberList) roomMemberList.innerHTML = "";
     renderRoomInvitePanel();
+    updateCoWatchDock(room);
     return;
   }
   const guest = room.guest?.display_name || "等待好友";
@@ -2351,6 +2937,56 @@ function renderWatchRoom() {
   roomStatus.classList.add("live");
   renderRoomMembers(room);
   renderRoomInvitePanel();
+  updateCoWatchDock(room);
+}
+
+function coWatchDockMembers(room) {
+  const members = room ? [room.host, room.guest].filter(Boolean) : [state.currentUser].filter(Boolean);
+  if (!members.length) return `<i aria-hidden="true">同</i><i aria-hidden="true">看</i>`;
+  return members
+    .slice(0, 2)
+    .map((member) => avatarHTML(member, "co-watch-mini-avatar"))
+    .join("");
+}
+
+function coWatchOverlayMessagesHTML() {
+  const events = state.roomFeed.slice(0, 4);
+  if (!events.length) return `<p>同看已连接。发一句话，或者完成高光选择后，这里会出现实时互动。</p>`;
+  return events
+    .map((event) => {
+      const user = event.user?.display_name || "同看好友";
+      const payload = event.payload || {};
+      const text =
+        event.event_type === "danmaku"
+          ? payload.text || payload.comment?.text || "发了一条弹幕"
+          : event.event_type === "danmaku_reply"
+            ? payload.reply || "回复了一条弹幕"
+            : event.event_type === "danmaku_like"
+              ? `赞了：${payload.text || "一条弹幕"}`
+              : roomEventSummary(event);
+      return `<article><strong>${escapeHTML(user)}</strong><span>${escapeHTML(text)}</span></article>`;
+    })
+    .join("");
+}
+
+function updateCoWatchDock(room = displayWatchRoom(state.watchRoom)) {
+  if (!coWatchOverlay) return;
+  const visible = Boolean(room?.host && room?.guest);
+  coWatchOverlay.hidden = !visible;
+  if (!visible) state.coWatchExpanded = false;
+  coWatchOverlay.classList.toggle("expanded", visible && state.coWatchExpanded);
+  coWatchOverlayToggle?.setAttribute("aria-expanded", visible && state.coWatchExpanded ? "true" : "false");
+  const stack = $("#coWatchOverlayAvatars");
+  if (stack) stack.innerHTML = coWatchDockMembers(room);
+  const title = $("#coWatchOverlayTitle");
+  if (title) title.textContent = room?.guest?.display_name ? `和${room.guest.display_name}同看中` : "和好友同步中";
+  const messages = $("#coWatchOverlayMessages");
+  if (messages) messages.innerHTML = coWatchOverlayMessagesHTML();
+  const quickChatInput = $("#roomQuickChatInput");
+  if (quickChatInput) {
+    quickChatInput.disabled = !visible;
+    quickChatInput.placeholder = visible ? "和同看好友说一句" : "好友进入后可聊天";
+  }
 }
 
 function demoRoomFriend() {
@@ -2570,6 +3206,7 @@ function renderRoomFeed() {
   if (!roomFeed) return;
   if (!state.watchRoom) {
     roomFeed.innerHTML = "";
+    updateCoWatchDock();
     return;
   }
   const events = state.roomFeed.slice(0, 6);
@@ -2606,6 +3243,7 @@ function renderRoomFeed() {
         : `<div class="room-feed-empty">还没有房间动态。发弹幕、点赞、回复或完成高光竞猜后，会在这里形成实时社交战报。</div>`
     }
   `;
+  updateCoWatchDock();
 }
 
 function pushRoomFeed(event) {
@@ -2783,6 +3421,7 @@ function handleRoomEvent(event) {
         mode: "light",
         user_name: event.user?.display_name,
         className: "room-danmaku",
+        color: payload.color,
       };
       state.danmaku.push(remoteComment);
       state.firedDanmaku.add(remoteComment.id);
@@ -3176,6 +3815,7 @@ function renderProfileSettingsSection() {
   const activeAvatar = state.profileDraftAvatar || user.avatar_url || "preset:stage";
   const previewUser = { ...user, avatar_url: activeAvatar };
   const { total } = getAvatarChoices();
+  const avatarPanelOpen = Boolean(state.avatarRecommendationsOpen);
   return `
     <section class="profile-settings-card">
       <div class="profile-settings-head">
@@ -3191,32 +3831,51 @@ function renderProfileSettingsSection() {
           昵称
           <input id="profileDisplayName" maxlength="64" value="${escapeHTML(user.display_name || "")}" />
         </label>
-        <div class="avatar-manager">
+        <div class="avatar-manager ${avatarPanelOpen ? "open" : "collapsed"}">
           <div class="avatar-manager-top">
             <div>
               <strong>头像推荐</strong>
-              <span id="avatarChoiceCount">${total ? `当前风格有 ${total} 个可选头像` : "没有匹配头像"}</span>
+              <span id="avatarChoiceCount">${
+                avatarPanelOpen
+                  ? total
+                    ? `当前风格有 ${total} 个可选头像`
+                    : "没有匹配头像"
+                  : "需要换头像时再展开，页面更清爽。"
+              }</span>
             </div>
-            <button id="shuffleAvatarPage" class="ghost-button compact" type="button">换一批</button>
+            <button id="toggleAvatarRecommendations" class="ghost-button compact" type="button" aria-expanded="${avatarPanelOpen}">
+              ${avatarPanelOpen ? "收起" : "更换头像"}
+            </button>
           </div>
-          <div class="avatar-filter-row" aria-label="头像风格筛选">
-            ${AVATAR_STYLE_FILTERS.map(
-              (filter) => `
-                <button class="avatar-filter-chip ${state.avatarFilter === filter.key ? "active" : ""}" type="button" data-avatar-filter="${escapeHTML(
-                filter.key
-              )}">
-                  ${escapeHTML(filter.label)}
-                </button>
+          ${
+            avatarPanelOpen
+              ? `
+                <div class="avatar-manager-body">
+                  <div class="avatar-manager-actions">
+                    <button id="shuffleAvatarPage" class="ghost-button compact" type="button">换一批</button>
+                  </div>
+                  <div class="avatar-filter-row" aria-label="头像风格筛选">
+                    ${AVATAR_STYLE_FILTERS.map(
+                      (filter) => `
+                        <button class="avatar-filter-chip ${
+                          state.avatarFilter === filter.key ? "active" : ""
+                        }" type="button" data-avatar-filter="${escapeHTML(filter.key)}">
+                          ${escapeHTML(filter.label)}
+                        </button>
+                      `
+                    ).join("")}
+                  </div>
+                  <label class="avatar-search-field">
+                    <span>搜索风格</span>
+                    <input id="avatarSearchInput" value="${escapeHTML(state.avatarSearch)}" placeholder="可爱 / 酷感 / 清爽" />
+                  </label>
+                  <div id="avatarChoiceGrid" class="avatar-preset-grid" aria-label="头像选择">
+                    ${renderAvatarChoiceButtons(activeAvatar, user)}
+                  </div>
+                </div>
               `
-            ).join("")}
-          </div>
-          <label class="avatar-search-field">
-            <span>搜索风格</span>
-            <input id="avatarSearchInput" value="${escapeHTML(state.avatarSearch)}" placeholder="可爱 / 酷感 / 清爽" />
-          </label>
-          <div id="avatarChoiceGrid" class="avatar-preset-grid" aria-label="头像选择">
-            ${renderAvatarChoiceButtons(activeAvatar, user)}
-          </div>
+              : ""
+          }
         </div>
       </div>
       <div class="avatar-upload-card">
@@ -3587,63 +4246,6 @@ function roomSocialUserFromFriend(friend) {
   return friend?.user || friend || {};
 }
 
-function roomSocialPrimaryTarget(friends, candidates) {
-  if (friends.length) return { type: "friend", user: roomSocialUserFromFriend(friends[0]) };
-  if (candidates.length) return { type: "candidate", user: candidates[0] };
-  return null;
-}
-
-function renderRoomSocialChip(item, type, canInvite) {
-  const user = roomSocialUserFromFriend(item);
-  const actionAttr = type === "friend" ? `data-invite-user-id="${user.id}"` : `data-add-friend-id="${user.id}"`;
-  const disabled = type === "friend" && !canInvite ? "disabled" : "";
-  const label = type === "friend" ? (canInvite ? "快邀" : "满员") : "申请";
-  return `
-    <button class="room-social-chip ${type}" type="button" ${actionAttr} ${disabled} aria-label="${escapeHTML(label)} ${escapeHTML(user.display_name || "同看用户")}">
-      ${avatarHTML(user, "room-invite-avatar")}
-      <span>${escapeHTML(user.display_name || "同看用户")}</span>
-      <em>${label}</em>
-    </button>
-  `;
-}
-
-function renderRoomSocialPrimary(target, canInvite) {
-  if (!target) {
-    return `
-      <div class="room-social-primary empty">
-        <div>
-          <span>Ready</span>
-          <strong>还没有可邀请对象</strong>
-          <p>先注册或切换另一个演示账号，再回到这里添加好友。</p>
-        </div>
-      </div>
-    `;
-  }
-  const user = target.user;
-  const isFriend = target.type === "friend";
-  const actionAttr = isFriend ? `data-invite-user-id="${user.id}"` : `data-add-friend-id="${user.id}"`;
-  const disabled = isFriend && state.watchRoom?.guest ? "disabled" : "";
-  const actionText = isFriend ? (state.watchRoom?.guest ? "房间已满" : state.watchRoom ? "邀请同看" : "开房并邀请") : "发送申请";
-  const hint = isFriend
-    ? state.watchRoom
-      ? state.watchRoom.guest
-        ? "当前房间已有同看好友，需要新开房后再邀请。"
-        : "当前房间会直接发送给这位好友。"
-      : "一键开房并发送邀请，适合答辩时快速展示同看链路。"
-    : "发送申请后会进入聊聊审核流，通过后才能发起同看邀请。";
-  return `
-    <div class="room-social-primary">
-      ${avatarHTML(user, "room-social-primary-avatar")}
-      <div>
-        <span>${isFriend ? "Quick Invite" : "Suggested Friend"}</span>
-        <strong>${escapeHTML(user.display_name || "同看好友")}</strong>
-        <p>${escapeHTML(user.growth_title || "剧情新人")} · ${Number(user.points || 0)} 分 · ${hint}</p>
-      </div>
-      <button class="primary-button" type="button" ${actionAttr} ${disabled}>${actionText}</button>
-    </div>
-  `;
-}
-
 function renderRoomSocialReceived(invitation) {
   if (!invitation) return "";
   const extra = Math.max(0, (state.roomInvitations?.received || []).length - 1);
@@ -3669,21 +4271,7 @@ function renderRoomInvitePanel() {
     roomInvitePanel.innerHTML = "";
     return;
   }
-  const friends = state.friendData?.friends || [];
-  const candidates = state.friendData?.candidates || [];
   const received = state.roomInvitations?.received || [];
-  const sent = state.roomInvitations?.sent || [];
-  const canInvite = !state.watchRoom?.guest;
-  const primaryTarget = roomSocialPrimaryTarget(friends, candidates);
-  const primaryUserId = primaryTarget?.user?.id;
-  const secondaryFriends = friends.filter((item) => roomSocialUserFromFriend(item).id !== primaryUserId).slice(0, 3);
-  const secondaryCandidates = candidates.filter((item) => item.id !== primaryUserId).slice(0, Math.max(0, 3 - secondaryFriends.length));
-  const hiddenSocialCount = Math.max(0, friends.length + candidates.length - (primaryTarget ? 1 : 0) - secondaryFriends.length - secondaryCandidates.length);
-  const friendChips = secondaryFriends.map((item) => renderRoomSocialChip(item, "friend", canInvite)).join("");
-  const candidateChips = secondaryCandidates.map((item) =>
-    renderRoomSocialChip(item, "candidate", canInvite)
-  ).join("");
-  const lastSent = sent[0];
   roomInvitePanel.innerHTML = `
     <section class="room-social-panel compact">
       <div class="room-social-head">
@@ -3695,22 +4283,14 @@ function renderRoomInvitePanel() {
       </div>
       ${state.roomSocialStatus ? `<div class="room-social-status ${state.roomSocialStatusError ? "error" : ""}">${escapeHTML(state.roomSocialStatus)}</div>` : ""}
       ${renderRoomSocialReceived(received[0])}
-      ${renderRoomSocialPrimary(primaryTarget, canInvite)}
-      ${
-        friendChips || candidateChips
-          ? `<div class="room-social-rail">${friendChips}${candidateChips}</div>`
-          : ""
-      }
-      ${hiddenSocialCount ? `<p class="room-social-note">另有 ${hiddenSocialCount} 位联系人已收进好友体系，播放页只保留最高频入口。</p>` : ""}
-      ${
-        lastSent
-          ? `<div class="room-social-sent">
-              <span>最近邀请</span>
-              <strong>${escapeHTML(lastSent.to_user?.display_name || "好友")}</strong>
-              <em>${escapeHTML(lastSent.status || "pending")}</em>
-            </div>`
-          : ""
-      }
+      <div class="room-social-art" aria-hidden="true">
+        <img src="/assets/stickers/beiwang_rock_moto.svg" alt="" />
+        <div>
+          <span>北往同看</span>
+          <strong>把返乡路变成双人实时陪看</strong>
+          <p>房间聊天、弹幕点赞、竞猜结果会同步到右侧同看区。</p>
+        </div>
+      </div>
     </section>
   `;
 }
@@ -4291,6 +4871,7 @@ function renderDiscoverView() {
   const topics = $("#discoverTopics");
   const feed = $("#socialFeedList");
   if (!topics || !feed) return;
+  syncSocialChoiceGroups();
   topics.innerHTML = (state.socialFeed.topics || [])
     .map(
       (item) => `
@@ -4310,6 +4891,16 @@ function renderDiscoverView() {
     ? posts.map(renderSocialPost).join("")
     : `<div class="social-empty">还没有动态。先发布一条 AI 声音、AI 图片或 AI 剧情卡，逛逛页就会形成第一条展示内容。</div>`;
   setSocialStatus(state.socialStatus, state.socialStatusError);
+}
+
+function syncSocialChoiceGroups() {
+  document.querySelectorAll("[data-social-select-target]").forEach((group) => {
+    const select = document.getElementById(group.dataset.socialSelectTarget);
+    if (!select) return;
+    group.querySelectorAll("[data-value]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.value === select.value);
+    });
+  });
 }
 
 function socialAssetKindFromSource(sourceType) {
@@ -4726,8 +5317,9 @@ async function openEpisode(episodeId, options = {}) {
       fetchJSON(`/api/episodes/${episodeId}/experience`),
     ]);
     state.currentEpisode = episode;
+    resetEpisodeReport(episode.id);
     state.currentExperience = experience;
-    state.danmaku = danmaku;
+    state.danmaku = danmakuWithSpecialEvents(episodeId, danmaku);
     state.pendingResume = Number(options.resumeTime || 0) > 1 ? { episodeId, time: Number(options.resumeTime) } : null;
     state.lastHistoryRecordAt = 0;
     $("#watchTitle").textContent = `${state.currentEpisode.drama.title} · ${state.currentEpisode.title}`;
@@ -4757,6 +5349,12 @@ async function openEpisodeFromUrl(episodeId, resumeTime = 0, options = {}) {
 
 function renderTimeline() {
   const highlights = state.currentEpisode?.highlights || [];
+  if (!state.aiCompanionEnabled) {
+    renderHighlightHeatTrack([]);
+    $("#timeline").innerHTML = "";
+    return;
+  }
+  renderHighlightHeatTrack(highlights);
   $("#timeline").innerHTML = highlights
     .map(
       (item) => {
@@ -4786,13 +5384,395 @@ function renderTimeline() {
   });
 }
 
+function highlightAtTime(timeSec) {
+  const highlights = state.currentEpisode?.highlights || [];
+  return highlights.find((item) => {
+    const start = Number(item.start_time_sec || 0);
+    const end = Number(item.end_time_sec || start + 4);
+    return timeSec >= start && timeSec <= Math.max(start + 1, end);
+  });
+}
+
+function renderHighlightHeatTrack(highlights = state.currentEpisode?.highlights || []) {
+  if (!highlightHeatTrack) return;
+  const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode?.duration_sec || 0;
+  if (!state.aiCompanionEnabled || !duration || !highlights.length) {
+    highlightHeatTrack.innerHTML = "";
+    highlightHeatTrack.hidden = true;
+    return;
+  }
+  highlightHeatTrack.hidden = false;
+  highlightHeatTrack.innerHTML = highlights
+    .map((item) => {
+      const ui = getHighlightUI(item.highlight_type);
+      const start = Math.max(0, Number(item.start_time_sec || 0));
+      const end = Math.max(start + 1, Number(item.end_time_sec || start + 4));
+      const rawLeft = (start / duration) * 100;
+      const rawWidth = ((end - start) / duration) * 100;
+      const width = Math.min(100, Math.max(1.2, rawWidth));
+      const left = Math.min(100 - width, Math.max(0, rawLeft));
+      return `
+        <span class="highlight-heat-segment ${ui.className}" style="--heat-left:${left}%; --heat-width:${width}%">
+          <i>${escapeHTML(ui.badge)}</i>
+        </span>
+      `;
+    })
+    .join("");
+  updateHighlightHeatProgress(player.currentTime || 0);
+}
+
+function updateHighlightHeatProgress(currentTime) {
+  if (!highlightHeatTrack || highlightHeatTrack.hidden) return;
+  const time = Number(currentTime || 0);
+  highlightHeatTrack.querySelectorAll(".highlight-heat-segment").forEach((segment, index) => {
+    const highlight = state.currentEpisode?.highlights?.[index];
+    if (!highlight) return;
+    const start = Number(highlight.start_time_sec || 0);
+    const end = Math.max(start + 1, Number(highlight.end_time_sec || start + 4));
+    segment.classList.toggle("active", time >= start && time <= end);
+  });
+}
+
+function resetEpisodeReport(episodeId) {
+  state.episodeReport = {
+    ...EMPTY_EPISODE_REPORT,
+    episodeId,
+    startedAt: Date.now(),
+    choices: [],
+    rewards: [],
+  };
+  state.companionCueIds = new Set();
+}
+
+function reportRewardTitle(reward) {
+  return reward?.badge?.title || reward?.title || reward?.reward_title || "";
+}
+
+function rememberEpisodeReward(reward) {
+  const title = reportRewardTitle(reward);
+  if (!title) return;
+  const exists = state.episodeReport.rewards.some((item) => item.title === title);
+  if (exists) return;
+  state.episodeReport.rewards.push({
+    title,
+    points: Number(reward?.points || reward?.badge?.points || 0),
+  });
+}
+
+function trackEpisodeTap(highlight = state.activeHighlight) {
+  if (!state.episodeReport || state.episodeReport.episodeId !== state.currentEpisode?.id) {
+    resetEpisodeReport(state.currentEpisode?.id || null);
+  }
+  state.episodeReport.taps += 1;
+  if (highlight) {
+    state.episodeReport.lastTapHighlight = highlight.title || "";
+  }
+}
+
+function trackEpisodeChoice(highlight, option, reward) {
+  if (!highlight) return;
+  if (!state.episodeReport || state.episodeReport.episodeId !== state.currentEpisode?.id) {
+    resetEpisodeReport(state.currentEpisode?.id || null);
+  }
+  const item = {
+    highlightId: highlight.id,
+    highlightTitle: highlight.title || "高光互动",
+    optionLabel: option?.label || option?.key || "已选择",
+    correct: Boolean(reward?.correct),
+    rewardTitle: reportRewardTitle(reward),
+    points: Number(reward?.points || 0),
+  };
+  state.episodeReport.choices.push(item);
+  if (item.correct) rememberEpisodeReward(reward);
+}
+
+function companionLineForHighlight(highlight, phase = "before") {
+  const key = getHighlightKey(highlight?.highlight_type);
+  const lines = {
+    conflict: ["前方要起冲突，先站稳再表达。", "这段火药味很重，我帮你记进战报。"],
+    reveal: ["注意，反转快来了。", "这个反转值得截进片尾战报。"],
+    power: ["爽点要来了，可以准备连点。", "这一段情绪很满，别浪费。"],
+    sweet: ["甜度上升，别眨眼。", "这颗糖我先替你收下。"],
+    tear: ["这段会有点扎心。", "我会把你的共情记下来。"],
+    suspense: ["关键线索快出现了。", "这个选择会影响片尾战报。"],
+    comedy: ["笑点靠近，弹幕可以热一点。", "这一下可以放心笑。"],
+    danger: ["气氛变紧了，小心剧情急转。", "紧张值已经拉满。"],
+  };
+  const pair = lines[key] || ["高光快到了。", "这段我帮你记住。"];
+  return phase === "after" ? pair[1] : pair[0];
+}
+
+function showCompanionCue(message, tone = "default", durationMs = 4200) {
+  if (!state.aiCompanionEnabled) return;
+  if (!companionBubble || !message) return;
+  window.clearTimeout(state.companionTimer);
+  companionBubble.className = `companion-bubble tone-${tone}`;
+  companionBubble.innerHTML = `
+    <div class="companion-orb" aria-hidden="true">半</div>
+    <div>
+      <span>${escapeHTML(COMPANION_PERSONA.role)} · ${escapeHTML(COMPANION_PERSONA.name)}</span>
+      <strong>${escapeHTML(message)}</strong>
+    </div>
+  `;
+  state.companionTimer = window.setTimeout(() => {
+    companionBubble.classList.add("hidden");
+  }, durationMs);
+}
+
+function maybeShowCompanionCue(currentTime) {
+  if (!state.aiCompanionEnabled) return;
+  if (!state.currentEpisode || state.endingRemixShown || state.endingRemixEntryShown || state.activeHighlight) return;
+  const highlights = state.currentEpisode.highlights || [];
+  const next = highlights.find((item) => {
+    const start = Number(item.start_time_sec || 0);
+    return start >= currentTime && start - currentTime <= 4.5;
+  });
+  if (!next) return;
+  const cueId = `before-${next.id}`;
+  if (state.companionCueIds.has(cueId)) return;
+  state.companionCueIds.add(cueId);
+  showCompanionCue(companionLineForHighlight(next, "before"), getHighlightKey(next.highlight_type), 3900);
+}
+
+function collectFriendReportItems() {
+  const selfId = state.currentUser?.id;
+  return state.roomFeed
+    .filter((event) => event.event_type === "interaction" && event.user?.id !== selfId)
+    .slice(0, 3)
+    .map((event) => {
+      const payload = event.payload || {};
+      return {
+        user: event.user?.display_name || "同看好友",
+        option: payload.option_label || payload.option_key || "已选择",
+        highlight: payload.highlight_title || "高光互动",
+        correct: Boolean(payload.reward_correct),
+        rewardTitle: payload.reward_badge?.title || payload.reward_title || "",
+      };
+    });
+}
+
+function episodeReportSummary() {
+  const report = state.episodeReport || EMPTY_EPISODE_REPORT;
+  const choices = report.choices || [];
+  const correctChoices = choices.filter((item) => item.correct);
+  const rewards = report.rewards || [];
+  const friendChoices = collectFriendReportItems();
+  return {
+    taps: Number(report.taps || 0),
+    choices,
+    correctChoices,
+    rewards,
+    friendChoices,
+  };
+}
+
+function reportListHTML(items, emptyText, mapper) {
+  if (!items.length) return `<p>${escapeHTML(emptyText)}</p>`;
+  return items.map(mapper).join("");
+}
+
+function renderReportCompanionShowcase() {
+  return `
+    <div class="report-companion-showcase">
+      <div class="report-companion-switch" aria-label="小半形象方向">
+        <button type="button" data-companion-mode="3d">3D</button>
+        <button class="active" type="button" data-companion-mode="eyes">灵动眼睛</button>
+      </div>
+      <div class="report-companion-stage" data-companion-stage data-mode="eyes">
+        <div class="report-companion-3d">
+          <img src="/assets/companion/xiaoban_3d_v1.png" alt="小半 3D 陪看形象" />
+        </div>
+        <div class="report-companion-live" aria-hidden="true">
+          <i class="live-hair"></i>
+          <i class="live-ear left"></i>
+          <i class="live-ear right"></i>
+          <div class="live-face">
+            <span class="live-eye"><b></b></span>
+            <span class="live-eye"><b></b></span>
+            <span class="live-mouth"></span>
+          </div>
+          <span class="live-neck"></span>
+        </div>
+        <div class="report-happy-effects" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function setReportCompanionMode(mode = "eyes") {
+  const normalized = mode === "3d" ? "3d" : "eyes";
+  const stage = endingRemixLayer?.querySelector("[data-companion-stage]");
+  if (stage) {
+    stage.dataset.mode = normalized;
+    stage.classList.remove("is-transforming");
+  }
+  endingRemixLayer
+    ?.querySelectorAll("[data-companion-mode]")
+    .forEach((button) => button.classList.toggle("active", button.dataset.companionMode === normalized));
+}
+
+let reportCompanionPointerAbort = null;
+
+function bindReportCompanionMouse() {
+  const stage = endingRemixLayer?.querySelector("[data-companion-stage]");
+  if (!stage) return;
+  const card = endingRemixLayer?.querySelector(".episode-report-card");
+  reportCompanionPointerAbort?.abort();
+  const pointerAbort = new AbortController();
+  reportCompanionPointerAbort = pointerAbort;
+  const listenerOptions = { signal: pointerAbort.signal };
+  let transformTimer = null;
+  let sweepTimer = null;
+  let transformStarted = false;
+  const startTransform = () => {
+    if (stage.dataset.mode !== "eyes" || transformStarted) return;
+    transformStarted = true;
+    window.clearTimeout(transformTimer);
+    window.clearTimeout(sweepTimer);
+    sweepTimer = window.setTimeout(() => stage.classList.add("is-transforming"), 80);
+    transformTimer = window.setTimeout(() => setReportCompanionMode("3d"), 560);
+  };
+  const updateEyes = (event) => {
+    if (stage.dataset.mode !== "eyes") return;
+    const stageRect = stage.getBoundingClientRect();
+    const cardRect = card?.getBoundingClientRect() || stageRect;
+    if (!stageRect.width || !stageRect.height || !cardRect.width || !cardRect.height) return;
+    const centerX = stageRect.left + stageRect.width / 2;
+    const centerY = stageRect.top + stageRect.height / 2;
+    const x = Math.max(-1, Math.min(1, (event.clientX - centerX) / (stageRect.width * 0.32)));
+    const y = Math.max(-1, Math.min(1, (event.clientY - centerY) / (stageRect.height * 0.34)));
+    stage.style.setProperty("--eye-x", `${Math.round(x * 16)}px`);
+    stage.style.setProperty("--eye-y", `${Math.round(y * 11)}px`);
+    stage.style.setProperty("--head-x", `${Math.round(x * 8)}px`);
+    stage.style.setProperty("--head-y", `${Math.round(y * 6)}px`);
+    stage.style.setProperty("--head-rotate", `${Math.round(x * 7)}deg`);
+    stage.classList.add("is-happy");
+    const insideCard =
+      card &&
+      event.clientX >= cardRect.left &&
+      event.clientX <= cardRect.right &&
+      event.clientY >= cardRect.top &&
+      event.clientY <= cardRect.bottom;
+    if (insideCard) startTransform();
+  };
+  document.addEventListener("pointermove", updateEyes, listenerOptions);
+  const resetEyes = () => {
+    window.clearTimeout(transformTimer);
+    window.clearTimeout(sweepTimer);
+    transformStarted = false;
+    stage.style.setProperty("--eye-x", "0px");
+    stage.style.setProperty("--eye-y", "0px");
+    stage.style.setProperty("--head-x", "0px");
+    stage.style.setProperty("--head-y", "0px");
+    stage.style.setProperty("--head-rotate", "0deg");
+    stage.classList.remove("is-happy", "is-transforming");
+  };
+  const cancelTransform = () => {
+    if (stage.dataset.mode !== "eyes") return;
+    window.clearTimeout(transformTimer);
+    window.clearTimeout(sweepTimer);
+    transformStarted = false;
+    stage.classList.remove("is-transforming");
+  };
+  document.addEventListener("pointerleave", resetEyes, listenerOptions);
+  window.addEventListener("blur", resetEyes, listenerOptions);
+  card?.addEventListener("pointerenter", (event) => {
+    if (stage.dataset.mode !== "eyes") return;
+    updateEyes(event);
+    startTransform();
+  }, listenerOptions);
+  card?.addEventListener("pointerleave", cancelTransform, listenerOptions);
+}
+
+function renderEpisodeReportCard(payload = state.remixOptions) {
+  if (!endingRemixLayer) return;
+  const report = episodeReportSummary();
+  const nextEpisode = getNextEpisode();
+  const title = state.currentEpisode ? `${state.currentEpisode.drama.title} · ${state.currentEpisode.title}` : "本集";
+  const companionLine =
+    report.correctChoices.length > 0
+      ? `你猜中了 ${report.correctChoices.length} 个关键选择，我已经把称号和同看反馈整理好了。`
+      : report.choices.length > 0
+        ? "这集你的选择已经记录，下一次可以冲一下正确预判。"
+        : "这集以观看为主，我会把片尾二创入口留给你。";
+  const featuredCount = payload?.featured_remixes?.length || 0;
+  setEndingRemixLayerHost(true);
+  endingRemixLayer.className = "ending-remix-layer episode-report-layer";
+  endingRemixLayer.innerHTML = `
+    <section class="episode-report-card">
+      <div class="episode-report-top">
+        <div class="episode-report-hero">
+          <span>片尾同看战报</span>
+          <h3>${escapeHTML(title)}</h3>
+          <p><b>${escapeHTML(COMPANION_PERSONA.name)}：</b>${escapeHTML(companionLine)}</p>
+        </div>
+        ${renderReportCompanionShowcase()}
+      </div>
+      <div class="episode-report-stats">
+        <article><b>${report.taps}</b><span>情绪连点</span></article>
+        <article><b>${report.correctChoices.length}/${Math.max(1, report.choices.length)}</b><span>竞猜命中</span></article>
+        <article><b>${report.rewards.length}</b><span>称号解锁</span></article>
+      </div>
+      <div class="episode-report-grid">
+        <section>
+          <strong>我的选择</strong>
+          ${reportListHTML(report.choices.slice(-3).reverse(), "本集还没有选择记录。", (item) => `
+            <div class="episode-report-row ${item.correct ? "correct" : ""}">
+              <span>${escapeHTML(item.highlightTitle)}</span>
+              <b>${escapeHTML(item.optionLabel)}</b>
+            </div>
+          `)}
+        </section>
+        <section>
+          <strong>同看好友</strong>
+          ${reportListHTML(report.friendChoices, "好友选择会在同看房间同步后出现在这里。", (item) => `
+            <div class="episode-report-row ${item.correct ? "correct" : ""}">
+              <span>${escapeHTML(item.user)} · ${escapeHTML(item.highlight)}</span>
+              <b>${escapeHTML(item.option)}</b>
+            </div>
+          `)}
+        </section>
+        <section>
+          <strong>解锁称号</strong>
+          ${reportListHTML(report.rewards, "暂未解锁新称号。", (item) => `
+            <div class="episode-report-reward">
+              ${badgeArtHTML(item.title, false, "tiny")}
+              <div><b>${escapeHTML(item.title)}</b><span>+${Number(item.points || 0)} 分</span></div>
+            </div>
+          `)}
+        </section>
+      </div>
+      <div class="episode-report-actions">
+        <button class="primary-button" type="button" data-remix-action="start">
+          ${featuredCount ? `进入 AI 二创 · ${featuredCount} 个精选` : "进入 AI 二创"}
+        </button>
+        ${nextEpisode ? `<button class="ghost-button" type="button" data-remix-action="next" data-episode-id="${nextEpisode.id}">看下一集</button>` : ""}
+        <button class="ghost-button" type="button" data-remix-action="close">收起</button>
+      </div>
+    </section>
+  `;
+  bindReportCompanionMouse();
+  showCompanionCue("片尾战报已生成，你可以直接进入 AI 二创或看下一集。", "ending", 5200);
+}
+
 function clearEndingRemix() {
+  clearRemixChoiceTimer();
   stopRemixAudio();
+  reportCompanionPointerAbort?.abort();
+  reportCompanionPointerAbort = null;
+  exitRemixPresentationMode();
+  window.clearTimeout(state.companionTimer);
+  companionBubble?.classList.add("hidden");
   state.endingRemixEntryShown = false;
   state.endingRemixShown = false;
   state.remixOptions = null;
   state.remixResult = null;
   state.remixLoading = false;
+  state.remixForcedFullscreen = false;
+  state.pendingRemixStartIndex = 0;
+  state.pendingRemixSceneChoiceResolved = false;
   if (endingRemixLayer) {
     resetEndingRemixViewportOffset();
     endingRemixLayer.className = "ending-remix-layer hidden";
@@ -4803,7 +5783,7 @@ function clearEndingRemix() {
 
 function setEndingRemixLayerHost(immersive) {
   if (!endingRemixLayer || !endingRemixLayerHome) return;
-  const target = immersive ? document.body : endingRemixLayerHome;
+  const target = immersive ? playerWrapElement() || endingRemixLayerHome : endingRemixLayerHome;
   if (endingRemixLayer.parentElement !== target) {
     target.appendChild(endingRemixLayer);
   }
@@ -4820,9 +5800,11 @@ function alignEndingRemixLayerToViewport() {
   requestAnimationFrame(() => {
     if (!endingRemixLayer?.classList.contains("ending-remix-immersive-layer")) return;
     resetEndingRemixViewportOffset();
-    const rect = endingRemixLayer.getBoundingClientRect();
-    endingRemixLayer.style.setProperty("--remix-viewport-x", `${Math.round(-rect.x)}px`);
-    endingRemixLayer.style.setProperty("--remix-viewport-y", `${Math.round(-rect.y)}px`);
+    if (endingRemixLayer.parentElement !== playerWrapElement()) {
+      const rect = endingRemixLayer.getBoundingClientRect();
+      endingRemixLayer.style.setProperty("--remix-viewport-x", `${Math.round(-rect.x)}px`);
+      endingRemixLayer.style.setProperty("--remix-viewport-y", `${Math.round(-rect.y)}px`);
+    }
   });
 }
 
@@ -4863,6 +5845,7 @@ function renderEndingRemixOptions(payload) {
   const options = payload.options || [];
   const featured = payload.featured_remixes || [];
   setEndingRemixLayerHost(true);
+  enterRemixPresentationMode();
   endingRemixLayer.className = "ending-remix-layer ending-remix-immersive-layer";
   alignEndingRemixLayerToViewport();
   endingRemixLayer.innerHTML = `
@@ -4911,6 +5894,125 @@ function renderEndingRemixOptions(payload) {
   `;
 }
 
+function defaultRemixVariantKey(choiceKey) {
+  const choice = state.remixOptions?.options?.find((item) => item.key === choiceKey);
+  return choice?.variants?.[0]?.variant_key || "";
+}
+
+function clearRemixChoiceTimer() {
+  window.clearTimeout(state.remixChoiceTimer);
+  state.remixChoiceTimer = null;
+}
+
+function remixSceneChoice(choiceKey) {
+  const choice = state.remixOptions?.options?.find((item) => item.key === choiceKey);
+  if (!choice?.variants?.length) return null;
+  const prompts = {
+    road_breakdown: {
+      eyebrow: "年三十返乡补给站",
+      title: "他们买什么撑过这一段？",
+      subtitle: "轮胎刚补上，下一口补给会决定他们怎么继续往北走。",
+      meta: "年三十 · 小卖部 · 返乡路",
+      revealMode: "after_first_scene",
+    },
+    ticket_home: {
+      eyebrow: "返乡售票口",
+      title: "他买哪张票继续回家？",
+      subtitle: "风雪和体力把摩托路逼到尽头，换一种交通方式也要赶回年夜饭。",
+      meta: "候车亭 · 借票钱 · 年夜饭",
+      revealMode: "after_first_scene",
+    },
+    kindness_ride: {
+      eyebrow: "雪夜顺风车",
+      title: "哪辆车载他们继续往北？",
+      subtitle: "帮人脱困后摩托不见了，这次善意会把他们送上另一条回家路。",
+      meta: "雪沟 · 车灯 · 东北顺路",
+      revealMode: "immediate",
+      startIndexAfterChoice: 0,
+    },
+  };
+  const prompt = prompts[choiceKey];
+  if (!prompt) return null;
+  return { ...prompt, options: choice.variants };
+}
+
+function renderRemixSceneChoiceOverlay(imagePlan) {
+  const prompt = remixSceneChoice(imagePlan?.choice_key);
+  if (!prompt) return "";
+  return `
+    <div class="remix-scene-choice hidden" data-remix-scene-choice data-remix-scene-choice-key="${escapeHTML(
+      imagePlan.choice_key || ""
+    )}" data-remix-scene-meta="${escapeHTML(prompt.meta || "")}">
+      <div class="remix-scene-choice-panel" data-remix-scene-meta="${escapeHTML(prompt.meta || "")}">
+        <span>${escapeHTML(prompt.eyebrow)}</span>
+        <strong>${escapeHTML(prompt.title)}</strong>
+        <p>${escapeHTML(prompt.subtitle)}</p>
+        <div class="remix-scene-choice-options">
+          ${prompt.options
+            .map(
+              (variant) => `
+                <button type="button" data-remix-choice-key="${escapeHTML(imagePlan.choice_key)}" data-remix-variant="${escapeHTML(
+                  variant.variant_key
+                )}" data-remix-start-index="${Number(prompt.startIndexAfterChoice ?? 1)}">
+                  <em>${escapeHTML(variant.variable_label || "补给")}</em>
+                  <b>${escapeHTML(variant.label || "")}</b>
+                </button>
+              `,
+            )
+            .join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function showRemixSceneChoicePrompt() {
+  const prompt = endingRemixLayer?.querySelector("[data-remix-scene-choice]");
+  const plan = endingRemixLayer?.querySelector("[data-remix-image-plan]");
+  if (!prompt || !plan || prompt.dataset.answered === "true") return false;
+  clearRemixChoiceTimer();
+  prompt.classList.remove("hidden");
+  plan.dataset.sceneChoiceOpen = "true";
+  stopRemixAudio();
+  return true;
+}
+
+function scheduleRemixSceneChoicePrompt(imagePlan) {
+  clearRemixChoiceTimer();
+  if (state.pendingRemixSceneChoiceResolved) return;
+  if (Number(state.pendingRemixStartIndex || 0) > 0) return;
+  const prompt = remixSceneChoice(imagePlan?.choice_key);
+  if (!prompt) return;
+  if (prompt.revealMode === "immediate") {
+    state.remixChoiceTimer = window.setTimeout(showRemixSceneChoicePrompt, 450);
+    return;
+  }
+  state.remixChoiceTimer = window.setTimeout(showRemixSceneChoicePrompt, 15000);
+}
+
+function renderRemixInlineVariants(choiceKey, activeVariantKey = "") {
+  const choice = state.remixOptions?.options?.find((item) => item.key === choiceKey);
+  const variants = choice?.variants || [];
+  if (remixSceneChoice(choiceKey)) return "";
+  if (!choice || variants.length < 2) return "";
+  return `
+    <div class="remix-inline-variants">
+      ${variants
+        .map(
+          (variant) => `
+            <button class="${variant.variant_key === activeVariantKey ? "active" : ""}" type="button" data-remix-choice-key="${escapeHTML(
+              choice.key
+            )}" data-remix-variant="${escapeHTML(variant.variant_key)}">
+              <span>${escapeHTML(variant.variable_label || "版本")}</span>
+              <strong>${escapeHTML(variant.label || "")}</strong>
+            </button>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function renderEndingRemixVariantOptions(choiceKey) {
   if (!endingRemixLayer) return;
   const choice = state.remixOptions?.options?.find((item) => item.key === choiceKey);
@@ -4920,6 +6022,7 @@ function renderEndingRemixVariantOptions(choiceKey) {
     return;
   }
   setEndingRemixLayerHost(true);
+  enterRemixPresentationMode();
   endingRemixLayer.className = "ending-remix-layer ending-remix-immersive-layer";
   alignEndingRemixLayerToViewport();
   endingRemixLayer.innerHTML = `
@@ -4961,6 +6064,7 @@ function renderEndingRemixVariantOptions(choiceKey) {
 function renderEndingRemixLoading(choice) {
   if (!endingRemixLayer) return;
   setEndingRemixLayerHost(true);
+  enterRemixPresentationMode();
   endingRemixLayer.className = "ending-remix-layer ending-remix-immersive-layer";
   alignEndingRemixLayerToViewport();
   endingRemixLayer.innerHTML = `
@@ -4985,8 +6089,11 @@ function renderRemixImageSequence(imagePlan) {
   if (!shots.length) return "";
   const hasVoiceProfile = Boolean(state.voiceProfile?.profile);
   const activeVoiceMode = hasVoiceProfile ? state.voiceUsageMode : "original";
+  const pendingStartIndex = Number(state.pendingRemixStartIndex || 0);
+  const startIndex = Math.max(0, Math.min(shots.length - 1, Number.isFinite(pendingStartIndex) ? pendingStartIndex : 0));
+  const sceneChoiceHTML = startIndex > 0 || state.pendingRemixSceneChoiceResolved ? "" : renderRemixSceneChoiceOverlay(imagePlan);
   return `
-    <div class="remix-image-plan" data-remix-image-plan data-active-index="0">
+    <div class="remix-image-plan" data-remix-image-plan data-active-index="${startIndex}">
       <div class="remix-image-topbar">
         <div>
           <span>片尾番外</span>
@@ -4998,7 +6105,7 @@ function renderRemixImageSequence(imagePlan) {
         ${shots
           .map(
             (shot, index) => `
-              <figure class="remix-image-frame ${index === 0 ? "active" : ""}" data-shot-index="${
+              <figure class="remix-image-frame ${index === startIndex ? "active" : ""}" data-shot-index="${
                 index + 1
               }" data-remix-choice-key="${escapeHTML(imagePlan.choice_key || "")}" data-remix-variant-key="${escapeHTML(
                 imagePlan.variant_key || ""
@@ -5031,11 +6138,11 @@ function renderRemixImageSequence(imagePlan) {
           .join("")}
       </div>
       <div class="remix-image-dots" aria-hidden="true">
-        ${shots.map((_, index) => `<i class="${index === 0 ? "active" : ""}"></i>`).join("")}
+        ${shots.map((_, index) => `<i class="${index === startIndex ? "active" : ""}"></i>`).join("")}
       </div>
       <div class="remix-image-controls">
         <button class="ghost-button" type="button" data-remix-action="image-prev">上一张</button>
-        <span><b data-remix-image-current>1</b> / ${shots.length}</span>
+        <span><b data-remix-image-current>${startIndex + 1}</b> / ${shots.length}</span>
         <button class="primary-button" type="button" data-remix-action="image-next">下一张</button>
       </div>
       <div class="remix-audio-controls">
@@ -5049,6 +6156,7 @@ function renderRemixImageSequence(imagePlan) {
           播放这一句
         </button>
       </div>
+      ${sceneChoiceHTML}
     </div>
   `;
 }
@@ -5157,8 +6265,12 @@ function stepRemixImage(delta) {
   const frames = Array.from(plan.querySelectorAll(".remix-image-frame"));
   if (!frames.length) return;
   const current = Number(plan.dataset.activeIndex || 0);
+  if (delta > 0 && current === 0 && plan.dataset.sceneChoiceAnswered !== "true" && showRemixSceneChoicePrompt()) {
+    return;
+  }
   const next = Math.max(0, Math.min(frames.length - 1, current + delta));
   if (next === current) return;
+  clearRemixChoiceTimer();
   stopRemixAudio();
   plan.dataset.direction = delta >= 0 ? "next" : "prev";
   plan.dataset.activeIndex = String(next);
@@ -5173,6 +6285,27 @@ function renderEndingRemixResult(result) {
   if (!endingRemixLayer) return;
   const storyboard = result.storyboard || [];
   const variant = result.variant || result.prompt_trace?.variant || null;
+  const choiceKey = result.choice?.key || result.choice_key || result.prompt_trace?.choice_key || variant?.choice_key || "";
+  const variantKey = variant?.variant_key || result.variant_key || result.prompt_trace?.variant_key || "";
+  const inlineVariantHTML = renderRemixInlineVariants(choiceKey, variantKey);
+  const introCopy = {
+    road_breakdown: {
+      title: "车坏在半路",
+      logline: "摩托扎进铁钉，路边小卖部还亮着。他们先得决定靠什么撑过这一段。",
+    },
+    ticket_home: {
+      title: "借钱买票回家",
+      logline: "骑车越走越难，他第一次承认可以换一种方式继续赶回年夜饭。",
+    },
+    kindness_ride: {
+      title: "帮人后一起回家",
+      logline: "雪夜里先帮别人脱困，回头却发现自己的摩托不见了。",
+    },
+  };
+  const isSceneChoiceIntro =
+    remixSceneChoice(choiceKey) && !state.pendingRemixSceneChoiceResolved && Number(state.pendingRemixStartIndex || 0) === 0;
+  const resultTitle = isSceneChoiceIntro ? introCopy[choiceKey]?.title || result.title || "AI 猜测卡" : result.title || "AI 猜测卡";
+  const resultLogline = isSceneChoiceIntro ? introCopy[choiceKey]?.logline || result.logline || "" : result.logline || "";
   const imagePlan = result.image_plan || result.prompt_trace?.image_plan || null;
   const videoPlan = result.video_plan || result.prompt_trace?.video_plan || null;
   const videoShots = videoPlan?.shots || [];
@@ -5230,10 +6363,11 @@ function renderEndingRemixResult(result) {
         </div>`
       : "";
   setEndingRemixLayerHost(true);
+  enterRemixPresentationMode();
   endingRemixLayer.className = "ending-remix-layer ending-remix-immersive-layer remix-result-layer";
   alignEndingRemixLayerToViewport();
   endingRemixLayer.innerHTML = `
-    <section class="ending-remix-panel remix-result-panel remix-cinema-panel">
+    <section class="ending-remix-panel remix-result-panel remix-cinema-panel ${imageSequenceHTML ? "remix-image-first" : ""}">
       <div class="remix-head remix-cinema-head">
         <span>${escapeHTML(result.disclaimer || "AI 猜测剧情，非正片内容")}</span>
         <button class="close-button remix-close-button" type="button" data-remix-action="close" aria-label="关闭">×</button>
@@ -5243,10 +6377,11 @@ function renderEndingRemixResult(result) {
           <div class="remix-result-title">
             <b>${escapeHTML(result.choice?.icon || "AI")}</b>
             <div>
-              <h3>${escapeHTML(result.title || "AI 猜测卡")}</h3>
-              <p>${escapeHTML(result.logline || "")}</p>
+              <h3>${escapeHTML(resultTitle)}</h3>
+              <p>${escapeHTML(resultLogline)}</p>
             </div>
           </div>
+          ${inlineVariantHTML}
           <p class="remix-story-text">${escapeHTML(result.story_text || "")}</p>
           ${
             variant
@@ -5271,6 +6406,9 @@ function renderEndingRemixResult(result) {
       </div>
     </section>
   `;
+  scheduleRemixSceneChoicePrompt(imagePlan);
+  state.pendingRemixStartIndex = 0;
+  state.pendingRemixSceneChoiceResolved = false;
 }
 
 function remixSourceLabel(source) {
@@ -5299,6 +6437,7 @@ function renderEndingRemixError(message) {
 }
 
 async function showEndingRemix() {
+  if (!state.aiCompanionEnabled) return;
   if (!state.currentEpisode || state.endingRemixShown || state.remixLoading) return;
   state.endingRemixShown = true;
   state.endingRemixEntryShown = true;
@@ -5320,6 +6459,7 @@ async function showEndingRemix() {
 }
 
 async function showEndingRemixEntry() {
+  if (!state.aiCompanionEnabled) return;
   if (!state.currentEpisode || state.endingRemixEntryShown || state.remixLoading) return;
   state.endingRemixEntryShown = true;
   hideInteraction();
@@ -5331,25 +6471,30 @@ async function showEndingRemixEntry() {
   try {
     const payload = await fetchJSON(`/api/episodes/${state.currentEpisode.id}/remix-options`);
     state.remixOptions = payload;
-    renderEndingRemixEntry(payload);
+    renderEpisodeReportCard(payload);
   } catch {
-    renderEndingRemixEntry(null);
+    renderEpisodeReportCard(null);
   }
 }
 
 function maybeShowEndingRemixEntry(force = false) {
+  if (!state.aiCompanionEnabled) return;
   if (!state.currentEpisode || state.endingRemixEntryShown || state.endingRemixShown || state.remixLoading) return;
   const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode.duration_sec || 0;
   if (!duration && !force) return;
-  const isAtRealEnding = duration > 20 && player.currentTime >= Math.max(0, duration - 0.35);
+  const clearOfHighlight = !state.activeHighlight && player.currentTime - state.lastInteractionTime > 4;
+  const isAtRealEnding = player.ended && clearOfHighlight;
   if (force || isAtRealEnding || player.ended) {
     showEndingRemixEntry();
   }
 }
 
-async function generateEndingRemix(choiceKey, variantKey = "") {
+async function generateEndingRemix(choiceKey, variantKey = "", options = {}) {
   if (!state.currentEpisode || state.remixLoading) return;
   const choice = state.remixOptions?.options?.find((item) => item.key === choiceKey);
+  const startIndex = Number(options.startIndex || 0);
+  state.pendingRemixStartIndex = Number.isFinite(startIndex) ? startIndex : 0;
+  state.pendingRemixSceneChoiceResolved = Boolean(options.sceneChoiceResolved);
   state.remixLoading = true;
   renderEndingRemixLoading(choice);
   try {
@@ -5360,6 +6505,8 @@ async function generateEndingRemix(choiceKey, variantKey = "") {
     state.remixResult = result;
     renderEndingRemixResult(result);
   } catch (error) {
+    state.pendingRemixStartIndex = 0;
+    state.pendingRemixSceneChoiceResolved = false;
     renderEndingRemixError(errorMessage(error));
   } finally {
     state.remixLoading = false;
@@ -5367,6 +6514,7 @@ async function generateEndingRemix(choiceKey, variantKey = "") {
 }
 
 function findDueHighlight(currentTime) {
+  if (!state.aiCompanionEnabled) return null;
   if (state.activeHighlight || currentTime - state.lastInteractionTime < MIN_INTERACTION_GAP_SEC) {
     return null;
   }
@@ -5439,6 +6587,7 @@ function scheduleInteractionHide(delayMs) {
 }
 
 function tapImpactPad(button, ui) {
+  trackEpisodeTap();
   const counter = button.querySelector("strong");
   const next = Number(counter.textContent || "0") + 1;
   counter.textContent = String(next);
@@ -5549,6 +6698,7 @@ function getInteractionMode(highlight, ui, vehicleChoice) {
 }
 
 function showInteraction(highlight) {
+  if (!state.aiCompanionEnabled) return;
   const ui = getHighlightUI(highlight.highlight_type);
   const key = getHighlightKey(highlight.highlight_type);
   const motifs = extractSceneMotifs(highlight);
@@ -5558,6 +6708,7 @@ function showInteraction(highlight) {
   state.interactionMode = interactionMode;
   state.firedHighlights.add(highlight.id);
   state.lastInteractionTime = highlight.start_time_sec;
+  showCompanionCue(companionLineForHighlight(highlight, "after"), key, 4200);
   if (vehicleChoice) {
     state.vehicleResumeAfterChoice = !player.paused;
     player.pause();
@@ -5624,7 +6775,7 @@ function showInteraction(highlight) {
     button.addEventListener("click", () => submitInteraction(button.dataset.key, button));
   });
   emitHighlightDanmaku(highlight, ui);
-  clearStickerLayer();
+  pruneStickerLayer(vehicleChoice ? 2 : 4);
   spawnHighlightStickers(highlight);
   if (!vehicleChoice) scheduleAmbientStickers();
   if (key === "comedy" && impactPad) {
@@ -5677,6 +6828,8 @@ async function submitInteraction(optionKey, anchor) {
   if (vehicleChoice) {
     spawnVehicleRevealTrail(optionKey, Boolean(result.reward?.correct));
   }
+  trackEpisodeChoice(highlight, option, result.reward);
+  showCompanionCue(result.reward?.correct ? "命中！这条我会放进片尾战报。" : "选择已记录，片尾会一起汇总。", "choice", 3600);
   renderInteractionResult(result.stats, result.reward);
   if (vehicleChoice && state.vehicleResumeAfterChoice) {
     window.setTimeout(() => {
@@ -5931,6 +7084,8 @@ async function renderReviewEpisodeOptions(preferredEpisodeId) {
     $("#reviewJson").value = "";
     $("#experienceJson").value = "";
     $("#reviewPreview").innerHTML = "";
+    const understandingPreview = $("#understandingPreview");
+    if (understandingPreview) understandingPreview.innerHTML = "";
     $("#experiencePreview").innerHTML = "";
     $("#remixReviewPanel").innerHTML = "";
     updateReviewWorkbenchCounts({ highlights: [] }, { config: {} }, []);
@@ -5998,6 +7153,7 @@ async function loadReviewPayload(episodeId) {
   state.reviewExperience = experience;
   state.reviewRemixes = remixes;
   state.reviewDanmaku = danmaku;
+  renderUnderstandingPreview(payload, experience, remixes, danmaku);
   renderReviewPreview(payload);
   renderExperiencePreview(experience);
   renderRemixReviewPanel(remixes);
@@ -6069,14 +7225,232 @@ function updateReviewWorkbenchCounts(
   const highlights = payload?.highlights || [];
   const timeline = experience?.config?.sticker_timeline || [];
   const quiz = experience?.config?.quiz_rewards || [];
+  const understandingCount = $("#reviewUnderstandingCount");
   const highlightCount = $("#reviewHighlightCount");
   const experienceCount = $("#reviewExperienceCount");
   const remixCount = $("#reviewRemixCount");
   const danmakuCount = $("#reviewDanmakuCount");
+  if (understandingCount) understandingCount.textContent = highlights.length ? "6" : "0";
   if (highlightCount) highlightCount.textContent = String(highlights.length);
   if (experienceCount) experienceCount.textContent = String(timeline.length + quiz.length);
   if (remixCount) remixCount.textContent = String(remixes.length);
   if (danmakuCount) danmakuCount.textContent = String(danmaku?.summary?.needs_review || 0);
+}
+
+function highlightOverlapSeconds(aStart, aEnd, bStart, bEnd) {
+  return Math.max(0, Math.min(Number(aEnd || 0), Number(bEnd || 0)) - Math.max(Number(aStart || 0), Number(bStart || 0)));
+}
+
+function countByValue(items, getter) {
+  return items.reduce((acc, item) => {
+    const key = getter(item) || "未标注";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+}
+
+function renderUnderstandingPills(values = {}) {
+  const entries = Object.entries(values);
+  if (!entries.length) return `<span>暂无</span>`;
+  return entries.map(([key, count]) => `<span>${escapeHTML(key)} · ${Number(count || 0)}</span>`).join("");
+}
+
+function renderUnderstandingPreview(payload = {}, experience = {}, remixes = [], danmaku = {}) {
+  const panel = $("#understandingPreview");
+  if (!panel) return;
+  const highlights = payload.highlights || [];
+  const config = experience.config || {};
+  const timeline = Array.isArray(config.sticker_timeline) ? config.sticker_timeline : [];
+  const quizRewards = Array.isArray(config.quiz_rewards) ? config.quiz_rewards : [];
+  const theme = config.player_theme || {};
+  const danmakuSummary = danmaku?.summary || {};
+  const danmakuModel = danmakuSummary.model || {};
+  const pipeline = danmakuSummary.pipeline || [];
+  const totalHighlightSeconds = highlights.reduce(
+    (sum, item) => sum + Math.max(0, Number(item.end_time_sec || 0) - Number(item.start_time_sec || 0)),
+    0
+  );
+  const coverage = payload.duration_sec ? Math.min(100, Math.round((totalHighlightSeconds / Number(payload.duration_sec)) * 100)) : 0;
+  const avgConfidence = highlights.length
+    ? Math.round(
+        (highlights.reduce((sum, item) => sum + Number(item.confidence || 0), 0) / highlights.length) * 100
+      )
+    : 0;
+  const typeCounts = countByValue(highlights, (item) => item.highlight_type);
+  const emotionCounts = countByValue(highlights, (item) => item.emotion);
+  const featuredRemixes = remixes.filter((item) => item.is_featured).length;
+  const firstHighlight = highlights[0];
+  const lastHighlight = highlights[highlights.length - 1];
+  const episodeArc =
+    firstHighlight && lastHighlight
+      ? `从「${firstHighlight.title}」推进到「${lastHighlight.title}」，形成冲突、亲情压力、返乡悬念和片尾二创入口。`
+      : "当前剧集还没有形成可解释的高光链路。";
+  const sourceChain = [
+    payload.prompt_version || "admin-review-v1",
+    experience.model_version || experience.source || "experience-config",
+    danmakuModel.small_model_version || "danmaku-small-model",
+    danmakuModel.llm_review_mode || "offline-llm-review",
+  ];
+  panel.innerHTML = `
+    <article class="understanding-hero-card">
+      <div>
+        <span>Understanding Map</span>
+        <h3>${escapeHTML(payload.drama_title || "未选择剧集")} · ${escapeHTML(payload.episode_title || "")}</h3>
+        <p>${escapeHTML(episodeArc)}</p>
+      </div>
+      <div class="understanding-score">
+        <strong>${avgConfidence}%</strong>
+        <span>高光理解置信</span>
+      </div>
+    </article>
+    <div class="understanding-metrics">
+      <article><span>剧情高光</span><strong>${highlights.length}</strong><small>覆盖 ${coverage}% · ${formatTime(totalHighlightSeconds)}</small></article>
+      <article><span>互动落地</span><strong>${timeline.length}</strong><small>贴图时间窗 · ${quizRewards.length} 条竞猜奖励</small></article>
+      <article><span>弹幕理解</span><strong>${Number(danmakuSummary.total || 0)}</strong><small>${Number(
+        danmakuSummary.needs_review || 0
+      )} 条需复核 · ${Number(danmakuSummary.llm_candidate_count || 0)} 条大模型候选</small></article>
+      <article><span>片尾二创</span><strong>${remixes.length}</strong><small>${featuredRemixes} 条精选 · ${escapeHTML(
+        theme.name || "默认主题"
+      )}</small></article>
+    </div>
+    <details class="understanding-details" open>
+      <summary>
+        <div>
+          <span>本集理解摘要</span>
+          <strong>系统如何把剧情变成互动</strong>
+        </div>
+      </summary>
+      <div class="understanding-summary-grid">
+        <article>
+          <b>高光类型</b>
+          <div class="understanding-pill-list">${renderUnderstandingPills(typeCounts)}</div>
+        </article>
+        <article>
+          <b>情绪标签</b>
+          <div class="understanding-pill-list">${renderUnderstandingPills(emotionCounts)}</div>
+        </article>
+        <article>
+          <b>播放器主题</b>
+          <p>${escapeHTML(theme.badge || theme.name || "未配置")} · ${escapeHTML(theme.signal || "暂无主题信号")}</p>
+        </article>
+        <article>
+          <b>模型与来源链路</b>
+          <p>${sourceChain.map((item) => escapeHTML(item)).join(" → ")}</p>
+        </article>
+      </div>
+    </details>
+    <details class="understanding-details">
+      <summary>
+        <div>
+          <span>高光理解时间轴</span>
+          <strong>为什么这些时间点值得触发</strong>
+        </div>
+      </summary>
+      <div class="understanding-timeline">
+        ${
+          highlights.length
+            ? highlights
+                .map((item, index) => {
+                  const stickers = timeline.filter(
+                    (slot) => highlightOverlapSeconds(item.start_time_sec, item.end_time_sec, slot.start_time_sec, slot.end_time_sec) > 0
+                  );
+                  const reward = quizRewards.find((rule) => rule.highlight_title === item.title);
+                  return `
+                    <article class="understanding-timeline-card">
+                      <div class="understanding-time-rail">
+                        <b>${String(index + 1).padStart(2, "0")}</b>
+                        <span>${formatTime(item.start_time_sec)}-${formatTime(item.end_time_sec)}</span>
+                      </div>
+                      <div>
+                        <h4>${escapeHTML(item.title || `高光 ${index + 1}`)}</h4>
+                        <div class="understanding-pill-list">
+                          <span>${escapeHTML(item.highlight_type || "未分类")}</span>
+                          <span>${escapeHTML(item.emotion || "未标注情绪")}</span>
+                          <span>置信 ${scorePercent(item.confidence)}</span>
+                        </div>
+                        <p>${escapeHTML(item.description || "")}</p>
+                        <small>判断依据：${escapeHTML(item.reason || item.evidence_text || "暂无解释")}</small>
+                        <div class="understanding-use-chain">
+                          <span>按钮 ${Number(item.options?.length || 0)} 个</span>
+                          <span>贴图窗 ${stickers.length} 个</span>
+                          <span>${reward ? `奖励「${escapeHTML(reward.title)}」` : "无竞猜奖励"}</span>
+                        </div>
+                      </div>
+                    </article>
+                  `;
+                })
+                .join("")
+            : `<div class="empty-state">暂无高光理解数据</div>`
+        }
+      </div>
+    </details>
+    <details class="understanding-details">
+      <summary>
+        <div>
+          <span>弹幕治理理解链路</span>
+          <strong>规则、大模型、小模型和人工如何协同</strong>
+        </div>
+      </summary>
+      <div class="understanding-pipeline">
+        ${
+          pipeline.length
+            ? pipeline
+                .map(
+                  (layer, index) => `
+                    <article>
+                      <span>${String(index + 1).padStart(2, "0")}</span>
+                      <strong>${escapeHTML(layer.label || layer.key)}</strong>
+                      <b>${Number(layer.count || 0)}</b>
+                      <p>${escapeHTML(layer.description || "")}</p>
+                    </article>
+                  `
+                )
+                .join("")
+            : `<div class="empty-state">暂无弹幕治理流水线数据</div>`
+        }
+      </div>
+      <div class="understanding-model-loop">
+        <article>
+          <b>小模型闭环</b>
+          <p>${escapeHTML(danmakuModel.small_model_version || "未训练")} · 训练样本 ${Number(
+            danmakuModel.small_model_trained_rows || 0
+          )} 条 · 低置信 ${Number(danmakuModel.small_model_low_confidence || 0)} 条</p>
+        </article>
+        <article>
+          <b>大模型复审</b>
+          <p>${escapeHTML(danmakuModel.llm_review_mode || "offline_batch_queue")} · 候选 ${Number(
+            danmakuSummary.llm_candidate_count || 0
+          )} 条 · 聚类组 ${Number(danmakuSummary.duplicate_group_count || 0)} 个</p>
+        </article>
+      </div>
+    </details>
+    <details class="understanding-details">
+      <summary>
+        <div>
+          <span>片尾 AI 二创承接</span>
+          <strong>剧情理解如何继续生成内容</strong>
+        </div>
+      </summary>
+      <div class="understanding-remix-grid">
+        ${
+          remixes.length
+            ? remixes.slice(0, 6).map(
+                (item) => `
+                  <article>
+                    <span>${escapeHTML(remixStatusLabel(item.review_status, item.is_featured))}</span>
+                    <strong>${escapeHTML(item.title || "AI 二创")}</strong>
+                    <p>${escapeHTML(item.logline || item.story_text || "暂无文案")}</p>
+                    <small>${escapeHTML(item.choice_label || item.choice?.label || "剧情预测")} · ${escapeHTML(
+                      remixSourceLabel(item.source)
+                    )}</small>
+                  </article>
+                `
+              ).join("")
+            : `<div class="empty-state">暂无片尾二创记录</div>`
+        }
+      </div>
+    </details>
+  `;
 }
 
 function remixStatusLabel(status, featured) {
@@ -6089,8 +7463,102 @@ function danmakuStatusLabel(status) {
   return { approved: "已通过", needs_review: "需复核", hidden: "已隐藏" }[status] || status || "已通过";
 }
 
+function danmakuModeLabel(mode) {
+  return { light: "轻聊", carnival: "狂欢", curated: "精选", seed: "种子" }[mode] || mode || "轻聊";
+}
+
 function scorePercent(value) {
   return `${Math.round(Number(value || 0) * 100)}%`;
+}
+
+function statusRatio(count, total) {
+  if (!total) return "0%";
+  return `${Math.round((Number(count || 0) / total) * 100)}%`;
+}
+
+function renderDanmakuDistribution(title, values = {}, total = 0, labeler = (key) => key) {
+  const entries = Object.entries(values).filter(([, count]) => Number(count || 0) > 0);
+  return `
+    <article class="danmaku-distribution-card">
+      <strong>${escapeHTML(title)}</strong>
+      ${
+        entries.length
+          ? entries
+              .map(([key, count]) => {
+                const ratio = statusRatio(count, total);
+                return `
+                  <div class="danmaku-distribution-row">
+                    <span>${escapeHTML(labeler(key))}</span>
+                    <i><b style="width: ${ratio}"></b></i>
+                    <em>${Number(count || 0)}</em>
+                  </div>
+                `;
+              })
+              .join("")
+          : `<p>暂无数据</p>`
+      }
+    </article>
+  `;
+}
+
+function layerState(layer, kind) {
+  if (!layer) return { label: "未运行", tone: "muted" };
+  if (kind === "rule") {
+    return layer.issues?.length ? { label: layer.issues.join(" / "), tone: "warn" } : { label: "通过", tone: "ok" };
+  }
+  if (kind === "time_aware") {
+    return layer.suggested_time_sec !== null && layer.suggested_time_sec !== undefined
+      ? { label: `延后到 ${formatTime(layer.suggested_time_sec)}`, tone: "warn" }
+      : { label: "无剧透提前", tone: "ok" };
+  }
+  if (kind === "semantic") {
+    return layer.issues?.length
+      ? { label: layer.issues.join(" / "), tone: "warn" }
+      : { label: `相关 ${scorePercent(layer.relevance)}`, tone: "ok" };
+  }
+  if (kind === "cluster") {
+    return Number(layer.cluster_size || 1) > 1
+      ? { label: `合并 ${Number(layer.cluster_size || 1)} 条`, tone: "info" }
+      : { label: "单条", tone: "ok" };
+  }
+  if (kind === "small_model") {
+    const confidence = Number(layer.confidence ?? 0);
+    return confidence < 0.22
+      ? { label: `低置信 ${scorePercent(confidence)}`, tone: "warn" }
+      : { label: `通过 ${scorePercent(layer.pass_score)}`, tone: "ok" };
+  }
+  if (kind === "llm_review") {
+    return layer.candidate
+      ? { label: `候选：${(layer.issues || []).join(" / ") || "复审"}`, tone: "warn" }
+      : { label: "跳过", tone: "ok" };
+  }
+  if (kind === "human_review") {
+    return layer.required ? { label: "需要人工", tone: "warn" } : { label: "无需人工", tone: "ok" };
+  }
+  return { label: "已处理", tone: "info" };
+}
+
+function renderDanmakuLayerTrail(item) {
+  const layers = item.moderation_layers || {};
+  const definitions = [
+    ["rule", "规则"],
+    ["time_aware", "时间"],
+    ["semantic", "语义"],
+    ["cluster", "聚类"],
+    ["small_model", "小模型"],
+    ["llm_review", "大模型"],
+    ["human_review", "人工"],
+  ];
+  return `
+    <div class="danmaku-layer-trail" aria-label="弹幕分层治理结果">
+      ${definitions
+        .map(([key, label]) => {
+          const state = layerState(layers[key], key);
+          return `<span class="${state.tone}"><b>${label}</b><em>${escapeHTML(state.label)}</em></span>`;
+        })
+        .join("")}
+    </div>
+  `;
 }
 
 function renderDanmakuReviewPanel(payload = state.reviewDanmaku) {
@@ -6098,21 +7566,46 @@ function renderDanmakuReviewPanel(payload = state.reviewDanmaku) {
   if (!panel) return;
   const summary = payload?.summary || {};
   const items = payload?.items || [];
+  const total = Number(summary.total || 0);
+  const model = summary.model || {};
+  const pipeline = summary.pipeline || [];
   panel.innerHTML = `
     <div class="danmaku-governance-summary">
       <article><span>总量</span><strong>${summary.total || 0}</strong></article>
       <article><span>需复核</span><strong>${summary.needs_review || 0}</strong></article>
-      <article><span>已通过</span><strong>${summary.approved || 0}</strong></article>
-      <article><span>已隐藏</span><strong>${summary.hidden || 0}</strong></article>
+      <article><span>大模型候选</span><strong>${summary.llm_candidate_count || 0}</strong></article>
+      <article><span>重复聚类组</span><strong>${summary.duplicate_group_count || 0}</strong></article>
     </div>
-    <div class="danmaku-layer-explain">
-      <b>六层治理</b>
-      <span>规则过滤</span>
-      <span>时间感知</span>
-      <span>语义分类</span>
-      <span>聚类去重</span>
-      <span>小模型</span>
-      <span>人工复核</span>
+    <div class="danmaku-governance-visual">
+      <div class="danmaku-pipeline">
+        ${pipeline
+          .map(
+            (layer, index) => `
+              <article>
+                <span>${String(index + 1).padStart(2, "0")}</span>
+                <strong>${escapeHTML(layer.label || layer.key)}</strong>
+                <b>${Number(layer.count || 0)}</b>
+                <p>${escapeHTML(layer.description || "")}</p>
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+      <div class="danmaku-distribution-grid">
+        ${renderDanmakuDistribution("状态分布", summary.status || {}, total, danmakuStatusLabel)}
+        ${renderDanmakuDistribution("模式分层", summary.mode || {}, total, danmakuModeLabel)}
+        <article class="danmaku-model-card">
+          <span>Model Loop</span>
+          <strong>${escapeHTML(model.small_model_version || "small-model-default")}</strong>
+          <p>训练样本 ${Number(model.small_model_trained_rows || 0)} 条 · 大模型：${escapeHTML(
+            model.llm_review_mode || "offline_batch_queue"
+          )}</p>
+          <p>小模型低置信 ${Number(model.small_model_low_confidence || 0)} 条 · 复审候选 ${Number(
+            summary.llm_candidate_count || 0
+          )} 条</p>
+          <em>${escapeHTML((model.governance_versions || []).join(" / ") || "未运行治理")}</em>
+        </article>
+      </div>
     </div>
     ${
       items.length
@@ -6127,6 +7620,11 @@ function renderDanmakuReviewPanel(payload = state.reviewDanmaku) {
                       )}</span>
                       <strong>${escapeHTML(item.text || "")}</strong>
                       <p>${escapeHTML(item.moderation_reason || "通过分层治理")}</p>
+                      ${
+                        item.suggested_time_sec !== null && item.suggested_time_sec !== undefined
+                          ? `<p class="danmaku-delay-note">建议延后展示到 ${formatTime(item.suggested_time_sec)}</p>`
+                          : ""
+                      }
                     </div>
                     <div class="danmaku-score-pills">
                       <em>风险 ${scorePercent(item.risk_score)}</em>
@@ -6135,6 +7633,7 @@ function renderDanmakuReviewPanel(payload = state.reviewDanmaku) {
                       <em>相关 ${scorePercent(item.relevance_score)}</em>
                       <em>聚类 ${Number(item.cluster_size || 1)}</em>
                     </div>
+                    ${renderDanmakuLayerTrail(item)}
                   </div>
                   <div class="danmaku-review-editor">
                     <input class="danmaku-review-input" data-danmaku-field="text" data-danmaku-id="${item.id}" value="${escapeHTML(
@@ -6206,6 +7705,20 @@ async function runDanmakuGovernance() {
     setReviewStatus(`弹幕治理已完成：处理 ${result.processed || 0} 条`);
   } catch (error) {
     setReviewStatus(`弹幕治理失败：${errorMessage(error)}`, true);
+  }
+}
+
+async function trainDanmakuSmallModel() {
+  const episodeId = Number($("#reviewEpisodeSelect").value || parseReviewJsonSafe().episode_id);
+  if (!episodeId) return;
+  try {
+    const result = await fetchJSON(`/api/admin/episodes/${episodeId}/danmaku-governance/train-small-model`, { method: "POST" });
+    await reloadDanmakuReviewPanel();
+    const trainedRows = result?.trained?.trained_rows || 0;
+    const version = result?.trained?.version || "danmaku-small-model";
+    setReviewStatus(`小模型已训练：${version} · ${trainedRows} 条样本，并已重跑当前集治理`);
+  } catch (error) {
+    setReviewStatus(`小模型训练失败：${errorMessage(error)}`, true);
   }
 }
 
@@ -7517,6 +9030,7 @@ async function sendDanmaku(event) {
   const input = $("#danmakuInput");
   const text = input.value.trim();
   if (!text || !state.currentEpisode || !getDanmakuMode().enabled) return;
+  const color = state.danmakuColor || "#f5f7fb";
   try {
     const comment = await fetchJSON("/api/danmaku", {
       method: "POST",
@@ -7528,6 +9042,7 @@ async function sendDanmaku(event) {
         mode: state.danmakuSettings.mode,
       }),
     });
+    comment.color = color;
     state.danmaku.push(comment);
     state.firedDanmaku.add(comment.id);
     emitDanmaku(comment);
@@ -7535,6 +9050,7 @@ async function sendDanmaku(event) {
       episode_id: comment.episode_id,
       time_sec: comment.time_sec,
       text: comment.text,
+      color,
       comment,
     });
     input.value = "";
@@ -7542,6 +9058,61 @@ async function sendDanmaku(event) {
   } catch (error) {
     setDanmakuFeedback(errorMessage(error), true);
   }
+}
+
+function setDanmakuComposerOpen(open) {
+  state.danmakuComposerOpen = Boolean(open);
+  const panel = $("#danmakuComposerPanel");
+  const toggle = $("#danmakuComposerToggle");
+  if (panel) panel.hidden = !state.danmakuComposerOpen;
+  if (toggle) toggle.setAttribute("aria-expanded", state.danmakuComposerOpen ? "true" : "false");
+  $("#danmakuForm")?.classList.toggle("composer-open", state.danmakuComposerOpen);
+}
+
+function setDanmakuColor(color) {
+  state.danmakuColor = color || "#f5f7fb";
+  document.querySelectorAll("[data-danmaku-color]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.danmakuColor === state.danmakuColor);
+  });
+  $("#danmakuInput")?.style.setProperty("--compose-color", state.danmakuColor);
+}
+
+function insertDanmakuEmoji(text) {
+  const input = $("#danmakuInput");
+  if (!input || !text) return;
+  const next = `${input.value}${input.value ? " " : ""}${text}`.slice(0, Number(input.maxLength || 40));
+  input.value = next;
+  input.focus();
+}
+
+async function sendRoomQuickChat(event) {
+  event.preventDefault();
+  const input = $("#roomQuickChatInput");
+  const text = input?.value.trim();
+  if (!text) return;
+  if (!state.watchRoom) {
+    setDanmakuFeedback("请先开房，再使用同看聊天。", true);
+    return;
+  }
+  const payload = {
+    episode_id: state.currentEpisode?.id,
+    time_sec: player.currentTime || 0,
+    text,
+    color: "#ffe0b2",
+  };
+  await postRoomEvent("danmaku", payload);
+  emitDanmaku({
+    id: safeRandomId("room-chat"),
+    episode_id: state.currentEpisode?.id,
+    time_sec: payload.time_sec,
+    text,
+    mode: "carnival",
+    user_name: state.currentUser?.display_name || "我",
+    className: "room-danmaku",
+    color: payload.color,
+  });
+  input.value = "";
+  setDanmakuFeedback("同看聊天已发送");
 }
 
 function applyPendingResume() {
@@ -7557,6 +9128,7 @@ function applyPendingResume() {
 }
 
 player.addEventListener("timeupdate", () => {
+  maybeShowCompanionCue(player.currentTime);
   const highlight = findDueHighlight(player.currentTime);
   if (highlight) showInteraction(highlight);
   checkDanmaku(player.currentTime);
@@ -7572,6 +9144,7 @@ player.addEventListener("timeupdate", () => {
 player.addEventListener("loadedmetadata", () => {
   clearPlayerStatus();
   applyPendingResume();
+  renderHighlightHeatTrack();
   updatePlayerControls();
 });
 
@@ -7582,13 +9155,16 @@ player.addEventListener("error", () => {
 });
 
 player.addEventListener("play", () => {
+  resetWatchScroll();
   updatePlayerControls();
+  revealPlayerControls();
   scheduleAmbientStickers();
   syncRoomState(true);
 });
 
 player.addEventListener("pause", () => {
   updatePlayerControls();
+  revealPlayerControls(true);
   window.clearTimeout(state.ambientStickerTimer);
   recordWatchHistory(player.currentTime || 0, true);
   syncRoomState(true);
@@ -7620,13 +9196,48 @@ playToggle.addEventListener("click", () => {
 muteToggle.addEventListener("click", () => {
   player.muted = !player.muted;
   updatePlayerControls();
+  revealPlayerControls();
 });
 
 progressSlider.addEventListener("input", () => {
   const duration = Number.isFinite(player.duration) ? player.duration : state.currentEpisode?.duration_sec || 0;
   player.currentTime = duration * (Number(progressSlider.value) / 1000);
   updatePlayerControls();
+  revealPlayerControls();
 });
+
+progressSlider.addEventListener("pointermove", showProgressHover);
+progressSlider.addEventListener("pointerenter", showProgressHover);
+progressSlider.addEventListener("pointerleave", hideProgressHover);
+progressSlider.addEventListener("focus", holdPlayerControls);
+progressSlider.addEventListener("blur", hideProgressHover);
+
+const progressTrackShell = progressSlider?.closest(".progress-track-shell");
+progressTrackShell?.addEventListener("pointermove", showProgressHover);
+progressTrackShell?.addEventListener("pointerenter", showProgressHover);
+progressTrackShell?.addEventListener("pointerleave", hideProgressHover);
+
+fullscreenToggle?.addEventListener("click", togglePlayerFullscreen);
+document.addEventListener("fullscreenchange", syncFullscreenState);
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  const wrap = playerWrapElement();
+  if (wrap?.classList.contains("pseudo-fullscreen")) {
+    wrap.classList.remove("pseudo-fullscreen");
+    state.remixForcedFullscreen = false;
+    syncFullscreenState();
+  }
+});
+
+const playerWrap = playerWrapElement();
+if (playerWrap) {
+  playerWrap.addEventListener("pointermove", handlePlayerPointerMove);
+  playerWrap.addEventListener("pointerenter", () => revealPlayerControls());
+  playerWrap.addEventListener("pointerleave", () => hidePlayerControlsSoon(450));
+  playerWrap.addEventListener("focusin", holdPlayerControls);
+  playerWrap.addEventListener("focusout", () => revealPlayerControls());
+  playerWrap.addEventListener("dblclick", togglePlayerFullscreen);
+}
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && document.body.dataset.view === "watch") {
@@ -7638,6 +9249,10 @@ window.addEventListener("resize", alignEndingRemixLayerToViewport);
 
 window.addEventListener("pagehide", stopPlaybackForExit);
 
+syncAuthDeviceClock();
+setInterval(syncAuthDeviceClock, 1000);
+syncAiModeToggle();
+
 homeTab.addEventListener("click", () => setView("home"));
 chatTab.addEventListener("click", () => setView("chat"));
 discoverTab.addEventListener("click", () => setView("discover"));
@@ -7645,7 +9260,7 @@ profileTab.addEventListener("click", () => setView("profile"));
 adminTab.addEventListener("click", () => setView("admin"));
 reviewTab.addEventListener("click", () => setView("review"));
 $("#authForm").addEventListener("submit", submitAuth);
-$("#authView").addEventListener("pointerdown", authTapEffect);
+document.addEventListener("pointerdown", pressEffect);
 $("#toggleAuthMode").addEventListener("click", () => {
   state.authMode = state.authMode === "login" ? "register" : "login";
   syncAuthMode();
@@ -7659,6 +9274,11 @@ document.querySelectorAll(".demo-accounts button").forEach((button) => {
     $("#authPassword").value = button.dataset.demoPass;
     setAuthStatus(`已填入${button.textContent}演示账号`);
   });
+});
+$("#aiModeToggle")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-ai-mode]");
+  if (!button) return;
+  setAiCompanionEnabled(button.dataset.aiMode === "on");
 });
 $("#backButton").addEventListener("click", () => setView("home"));
 $("#markInboxRead")?.addEventListener("click", async () => {
@@ -7723,6 +9343,16 @@ $("#chatInboxList")?.addEventListener("click", (event) => {
 document.querySelectorAll("[data-social-scope]").forEach((button) => {
   button.addEventListener("click", () => loadSocialFeed(button.dataset.socialScope));
 });
+document.querySelectorAll("[data-social-select-target]").forEach((group) => {
+  group.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-value]");
+    if (!button) return;
+    const select = document.getElementById(group.dataset.socialSelectTarget);
+    if (!select) return;
+    select.value = button.dataset.value;
+    syncSocialChoiceGroups();
+  });
+});
 $("#socialFeedList")?.addEventListener("click", (event) => {
   const likeButton = event.target.closest("[data-like-post-id]");
   if (likeButton) {
@@ -7746,6 +9376,11 @@ $("#socialFeedList")?.addEventListener("click", (event) => {
 });
 $("#refreshProfile").addEventListener("click", loadRewardProfile);
 $("#profileGallery").addEventListener("click", (event) => {
+  if (event.target.closest("#toggleAvatarRecommendations")) {
+    state.avatarRecommendationsOpen = !state.avatarRecommendationsOpen;
+    renderProfileGallery();
+    return;
+  }
   const filterButton = event.target.closest("[data-avatar-filter]");
   if (filterButton) {
     state.avatarFilter = filterButton.dataset.avatarFilter || "featured";
@@ -7832,6 +9467,11 @@ $("#profileGallery").addEventListener("change", (event) => {
   if (input) prepareProfileAvatarCrop(input.files?.[0]);
 });
 endingRemixLayer?.addEventListener("click", (event) => {
+  const companionModeButton = event.target.closest("[data-companion-mode]");
+  if (companionModeButton) {
+    setReportCompanionMode(companionModeButton.dataset.companionMode || "eyes");
+    return;
+  }
   const voiceModeButton = event.target.closest("[data-voice-mode]");
   if (voiceModeButton && !voiceModeButton.disabled) {
     stopRemixAudio();
@@ -7845,13 +9485,27 @@ endingRemixLayer?.addEventListener("click", (event) => {
   const variant = event.target.closest("[data-remix-variant]");
   if (variant) {
     stopRemixAudio();
-    generateEndingRemix(variant.dataset.remixChoiceKey, variant.dataset.remixVariant);
+    const prompt = variant.closest("[data-remix-scene-choice]");
+    const startIndex = Number(variant.dataset.remixStartIndex || 0);
+    if (prompt) {
+      prompt.dataset.answered = "true";
+      const plan = endingRemixLayer?.querySelector("[data-remix-image-plan]");
+      if (plan) {
+        plan.dataset.sceneChoiceAnswered = "true";
+        delete plan.dataset.sceneChoiceOpen;
+      }
+    }
+    clearRemixChoiceTimer();
+    generateEndingRemix(variant.dataset.remixChoiceKey, variant.dataset.remixVariant, {
+      startIndex,
+      sceneChoiceResolved: Boolean(prompt),
+    });
     return;
   }
   const choice = event.target.closest("[data-remix-choice]");
   if (choice) {
     stopRemixAudio();
-    renderEndingRemixVariantOptions(choice.dataset.remixChoice);
+    generateEndingRemix(choice.dataset.remixChoice, defaultRemixVariantKey(choice.dataset.remixChoice));
     return;
   }
   const actionButton = event.target.closest("[data-remix-action]");
@@ -7879,12 +9533,17 @@ endingRemixLayer?.addEventListener("click", (event) => {
     return;
   }
   if (action === "back" && state.remixOptions) {
+    clearRemixChoiceTimer();
     stopRemixAudio();
     renderEndingRemixOptions(state.remixOptions);
     return;
   }
   if (action === "close") {
+    clearRemixChoiceTimer();
     stopRemixAudio();
+    window.clearTimeout(state.companionTimer);
+    companionBubble?.classList.add("hidden");
+    exitRemixPresentationMode();
     resetEndingRemixViewportOffset();
     endingRemixLayer.className = "ending-remix-layer hidden";
     endingRemixLayer.innerHTML = "";
@@ -8075,6 +9734,7 @@ $("#remixReviewPanel").addEventListener("click", (event) => {
 });
 $("#reloadDanmakuReview")?.addEventListener("click", reloadDanmakuReviewPanel);
 $("#runDanmakuGovernance")?.addEventListener("click", runDanmakuGovernance);
+$("#trainDanmakuSmallModel")?.addEventListener("click", trainDanmakuSmallModel);
 $("#danmakuReviewStatusFilter")?.addEventListener("change", (event) => {
   state.reviewDanmakuStatusFilter = event.target.value;
   reloadDanmakuReviewPanel();
@@ -8104,8 +9764,27 @@ $("#danmakuReviewPanel")?.addEventListener("click", (event) => {
 });
 $("#danmakuForm").addEventListener("submit", sendDanmaku);
 $("#danmakuSettingsToggle").addEventListener("click", () => {
+  setDanmakuComposerOpen(false);
   $("#danmakuSettings").classList.toggle("open");
 });
+$("#danmakuComposerToggle")?.addEventListener("click", () => {
+  $("#danmakuSettings")?.classList.remove("open");
+  setDanmakuComposerOpen(!state.danmakuComposerOpen);
+});
+$("#danmakuComposerPanel")?.addEventListener("click", (event) => {
+  const colorButton = event.target.closest("[data-danmaku-color]");
+  if (colorButton) {
+    setDanmakuColor(colorButton.dataset.danmakuColor);
+    return;
+  }
+  const emojiButton = event.target.closest("[data-danmaku-emoji]");
+  if (emojiButton) insertDanmakuEmoji(emojiButton.dataset.danmakuEmoji);
+});
+coWatchOverlayToggle?.addEventListener("click", () => {
+  state.coWatchExpanded = !state.coWatchExpanded;
+  updateCoWatchDock();
+});
+$("#roomQuickChatForm")?.addEventListener("submit", sendRoomQuickChat);
 $("#createRoomButton").addEventListener("click", createWatchRoom);
 $("#joinRoomButton").addEventListener("click", joinWatchRoom);
 $("#demoRoomButton").addEventListener("click", enableDemoWatchRoom);
@@ -8123,13 +9802,17 @@ document.querySelectorAll(".mode-button").forEach((button) => {
     renderDanmakuHint();
   });
 });
-["danmakuFontSize", "danmakuSpeed", "danmakuArea"].forEach((id) => {
+["danmakuFontSize", "danmakuArea"].forEach((id) => {
   $(`#${id}`).addEventListener("change", (event) => {
     const key = id.replace("danmaku", "");
     const settingKey = key.charAt(0).toLowerCase() + key.slice(1);
     state.danmakuSettings[settingKey] = event.target.value;
     applyDanmakuSettings();
   });
+});
+$("#danmakuSpeed").addEventListener("input", (event) => {
+  state.danmakuSettings.speed = ["slow", "normal", "fast"][Number(event.target.value)] || "normal";
+  applyDanmakuSettings();
 });
 $("#danmakuOpacity").addEventListener("input", (event) => {
   state.danmakuSettings.opacity = Number(event.target.value);
@@ -8140,6 +9823,9 @@ syncAuthMode();
 updateAuthUI();
 applyDanmakuSettings();
 renderDanmakuHint();
+setDanmakuComposerOpen(false);
+setDanmakuColor(state.danmakuColor);
+updateCoWatchDock();
 
 async function bootstrap() {
   const signedIn = await restoreAuth();

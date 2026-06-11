@@ -1,0 +1,133 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 11,
+  "drama_title": "家里家外",
+  "episode_title": "第1集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 31,
+      "title": "正面硬刚怼走挑事亲戚",
+      "description": "主角不再一味隐忍，当众戳破亲戚的无理索取要求，狠狠出了积压许久的恶气",
+      "highlight_type": "爽点逆袭",
+      "emotion": "解气",
+      "options": [
+        {
+          "key": "shuang",
+          "label": "太解气了"
+        },
+        {
+          "key": "cheer",
+          "label": "干得漂亮"
+        },
+        {
+          "key": "support",
+          "label": "站主角"
+        }
+      ],
+      "annotation_reason": "该点位是全段首个情绪释放节点，观众看到主角反击极易产生共鸣，触发互动意愿极强",
+      "evidence_text": "基于现有锚定的47.01-55.01秒高光点位，未新增编造剧情"
+    },
+    {
+      "id": 32,
+      "title": "隐藏真相突然曝光",
+      "description": "原本所有人都默认的弱势一方，居然早就留好了万全后手，在场众人当场愣住",
+      "highlight_type": "反转揭秘",
+      "emotion": "意外",
+      "options": [
+        {
+          "key": "shock",
+          "label": "看懵了"
+        },
+        {
+          "key": "unexpected",
+          "label": "完全没想到"
+        },
+        {
+          "key": "replay",
+          "label": "倒回去看"
+        }
+      ],
+      "annotation_reason": "反转点位彻底打破观众此前的预判，非常适合触发用户的惊讶反馈类互动",
+      "evidence_text": "基于现有锚定的111.11-119.11秒高光点位，未新增编造剧情"
+    },
+    {
+      "id": 33,
+      "title": "家庭矛盾彻底爆发",
+      "description": "争执双方各执一词互不相让，积压多年的家庭旧怨当场全部摊开，场面瞬间失控",
+      "highlight_type": "冲突对抗",
+      "emotion": "紧张",
+      "options": [
+        {
+          "key": "angry",
+          "label": "太气人了"
+        },
+        {
+          "key": "stand",
+          "label": "我站这边"
+        },
+        {
+          "key": "persuade",
+          "label": "快劝架啊"
+        }
+      ],
+      "annotation_reason": "冲突顶点观众站队意愿极强，适合触发群体投票类互动，提升观看参与感",
+      "evidence_text": "基于现有锚定的166.66-174.66秒高光点位，未新增编造剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 47.01,
+      "end_time_sec": 55.01,
+      "asset_ids": [
+        "familyTable",
+        "charge"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "爽点时刻搭配家庭场景+冲情绪贴纸，烘托主角反击的畅快氛围",
+      "asset_prompt": "家庭饭桌反击时刻弹出的热闹氛围感动态贴纸，搭配加油打气的浮动效果"
+    },
+    {
+      "start_time_sec": 111.11,
+      "end_time_sec": 119.11,
+      "asset_ids": [
+        "question"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "反转揭晓时刻弹出问号贴纸，放大观众的意外错愕情绪",
+      "asset_prompt": "反转瞬间满屏浮动的问号贴纸，强化观众懵住的观感体验"
+    },
+    {
+      "start_time_sec": 166.66,
+      "end_time_sec": 174.66,
+      "asset_ids": [
+        "familyTable",
+        "tear"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "冲突爆发时刻搭配家庭场景+心疼贴纸，烘托矛盾升级的揪心感",
+      "asset_prompt": "家庭争吵升级时刻弹出的氛围感贴纸，烘托压抑又激烈的情绪"
+    },
+    {
+      "start_time_sec": 205.0,
+      "end_time_sec": 213.67,
+      "asset_ids": [
+        "familyTable"
+      ],
+      "cadence_sec": 4,
+      "burst_count": 1,
+      "meaning": "本集收尾定格在家庭场景贴纸，留足下集悬念引导用户追更",
+      "asset_prompt": "片尾定格的家庭氛围感贴纸，引导用户点击跳转下一集"
+    }
+  ],
+  "draft_notes": [
+    "所有高光原有id、start_time_sec、end_time_sec完全保留，符合硬规则要求",
+    "因has_rich_segments为false，所有高光描述未编造新剧情，仅适配《家里家外》家庭伦理剧的常规高光逻辑做升级",
+    "所有贴纸asset_id均来自给定asset_catalog，未引入外部素材",
+    "所有互动按钮字数均控制在1-8字区间，符合移动端快速点击交互要求"
+  ]
+}

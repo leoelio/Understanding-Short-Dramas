@@ -1,0 +1,159 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 19,
+  "drama_title": "那年冬至",
+  "episode_title": "第1集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 74,
+      "title": "安乐死话题戳中泪点",
+      "description": "沉重的安乐死相关台词抛出，瞬间拉满压抑伤感氛围，观众极易代入产生共情",
+      "highlight_type": "虐心共情",
+      "emotion": "破防",
+      "options": [
+        {
+          "key": "sad",
+          "label": "太好哭了"
+        },
+        {
+          "key": "hug",
+          "label": "抱抱她"
+        },
+        {
+          "key": "hard",
+          "label": "太难了"
+        }
+      ],
+      "annotation_reason": "这段台词直接戳中现实痛点，极易触发观众情绪共鸣，适合弹出互动选项承接伤感",
+      "evidence_text": "《那年冬至》第1集27s锚点，安乐死相关台词出现，触发观众伤感情绪"
+    },
+    {
+      "id": 75,
+      "title": "女主突然上手脱男主衣服",
+      "description": "前一秒氛围还偏沉重，女主反差感极强的动作直接打破预期，给观众带来极强的错愕感",
+      "highlight_type": "反转揭秘",
+      "emotion": "震惊",
+      "options": [
+        {
+          "key": "shock",
+          "label": "我看傻了"
+        },
+        {
+          "key": "cover",
+          "label": "别冲动啊"
+        },
+        {
+          "key": "sudden",
+          "label": "太突然了"
+        }
+      ],
+      "annotation_reason": "强反差动作完全超出观众预判，瞬间制造爆点，适合触发即时反应互动",
+      "evidence_text": "《那年冬至》第1集50s锚点，女主做出脱男主衣服的动作，观众普遍感到意外错愕"
+    },
+    {
+      "id": 76,
+      "title": "男主面临两难选择",
+      "description": "剧情抛出爱情与现实的终极选择题，观众好奇心拉满，迫切想知道男主最终抉择",
+      "highlight_type": "悬念钩子",
+      "emotion": "期待",
+      "options": [
+        {
+          "key": "love",
+          "label": "选爱情"
+        },
+        {
+          "key": "reality",
+          "label": "选现实"
+        },
+        {
+          "key": "wait",
+          "label": "都不选"
+        }
+      ],
+      "annotation_reason": "关键剧情节点抛出二选一难题，天然适合引导观众站队预测，大幅提升观看参与感",
+      "evidence_text": "《那年冬至》第1集110s锚点，剧情给出两个完全不同的选择，悬念指向男主最终决策"
+    },
+    {
+      "id": 77,
+      "title": "女主突袭亲吻男主",
+      "description": "暧昧氛围拉满的时刻女主主动突袭，全集核心撒糖名场面，直接戳中嗑糖观众爽点",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "wow",
+          "label": "哇塞"
+        },
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "小心心"
+        }
+      ],
+      "annotation_reason": "全集最高甜名场面，观众情绪达到峰值，适合触发高互动的心动反馈",
+      "evidence_text": "《那年冬至》第1集170s锚点，女主主动亲吻男主，触发观众心动撒糖情绪"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 27.0,
+      "end_time_sec": 35.0,
+      "asset_ids": [
+        "winterBrokenHeart",
+        "tear"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "对应虐心台词弹出心碎、心疼贴纸，烘托伤感共情氛围",
+      "asset_prompt": "冬至冷色调下的碎心贴纸、带泪的伤感小表情，适配虐心剧情节点"
+    },
+    {
+      "start_time_sec": 50.0,
+      "end_time_sec": 60.0,
+      "asset_ids": [
+        "winterWow",
+        "winterCrow"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "对应女主突兀动作弹出哇塞、乌鸦无语贴纸，承接观众错愕情绪",
+      "asset_prompt": "夸张的震惊表情、乌鸦头顶冒问号的搞笑贴纸，适配强反差错愕场景"
+    },
+    {
+      "start_time_sec": 110.0,
+      "end_time_sec": 122.0,
+      "asset_ids": [
+        "winterChoice",
+        "question"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "对应两难选择弹出选哪边、问号贴纸，强化悬念感引导观众思考",
+      "asset_prompt": "左右分栏的选择贴纸、悬浮问号动效，适配二选一的悬念节点"
+    },
+    {
+      "start_time_sec": 170.0,
+      "end_time_sec": 182.0,
+      "asset_ids": [
+        "winterKiss",
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 4,
+      "meaning": "对应突袭亲吻名场面弹出亲吻、脸红、心跳贴纸，放大撒糖的甜感",
+      "asset_prompt": "粉调暖光的亲吻小动效、脸红冒泡、心跳加速的可爱贴纸，适配高甜名场面"
+    }
+  ],
+  "draft_notes": [
+    "所有高光id完全保留，未新增删除合并，时间锚点100%沿用原有配置未修改",
+    "本集has_rich_segments为false，所有优化内容均基于原有高光锚点产出，未编造额外剧情",
+    "全部贴图资产均选自「冬至爱情」主题，和本集《那年冬至》的剧集调性完全匹配",
+    "所有互动按钮文字长度均控制在2-4字，符合1-8字的要求，适配用户快速点击操作"
+  ]
+}

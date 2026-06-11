@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from .config import APP_NAME, COSYVOICE_BASE_URL, COSYVOICE_TIMEOUT_SECONDS, DATA_DIR, FRONTEND_DIR, ROOT_DIR, VOICE_ASSET_DIR
 from .database import SessionLocal, get_db
-from .danmaku_governance import apply_governance_to_episode, evaluate_comment
+from .danmaku_governance import SMALL_MODEL_PATH, apply_governance_to_episode, evaluate_comment, train_small_model_from_db
 from .danmaku_moderation import moderate_danmaku, moderation_rules_payload
 from .migrations import ensure_database_schema
 from .models import (
@@ -109,6 +109,12 @@ AVATAR_ASSET_DIR = DATA_DIR / "avatar_assets"
 AVATAR_POOL_DIR = ROOT_DIR / "avatars"
 AVATAR_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 AVATAR_MAX_BYTES = 4 * 1024 * 1024
+WHITE_PADDED_AVATAR_FILES = {
+    "2f4b829648cd2f67926700df84e330.jpg",
+    "2c5aeb0a197b7f6d97fcc8a390df63.jpg",
+    "2bd80257b71cc283f6b22cd8bb8115.jpg",
+    "1baa38604bad38f86b6fe6e38ae4e0.jpg",
+}
 
 
 def ensure_voice_dirs() -> None:
@@ -127,7 +133,9 @@ def avatar_pool_files() -> list[Path]:
     return sorted(
         path
         for path in AVATAR_POOL_DIR.iterdir()
-        if path.is_file() and path.suffix.lower() in AVATAR_ALLOWED_EXTENSIONS
+        if path.is_file()
+        and path.suffix.lower() in AVATAR_ALLOWED_EXTENSIONS
+        and path.name not in WHITE_PADDED_AVATAR_FILES
     )
 
 
@@ -3278,9 +3286,62 @@ def admin_review_status(
     }
 
 
+def danmaku_layer_payload(row: DanmakuComment) -> dict:
+    return safe_json_loads(row.moderation_layers_json, {})
+
+
+def danmaku_small_model_metadata() -> dict:
+    if not SMALL_MODEL_PATH.exists():
+        return {}
+    try:
+        return json.loads(SMALL_MODEL_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"version": "small-model-broken", "trained_rows": 0}
+
+
 def danmaku_governance_summary(rows: list[DanmakuComment]) -> dict:
     status_counter = Counter(row.review_status or "approved" for row in rows)
     mode_counter = Counter(row.mode or "light" for row in rows)
+    layer_payloads = [danmaku_layer_payload(row) for row in rows]
+    duplicate_groups = {
+        row.cluster_key
+        for row in rows
+        if row.cluster_key and int(row.cluster_size or 1) > 1
+    }
+    duplicate_comments = sum(1 for row in rows if int(row.cluster_size or 1) > 1)
+    llm_candidate_count = sum(1 for layers in layer_payloads if layers.get("llm_review", {}).get("candidate"))
+    small_model_low_confidence = sum(
+        1
+        for layers in layer_payloads
+        if float(layers.get("small_model", {}).get("confidence", 1) or 0) < 0.22
+    )
+    semantic_issue_count = sum(1 for layers in layer_payloads if layers.get("semantic", {}).get("issues"))
+    rule_issue_count = sum(1 for layers in layer_payloads if layers.get("rule", {}).get("issues"))
+    time_delay_count = sum(
+        1
+        for row, layers in zip(rows, layer_payloads)
+        if row.suggested_time_sec is not None or layers.get("time_aware", {}).get("suggested_time_sec") is not None
+    )
+    small_model = danmaku_small_model_metadata()
+    model_versions = sorted({row.moderation_model_version for row in rows if row.moderation_model_version})
+    layer_counts = {
+        "rule": rule_issue_count,
+        "time_aware": time_delay_count,
+        "semantic": semantic_issue_count,
+        "cluster": duplicate_comments,
+        "small_model": len(rows),
+        "llm_review": llm_candidate_count,
+        "human_review": status_counter.get("needs_review", 0),
+    }
+    pipeline = [
+        {"key": "rule", "label": "规则层", "count": layer_counts["rule"], "description": "低俗、广告、联系方式、刷屏、过长先拦截。"},
+        {"key": "time_aware", "label": "时间感知", "count": layer_counts["time_aware"], "description": "结合剧情揭晓点，剧透弹幕延后或复核。"},
+        {"key": "semantic", "label": "语义分类", "count": layer_counts["semantic"], "description": "判断是否相关、出戏、低质量或情绪价值高。"},
+        {"key": "cluster", "label": "聚类去重", "count": layer_counts["cluster"], "description": "相似弹幕合并，只优先看代表样本。"},
+        {"key": "small_model", "label": "小模型", "count": layer_counts["small_model"], "description": "用人工复核结果训练轻量可解释词权重模型。"},
+        {"key": "llm_review", "label": "大模型复审", "count": layer_counts["llm_review"], "description": "低置信度、高风险、高价值样本进入离线复审队列。"},
+        {"key": "human_review", "label": "人工复核", "count": layer_counts["human_review"], "description": "只处理模型拿不准或将进入推荐池的弹幕。"},
+    ]
     return {
         "total": len(rows),
         "status": dict(status_counter),
@@ -3288,6 +3349,18 @@ def danmaku_governance_summary(rows: list[DanmakuComment]) -> dict:
         "needs_review": status_counter.get("needs_review", 0),
         "hidden": status_counter.get("hidden", 0),
         "approved": status_counter.get("approved", 0),
+        "layer_counts": layer_counts,
+        "pipeline": pipeline,
+        "duplicate_group_count": len(duplicate_groups),
+        "llm_candidate_count": llm_candidate_count,
+        "model": {
+            "governance_versions": model_versions,
+            "small_model_version": small_model.get("version", "small-model-default"),
+            "small_model_trained_rows": small_model.get("trained_rows", 0),
+            "small_model_updated_at": small_model.get("updated_at", ""),
+            "small_model_low_confidence": small_model_low_confidence,
+            "llm_review_mode": "offline_batch_queue",
+        },
     }
 
 
@@ -3344,6 +3417,24 @@ def admin_run_episode_danmaku_governance(
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
     return apply_governance_to_episode(db, episode_id)
+
+
+@app.post("/api/admin/episodes/{episode_id}/danmaku-governance/train-small-model")
+def admin_train_episode_danmaku_small_model(
+    episode_id: int,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_roles("admin", "reviewer")),
+) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    trained = train_small_model_from_db(db)
+    rerun = apply_governance_to_episode(db, episode_id)
+    return {
+        "trained": trained,
+        "rerun": rerun,
+        "small_model_path": str(SMALL_MODEL_PATH.relative_to(ROOT_DIR)),
+    }
 
 
 @app.patch("/api/admin/danmaku/{comment_id}")

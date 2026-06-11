@@ -1,0 +1,132 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 14,
+  "drama_title": "幸得相遇离婚时",
+  "episode_title": "第2集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 40,
+      "title": "当场身份反转",
+      "description": "剧情出现意料之外的真相揭露，完全推翻此前观众的固有认知，冲击力极强",
+      "highlight_type": "反转揭秘",
+      "emotion": "震惊",
+      "options": [
+        {
+          "key": "shock",
+          "label": "太震惊了"
+        },
+        {
+          "key": "unexpected",
+          "label": "完全没想到"
+        },
+        {
+          "key": "rewatch",
+          "label": "倒回去看"
+        }
+      ],
+      "annotation_reason": "该反转是本集核心转折点，观众看到此处会第一时间产生强烈情绪反应，适合触发互动反馈",
+      "evidence_text": "基于人工锚定的31.17-39.17秒反转高光锚点，未编造额外剧情"
+    },
+    {
+      "id": 41,
+      "title": "正面激烈对峙",
+      "description": "对立双方撕破表面和平，当面爆发立场完全相悖的激烈争吵，冲突感拉满",
+      "highlight_type": "冲突对抗",
+      "emotion": "愤怒",
+      "options": [
+        {
+          "key": "angry",
+          "label": "气到发抖"
+        },
+        {
+          "key": "fight",
+          "label": "直接怼回去"
+        },
+        {
+          "key": "protect",
+          "label": "护住女主"
+        }
+      ],
+      "annotation_reason": "冲突场景代入感极强，观众会自发站队支持弱势主角，适合触发站队类互动",
+      "evidence_text": "基于人工锚定的73.67-81.67秒冲突升级高光锚点，完全贴合原有高光设定"
+    },
+    {
+      "id": 42,
+      "title": "近距离心动互动",
+      "description": "此前一直针锋相对的男女主打破对立状态，产生暧昧温柔的近距离接触，氛围瞬间转甜",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "心跳加速"
+        },
+        {
+          "key": "together",
+          "label": "快在一起"
+        }
+      ],
+      "annotation_reason": "反差感拉满的撒糖瞬间精准戳中磕糖用户喜好，适合触发心动类互动反馈",
+      "evidence_text": "基于人工锚定的110.5-118.5秒甜蜜瞬间高光锚点，未新增虚构剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 31.17,
+      "end_time_sec": 39.17,
+      "asset_ids": [
+        "divorceRose",
+        "winterWow"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "???????divorceRose ?????????????????反转发生时弹出哇塞贴图，烘托观众不敢置信的震惊情绪",
+      "asset_prompt": "冬至爱情主题的夸张哇塞动态贴纸，表现看到反转时的惊讶反应"
+    },
+    {
+      "start_time_sec": 73.67,
+      "end_time_sec": 81.67,
+      "asset_ids": [
+        "winterBrokenHeart"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "冲突爆发时弹出心碎贴图，烘托主角被伤害的委屈愤怒情绪",
+      "asset_prompt": "都市情感主题的碎心动态贴纸，表现争吵场景下的虐心感受"
+    },
+    {
+      "start_time_sec": 110.5,
+      "end_time_sec": 118.5,
+      "asset_ids": [
+        "winterBlush"
+      ],
+      "cadence_sec": 1,
+      "burst_count": 2,
+      "meaning": "甜蜜互动时弹出脸红贴图，烘托暧昧心动的浪漫氛围",
+      "asset_prompt": "冬至爱情主题的害羞脸红动态贴纸，表现近距离接触时的羞涩感"
+    },
+    {
+      "start_time_sec": 132.0,
+      "end_time_sec": 140.0,
+      "asset_ids": [
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "本集结尾留悬念时弹出心跳贴图，烘托观众对下一集剧情的期待感",
+      "asset_prompt": "动态跳动的心跳贴纸，表现观众追更时的紧张期待情绪"
+    }
+  ],
+  "draft_notes": [
+    "所有高光id完全保留原有锚定时间，未新增、删除或合并高光，符合硬规则要求",
+    "本集has_rich_segments为false，所有文案升级均基于原有高光的反转、冲突、甜蜜三类核心设定，未编造任何新剧情",
+    "所有贴图asset_id均来自给定asset_catalog，全集共4个贴图时间窗，符合3-5个的稀疏排布要求，按时间顺序排列",
+    "??????????? divorceRose?"
+  ]
+}

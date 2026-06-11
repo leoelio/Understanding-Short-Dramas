@@ -1,0 +1,135 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 15,
+  "drama_title": "撕夜",
+  "episode_title": "第1集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 43,
+      "title": "街头对峙矛盾爆发",
+      "description": "深夜场景下双方情绪彻底失控，积压已久的不满全部摊开，正面对峙张力拉满",
+      "highlight_type": "冲突对抗",
+      "emotion": "愤怒",
+      "options": [
+        {
+          "key": "angry",
+          "label": "气到了"
+        },
+        {
+          "key": "fight",
+          "label": "怼回去"
+        },
+        {
+          "key": "protect",
+          "label": "护住主角"
+        }
+      ],
+      "annotation_reason": "这段直面角色积压的情绪冲突，极易引发观众站队共情，主动触发互动表达立场",
+      "evidence_text": "锚定67.93-75.93秒的冲突对峙片段，完全基于原人工标注的冲突锚点优化，未新增剧情"
+    },
+    {
+      "id": 44,
+      "title": "暧昧拉扯心动瞬间",
+      "description": "激烈争执后氛围突然软化，两人近距离独处的不经意触碰，让暧昧感瞬间飙升",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "心动"
+        },
+        {
+          "key": "together",
+          "label": "在一起"
+        }
+      ],
+      "annotation_reason": "紧张冲突后反差出现的撒糖桥段，极易触发观众磕糖互动意愿",
+      "evidence_text": "锚定160.56-168.56秒的甜蜜互动片段，完全基于原人工标注的甜蜜锚点优化，未新增剧情"
+    },
+    {
+      "id": 45,
+      "title": "女主崩溃情绪破防",
+      "description": "女主藏了很久的委屈彻底绷不住，独自在暗处落泪，满是无力感让观众共情",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "hurt",
+          "label": "心疼她"
+        },
+        {
+          "key": "cry",
+          "label": "破防了"
+        },
+        {
+          "key": "hug",
+          "label": "抱抱"
+        }
+      ],
+      "annotation_reason": "角色情绪完全释放的虐点，极易带动观众代入情绪，主动触发共情类互动",
+      "evidence_text": "锚定240.83-248.83秒的虐心桥段，完全基于原人工标注的虐点锚点优化，未新增剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 68.0,
+      "end_time_sec": 76.0,
+      "asset_ids": [
+        "nightNeon",
+        "charge"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "冲突爆发时搭配暗调霓虹和冲的情绪贴纸，烘托街头对峙的紧绷氛围感",
+      "asset_prompt": "暗紫色深夜霓虹闪烁+情绪冲的动效贴纸，适配都市街头争执场景"
+    },
+    {
+      "start_time_sec": 161.0,
+      "end_time_sec": 169.0,
+      "asset_ids": [
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "暧昧心动时刻弹出脸红和心跳贴纸，放大撒糖的甜感氛围",
+      "asset_prompt": "粉调软萌脸红+跳动的爱心动效贴纸，适配近距离暧昧互动场景"
+    },
+    {
+      "start_time_sec": 241.0,
+      "end_time_sec": 249.0,
+      "asset_ids": [
+        "tear",
+        "winterWarmHug"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "虐心落泪时刻弹出心疼和抱抱贴纸，呼应观众当下的共情情绪",
+      "asset_prompt": "软乎乎的擦眼泪+暖黄色抱抱动效贴纸，适配角色崩溃落泪场景"
+    },
+    {
+      "start_time_sec": 300.0,
+      "end_time_sec": 308.0,
+      "asset_ids": [
+        "nightNeon",
+        "question"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "本集结尾留悬念时弹出霓虹和问号贴纸，引导观众好奇后续剧情",
+      "asset_prompt": "暗调霓虹闪烁+悬浮问号动效贴纸，适配结尾悬念钩子场景"
+    }
+  ],
+  "draft_notes": [
+    "所有高光完全保留原有锚点时间，未新增/删除/合并高光条目，符合硬规则要求",
+    "所有贴纸素材均来自给定asset_catalog库，全集仅4个贴纸时间窗，分布稀疏不干扰正常观看",
+    "所有互动按钮label均控制在8个中文字符以内，适配移动端快速点击交互",
+    "本集has_rich_segments为false，所有优化完全基于原有高光锚点属性，未编造任何额外剧情"
+  ]
+}

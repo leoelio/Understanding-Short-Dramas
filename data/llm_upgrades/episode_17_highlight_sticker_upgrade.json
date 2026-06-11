@@ -1,0 +1,122 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 17,
+  "drama_title": "荒年全村啃树皮，我有系统满仓肉",
+  "episode_title": "第1集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 49,
+      "title": "荒年里的暧昧心动时刻",
+      "description": "压抑的荒年生存背景下，男女主出现难得的温柔近距离互动，氛围瞬间变得甜软",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "心动了"
+        },
+        {
+          "key": "together",
+          "label": "锁死"
+        }
+      ],
+      "annotation_reason": "全片荒年求生的压抑氛围中突然出现撒糖桥段，极易触发观众的磕糖互动意愿",
+      "evidence_text": "基于原有锚定的35.41-43.41秒甜蜜高光点升级，未编造新剧情"
+    },
+    {
+      "id": 50,
+      "title": "全村啃树皮惨状戳心",
+      "description": "灾荒蔓延全村人饿得只能啃树皮果腹，主角看着家人挨饿满脸无助，画面极具冲击力",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "hurt",
+          "label": "太心疼了"
+        },
+        {
+          "key": "cry",
+          "label": "破防了"
+        },
+        {
+          "key": "hug",
+          "label": "求抱抱"
+        }
+      ],
+      "annotation_reason": "极端灾荒下普通人的生存惨状直接戳中观众共情点，引导用户释放情绪",
+      "evidence_text": "基于原有锚定的83.69-91.69秒虐心高光点升级，未编造新剧情"
+    },
+    {
+      "id": 51,
+      "title": "系统激活满仓物资亮相",
+      "description": "主角的随身金手指系统正式激活，满仓的肉类和粮食直接解锁，瞬间打破缺粮绝境",
+      "highlight_type": "爽点逆袭",
+      "emotion": "爽",
+      "options": [
+        {
+          "key": "shuang",
+          "label": "太爽了"
+        },
+        {
+          "key": "again",
+          "label": "再来亿遍"
+        },
+        {
+          "key": "support",
+          "label": "666"
+        }
+      ],
+      "annotation_reason": "铺垫了整集的灾荒压抑感在金手指出现时彻底释放，爽感拉满，用户互动意愿极强",
+      "evidence_text": "基于原有锚定的125.53-133.53秒爽点高光点升级，未编造新剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 35.41,
+      "end_time_sec": 43.41,
+      "asset_ids": [
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "对应暧昧撒糖时刻，弹出脸红心跳类贴纸烘托心动氛围",
+      "asset_prompt": "暖色调软萌脸红心跳小表情贴纸，适配暧昧心动场景"
+    },
+    {
+      "start_time_sec": 83.69,
+      "end_time_sec": 91.69,
+      "asset_ids": [
+        "tear"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "对应啃树皮的虐心惨状，弹出心疼贴纸呼应观众共情情绪",
+      "asset_prompt": "软萌流泪心疼小贴纸，适配虐心共情场景"
+    },
+    {
+      "start_time_sec": 125.53,
+      "end_time_sec": 133.53,
+      "asset_ids": [
+        "harvestSystem",
+        "charge"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 4,
+      "meaning": "对应系统激活的爽点时刻，弹出系统满仓和冲的贴纸强化爽感",
+      "asset_prompt": "金光闪闪系统满仓特效贴纸，适配金手指爽点场景"
+    }
+  ],
+  "draft_notes": [
+    "本集has_rich_segments为false，所有高光升级均未新增编造剧情，完全基于原有锚点优化文案",
+    "所有贴图asset_id均来自给定asset_catalog，未引入外部资源",
+    "所有交互按钮label均控制在1-8个中文字符范围内，符合快速点击要求",
+    "原有高光id 49/50/51全部保留未做增删合并，所有时间点完全未改动"
+  ]
+}

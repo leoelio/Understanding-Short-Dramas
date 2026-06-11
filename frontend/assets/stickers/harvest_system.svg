@@ -1,0 +1,18 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="h" x1="17" y1="14" x2="112" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3A6"/>
+      <stop offset=".45" stop-color="#FFB33F"/>
+      <stop offset="1" stop-color="#1E9C72"/>
+    </linearGradient>
+    <filter id="sd" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#35531C" flood-opacity=".3"/>
+    </filter>
+  </defs>
+  <rect x="16" y="16" width="96" height="96" rx="28" fill="url(#h)" filter="url(#sd)"/>
+  <path d="M39 78c14-31 36-31 50 0" fill="none" stroke="#FDF7D9" stroke-width="9" stroke-linecap="round"/>
+  <path d="M48 82h32M52 66h24M58 50h12" stroke="#73420D" stroke-width="6" stroke-linecap="round"/>
+  <rect x="38" y="28" width="52" height="22" rx="10" fill="#102F2A" opacity=".92"/>
+  <text x="64" y="44" text-anchor="middle" font-size="15" font-weight="900" fill="#7CFFB2" font-family="Arial, sans-serif">系统</text>
+  <text x="64" y="103" text-anchor="middle" font-size="15" font-weight="900" fill="#fff" font-family="Arial, sans-serif">满仓肉</text>
+</svg>

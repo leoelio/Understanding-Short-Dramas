@@ -1,0 +1,123 @@
+{
+  "source": "llm_seed",
+  "model_version": "highlight-sticker-upgrade-v1",
+  "episode_id": 16,
+  "drama_title": "撕夜",
+  "episode_title": "第2集",
+  "has_rich_segments": false,
+  "highlight_updates": [
+    {
+      "id": 46,
+      "title": "正面冲突爆发",
+      "description": "剧中角色矛盾彻底激化，双方正面对峙互不相让，火药味拉满",
+      "highlight_type": "冲突对抗",
+      "emotion": "愤怒",
+      "options": [
+        {
+          "key": "angry",
+          "label": "气到了"
+        },
+        {
+          "key": "fight",
+          "label": "怼回去"
+        },
+        {
+          "key": "protect",
+          "label": "护住主角"
+        }
+      ],
+      "annotation_reason": "该段是全片首个强冲突节点，观众代入感极强，非常适合触发站队类互动",
+      "evidence_text": "基于人工锚定的32.98-40.98冲突高光锚点，未新增编造剧情"
+    },
+    {
+      "id": 47,
+      "title": "暧昧撒糖时刻",
+      "description": "男女主近距离温柔互动，氛围暧昧升温，甜度瞬间拉满",
+      "highlight_type": "甜蜜心动",
+      "emotion": "心动",
+      "options": [
+        {
+          "key": "sweet",
+          "label": "磕到了"
+        },
+        {
+          "key": "heart",
+          "label": "心动"
+        },
+        {
+          "key": "together",
+          "label": "在一起"
+        }
+      ],
+      "annotation_reason": "该段是全片少有的甜向高光，极易触发用户磕CP的互动意愿",
+      "evidence_text": "基于人工锚定的77.96-85.96甜蜜高光锚点，未新增编造剧情"
+    },
+    {
+      "id": 48,
+      "title": "女主崩溃虐心",
+      "description": "角色遭遇不公对待情绪彻底崩溃，场景极具感染力",
+      "highlight_type": "虐心共情",
+      "emotion": "心疼",
+      "options": [
+        {
+          "key": "hurt",
+          "label": "心疼她"
+        },
+        {
+          "key": "cry",
+          "label": "破防了"
+        },
+        {
+          "key": "hug",
+          "label": "抱抱"
+        }
+      ],
+      "annotation_reason": "该段情绪浓度极高，能够充分调动观众的共情情绪，适合触发情绪反馈类互动",
+      "evidence_text": "基于人工锚定的116.95-124.95虐心高光锚点，未新增编造剧情"
+    }
+  ],
+  "sticker_timeline": [
+    {
+      "start_time_sec": 32.98,
+      "end_time_sec": 40.98,
+      "asset_ids": [
+        "nightNeon",
+        "charge"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 3,
+      "meaning": "冲突爆发时烘托都市撕夜的紧张对峙氛围，用带冲感的情绪贴图引导观众释放愤怒情绪",
+      "asset_prompt": "霓虹闪烁动态特效搭配「冲」的情绪贴纸，适配都市深夜冲突场景"
+    },
+    {
+      "start_time_sec": 77.96,
+      "end_time_sec": 85.96,
+      "asset_ids": [
+        "winterBlush",
+        "winterHeartbeat"
+      ],
+      "cadence_sec": 3,
+      "burst_count": 2,
+      "meaning": "甜蜜互动时段烘托暧昧脸红心跳的氛围感，强化撒糖的心动体验",
+      "asset_prompt": "粉调脸红动态贴纸搭配跳动爱心特效，适配都市男女暧昧升温场景"
+    },
+    {
+      "start_time_sec": 116.95,
+      "end_time_sec": 124.95,
+      "asset_ids": [
+        "tear",
+        "winterBrokenHeart"
+      ],
+      "cadence_sec": 2,
+      "burst_count": 2,
+      "meaning": "虐心时刻烘托悲伤心碎的共情氛围，引导观众释放心疼情绪",
+      "asset_prompt": "落泪动态贴纸搭配碎心特效，适配角色崩溃的虐心场景"
+    }
+  ],
+  "draft_notes": [
+    "本集has_rich_segments为false，所有高光升级均未编造新剧情，完全基于原有锚点优化表达",
+    "贴图共3组，完全对齐高光时间窗，符合稀疏分布要求没有整集乱飞",
+    "所有按钮label均控制在8个中文字符以内，适配用户快速点击交互的需求",
+    "所有高光类型、情绪标签均取自给定taxonomy，未自定义新增分类"
+  ]
+}
