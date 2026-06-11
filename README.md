@@ -19,18 +19,8 @@
 | 展示内容 | 入口 |
 | --- | --- |
 | 项目流程演示 | [Bilibili 观看](https://www.bilibili.com/video/BV1KJEz6BEiW/?spm_id_from=333.1387.homepage.video_card.click&vd_source=1e173b313bd91925408feaa275abf67b) |
-| Android 端演示 | [点击播放/下载 MP4](https://github.com/leoelio/Understanding-Short-Dramas/raw/main/docs/media/android-demo.mp4) |
-| Android 仓库内视频 | [docs/media/android-demo.mp4](docs/media/android-demo.mp4) |
 
 > 本地项目流程视频约 316MB，超过 GitHub 单文件限制，因此 README 使用外部展示链接。
-
-<p align="center">
-  <a href="https://github.com/leoelio/Understanding-Short-Dramas/raw/main/docs/media/android-demo.mp4">
-    <img src="docs/media/android-demo-cover.jpg" width="320" alt="Android 端演示封面" />
-  </a>
-</p>
-
-Android 端功能与 Web 主线类似，当前视频展示登录、选剧、播放和部分互动能力；完整高光弹层、弹幕治理、片尾 AI 二创和复核能力仍以 Web 主线为准。
 
 ## 产品定位
 
