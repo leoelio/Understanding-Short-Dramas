@@ -21,6 +21,8 @@
 | 项目流程演示 | [Bilibili 观看](https://www.bilibili.com/video/BV1KJEz6BEiW/?spm_id_from=333.1387.homepage.video_card.click&vd_source=1e173b313bd91925408feaa275abf67b) |
 | Android 端演示 | [GitHub 视频页观看](https://github.com/leoelio/Understanding-Short-Dramas/blob/main/docs/media/android-demo.mp4) |
 
+> 主要产品流程请看第一个项目流程视频；Android 端演示只展示端侧登录、选剧和播放等部分能力，功能设计与 Web 主线一致，不在该视频中完整展开。
+
 > 本地项目流程视频约 316MB，超过 GitHub 单文件限制，因此 README 使用外部展示链接。
 
 ## 产品定位
