@@ -1,22 +1,53 @@
 # 半句：基于短剧剧情理解的即时互动激发系统
 
+<p align="center">
+  <img src="docs/media/banju-app-logo.png" width="180" alt="半句 App 标" />
+</p>
+
+<h1 align="center">半句</h1>
+
+<p align="center">
+  <strong>短剧陪伴 · 剧情理解 · 即时互动</strong>
+</p>
+
+<p align="center">
+  <img alt="Web MVP" src="https://img.shields.io/badge/Web-Desktop%20MVP-0A84FF?style=for-the-badge" />
+  <img alt="AI Full Stack" src="https://img.shields.io/badge/AI-Full%20Stack-6E56CF?style=for-the-badge" />
+  <img alt="Android Branch" src="https://img.shields.io/badge/Android-Companion%20Branch-34C759?style=for-the-badge" />
+  <img alt="License" src="https://img.shields.io/badge/License-AGPL--3.0-111827?style=for-the-badge" />
+</p>
+
+<p align="center">
+  把短剧里的冲突、反转、甜蜜、虐心和名场面，转化成可以被模型理解、被人工复核、被客户端即时触发的低门槛互动体验。
+</p>
+
 ## 项目展示
 
-项目流程演示：[Bilibili 观看](https://www.bilibili.com/video/BV1KJEz6BEiW/?spm_id_from=333.1387.homepage.video_card.click&vd_source=1e173b313bd91925408feaa275abf67b)
+| 展示内容 | 入口 |
+| --- | --- |
+| 项目流程演示 | [Bilibili 观看](https://www.bilibili.com/video/BV1KJEz6BEiW/?spm_id_from=333.1387.homepage.video_card.click&vd_source=1e173b313bd91925408feaa275abf67b) |
+| Android 端演示 | [点击播放/下载 MP4](https://github.com/leoelio/Understanding-Short-Dramas/raw/main/docs/media/android-demo.mp4) |
+| Android 仓库内视频 | [docs/media/android-demo.mp4](docs/media/android-demo.mp4) |
 
 > 本地项目流程视频约 316MB，超过 GitHub 单文件限制，因此 README 使用外部展示链接。
 
-Android 端演示：
-
-<a href="https://github.com/leoelio/Understanding-Short-Dramas/raw/main/docs/media/android-demo.mp4">
-  <img src="docs/media/android-demo-cover.jpg" width="320" alt="Android 端演示封面" />
-</a>
-
-[点击播放/下载 Android 演示视频（MP4）](https://github.com/leoelio/Understanding-Short-Dramas/raw/main/docs/media/android-demo.mp4)
-
-[仓库内视频文件](docs/media/android-demo.mp4)
+<p align="center">
+  <a href="https://github.com/leoelio/Understanding-Short-Dramas/raw/main/docs/media/android-demo.mp4">
+    <img src="docs/media/android-demo-cover.jpg" width="320" alt="Android 端演示封面" />
+  </a>
+</p>
 
 Android 端功能与 Web 主线类似，当前视频展示登录、选剧、播放和部分互动能力；完整高光弹层、弹幕治理、片尾 AI 二创和复核能力仍以 Web 主线为准。
+
+## 产品定位
+
+| 维度 | 说明 |
+| --- | --- |
+| 面向场景 | 短剧观看、剧情高光互动、同看社交、片尾 AI 二创 |
+| 核心问题 | 用户有强烈情绪表达需求，但打字评论会打断观看；平台也需要知道哪些剧情真正激发互动 |
+| 产品解法 | 用大模型理解剧情，用复核工作台沉淀配置，用客户端在关键时间点触发低打扰互动 |
+| 当前主线 | 电脑端 Web 展示版，优先保证完整产品闭环和稳定演示 |
+| Android 支线 | 保留安装包和迁移实验，用于验证移动端承载方式 |
 
 半句是一套面向短剧观看场景的 AI 全栈产品原型。系统通过“大模型理解剧情 + 人工复核 + 服务端配置 + 客户端互动 + Android App 支线”的方式，把短剧中的冲突、反转、爽点、甜蜜、虐心、悬念等剧情高光转化成低门槛互动体验。
 
@@ -375,14 +406,6 @@ native-android-migration
 2. 稳定后合并或快进到 `main`。
 3. Android 原生实验只在 `native-android-migration` 做。
 4. 重要可展示版本打 tag，例如 `v1.0.0-web-desktop`。
-
-## 交付与答辩重点
-
-- 产品闭环完整：素材导入、模型理解、人工复核、服务端下发、客户端触发、用户互动、数据回流。
-- “理解”可视化：复核页能展示剧情理解、高光原因、情绪标签、互动落地和模型来源。
-- 弹幕治理有技术层次：不是纯人工审核，而是规则、时间轴、语义、聚类、小模型、大模型和人工复核的分层闭环。
-- 片尾 AI 二创可展示：用户选择分支后进入分镜图片和声音带入流程。
-- 同看和成长系统增强产品感：好友、房间、徽章、称号、战报让项目不像一次性 Demo。
 
 ## 安全与隐私
 
