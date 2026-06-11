@@ -2001,3 +2001,13 @@
   - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 集中升级全局 UI 设计系统：pageBackground/cardBackground/inputBackground/buttonBackground/secondaryButtonBackground/controlBarBackground 等改为更有色彩层次的浅彩玻璃渐变；主按钮、次按钮、播放器按钮、高光选项和弹幕模式切换接入 RippleDrawable 点击反馈；卡片增加 elevation；状态栏/导航栏颜色同步。Android 构建通过；当前 adb devices 仍未识别到手机，真机视觉复核待设备恢复后补。
 - 下一步：
   - 设备恢复后优先安装 APK，检查登录页、短剧首页、我的页、聊聊/逛逛、播放页底部控制栏和片尾 AI 面板的真实观感；如仍显素，再针对首页头图和播放器内部组件做第二轮精修。
+
+## 2026-06-11 10:29:14
+
+- 目标：Android 原生播放器体验优化：播放时控制层自动隐藏，点击视频唤醒自定义进度条和操作面板，减少内容遮挡。
+- Git：`b0a2293` / `native-android-migration`
+- 数据：Android 原生工作树不维护业务数据库；本次只消费 Web 主线稳定接口；真机验证隐藏态无遮挡，点击视频可唤醒自定义控制层，控制层会再次自动隐藏，crash buffer 无崩溃输出。
+- 变更：
+  - mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 为播放页新增 activePlayerTopScrim/activePlayerTopBar/playerChromeHideRunnable/playerProgressUiRunnable 等状态；移除系统 MediaController，改为自定义进度条、当前/总时长、播放暂停按钮；顶部栏、底部控制栏和同看状态进入播放后短暂显示并自动淡出，点击视频可再次唤醒；真机已验证隐藏态无遮挡、唤醒态无系统控制条叠加、再次自动隐藏，crash buffer 无崩溃输出。
+- 下一步：
+  - 继续根据真机观感做第二轮视觉精修：如需要，可进一步优化弹幕密度、底部控制面板高度、高光弹层出现位置和片尾 AI 面板质感。

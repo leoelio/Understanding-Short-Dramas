@@ -1,15 +1,15 @@
 # Project Status
 
-更新时间：2026-06-11 05:39:34
+更新时间：2026-06-11 10:29:14
 
 ## 当前目标
 
-Android 原生已有页面视觉优化：统一浅彩玻璃背景、卡片阴影、渐变按钮和点击反馈，提升半句 App 的高级感。
+Android 原生播放器体验优化：播放时控制层自动隐藏，点击视频唤醒自定义进度条和操作面板，减少内容遮挡。
 
 ## Git 状态
 
 - 分支：`native-android-migration`
-- 最新提交：`c5eb98b`
+- 最新提交：`b0a2293`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java`
@@ -18,7 +18,7 @@ Android 原生已有页面视觉优化：统一浅彩玻璃背景、卡片阴影
 
 - Android 原生工作树不维护业务数据库。
 - 当前客户端通过 `http://127.0.0.1:8000` 消费 Web 主线服务端稳定接口；真机调试使用 `adb reverse tcp:8000 tcp:8000`。
-- 本次构建验证通过；当前 `adb devices` 仍未识别到手机，视觉真机复核待设备恢复后补。
+- 本次真机验证通过：隐藏态无遮挡，点击视频可唤醒自定义控制层，控制层会再次自动隐藏，crash buffer 无崩溃输出。
 
 ## 高光来源
 
@@ -39,11 +39,11 @@ Android 原生已有页面视觉优化：统一浅彩玻璃背景、卡片阴影
 
 ## 本次变更摘要
 
-- mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 集中升级全局 UI 设计系统：pageBackground/cardBackground/inputBackground/buttonBackground/secondaryButtonBackground/controlBarBackground 等改为更有色彩层次的浅彩玻璃渐变；主按钮、次按钮、播放器按钮、高光选项和弹幕模式切换接入 RippleDrawable 点击反馈；卡片增加 elevation；状态栏/导航栏颜色同步。Android 构建通过；当前 adb devices 仍未识别到手机，真机视觉复核待设备恢复后补。
+- mobile/banju-native-android/app/src/main/java/com/banju/nativeapp/MainActivity.java 为播放页新增 activePlayerTopScrim/activePlayerTopBar/playerChromeHideRunnable/playerProgressUiRunnable 等状态；移除系统 MediaController，改为自定义进度条、当前/总时长、播放暂停按钮；顶部栏、底部控制栏和同看状态进入播放后短暂显示并自动淡出，点击视频可再次唤醒；真机已验证隐藏态无遮挡、唤醒态无系统控制条叠加、再次自动隐藏，crash buffer 无崩溃输出。
 
 ## 下一步建议
 
-- 设备恢复后优先安装 APK，检查登录页、短剧首页、我的页、聊聊/逛逛、播放页底部控制栏和片尾 AI 面板的真实观感；如仍显素，再针对首页头图和播放器内部组件做第二轮精修。
+- 继续根据真机观感做第二轮视觉精修：如需要，可进一步优化弹幕密度、底部控制面板高度、高光弹层出现位置和片尾 AI 面板质感。
 
 ## 安全提醒
 

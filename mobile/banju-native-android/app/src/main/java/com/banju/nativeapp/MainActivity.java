@@ -31,8 +31,8 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.MediaController;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.VideoView;
 
@@ -111,10 +111,14 @@ public class MainActivity extends Activity {
     private Runnable roomEventsRunnable;
     private Runnable highlightTapRunnable;
     private Runnable stickerRunnable;
+    private Runnable playerChromeHideRunnable;
+    private Runnable playerProgressUiRunnable;
     private LinearLayout activeHighlightPanel;
     private LinearLayout activeDanmakuOverlay;
     private FrameLayout activeHighlightEffectLayer;
     private FrameLayout activePlayerFrame;
+    private View activePlayerTopScrim;
+    private LinearLayout activePlayerTopBar;
     private LinearLayout activeRemixPanel;
     private LinearLayout activeWatchRoomStrip;
     private LinearLayout activeWatchRoomAvatars;
@@ -123,9 +127,13 @@ public class MainActivity extends Activity {
     private TextView activeDanmakuStatus;
     private TextView activeWatchRoomStatus;
     private TextView activeWatchRoomBoardStatus;
+    private TextView activePlayerCurrentTime;
+    private TextView activePlayerDuration;
+    private SeekBar activePlayerSeekBar;
     private Button lightDanmakuButton;
     private Button carnivalDanmakuButton;
     private Button immersiveDanmakuButton;
+    private Button activePlayPauseButton;
     private Button activeRemixEntryButton;
     private Button activeStartWatchRoomButton;
     private Button activeRemixOriginalVoiceButton;
@@ -147,6 +155,8 @@ public class MainActivity extends Activity {
     private boolean activeHighlightTapSubmitted;
     private long[] stickerSlotLastShownAtMs = new long[0];
     private boolean remixEntryShown;
+    private boolean playerChromeVisible = true;
+    private boolean playerSeekDragging;
     private int remixVoiceRequestSeq;
     private String activeDanmakuMode = "light";
     private final Map<String, Integer> activeRoomChoiceCounts = new HashMap<>();
@@ -2885,10 +2895,9 @@ public class MainActivity extends Activity {
 
         VideoView videoView = new VideoView(this);
         videoView.setBackgroundColor(Color.BLACK);
+        videoView.setClickable(true);
+        videoView.setOnClickListener(v -> togglePlayerChrome());
         activeVideoView = videoView;
-        MediaController controller = new MediaController(this);
-        controller.setAnchorView(videoView);
-        videoView.setMediaController(controller);
         videoView.setVideoURI(Uri.parse(videoUrl));
         videoView.setOnPreparedListener(mediaPlayer -> {
             videoPrepared = true;
@@ -2900,12 +2909,14 @@ public class MainActivity extends Activity {
             updatePlayerStatus();
             videoView.setBackgroundColor(Color.TRANSPARENT);
             videoView.start();
+            startPlayerProgressUi();
             scheduleNextHighlight();
             scheduleDanmakuTrack();
             scheduleStickerTimeline();
             scheduleRemixEntry();
             scheduleWatchRoomSync();
             scheduleWatchRoomEvents();
+            showPlayerChromeTemporarily();
         });
         videoView.setOnErrorListener((mediaPlayer, what, extra) -> {
             status.setText("视频播放失败，请确认服务端和 adb reverse 已连接。");
@@ -2913,11 +2924,14 @@ public class MainActivity extends Activity {
         });
         videoView.setOnCompletionListener(mediaPlayer -> {
             postWatchHistoryProgress(firstEpisodeId, Math.max(videoView.getCurrentPosition(), videoView.getDuration()), true);
+            updatePlayerPlayPauseButton();
             if (!remixEntryShown && hasRemixOptions()) {
                 showRemixEntry(true);
             }
         });
         FrameLayout playerFrame = new FrameLayout(this);
+        playerFrame.setClickable(true);
+        playerFrame.setOnClickListener(v -> togglePlayerChrome());
         activePlayerFrame = playerFrame;
         root.addView(playerFrame, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -2930,6 +2944,7 @@ public class MainActivity extends Activity {
 
         View topScrim = new View(this);
         topScrim.setBackground(topScrimBackground());
+        activePlayerTopScrim = topScrim;
         playerFrame.addView(topScrim, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 dp(132),
@@ -2940,6 +2955,7 @@ public class MainActivity extends Activity {
         topBar.setOrientation(LinearLayout.HORIZONTAL);
         topBar.setGravity(Gravity.CENTER_VERTICAL);
         topBar.setPadding(dp(16), dp(26), dp(16), dp(8));
+        activePlayerTopBar = topBar;
         playerFrame.addView(topBar, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 dp(94),
@@ -3000,6 +3016,59 @@ public class MainActivity extends Activity {
         controlsParams.bottomMargin = dp(12);
         playerFrame.addView(bottomControls, controlsParams);
 
+        LinearLayout progressRow = new LinearLayout(this);
+        progressRow.setOrientation(LinearLayout.HORIZONTAL);
+        progressRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams progressRowParams = matchWrap();
+        progressRowParams.bottomMargin = dp(8);
+        bottomControls.addView(progressRow, progressRowParams);
+
+        activePlayerCurrentTime = text("0:00", 12, Color.argb(220, 236, 242, 255), Typeface.BOLD);
+        activePlayerCurrentTime.setGravity(Gravity.CENTER);
+        progressRow.addView(activePlayerCurrentTime, new LinearLayout.LayoutParams(dp(46), dp(30)));
+
+        activePlayerSeekBar = new SeekBar(this);
+        activePlayerSeekBar.setMax(1);
+        activePlayerSeekBar.setProgress(0);
+        if (activePlayerSeekBar.getProgressDrawable() != null) {
+            activePlayerSeekBar.getProgressDrawable().setTint(Color.rgb(0, 122, 255));
+        }
+        if (activePlayerSeekBar.getThumb() != null) {
+            activePlayerSeekBar.getThumb().setTint(Color.rgb(255, 126, 67));
+        }
+        activePlayerSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser && activePlayerCurrentTime != null) {
+                    activePlayerCurrentTime.setText(formatDuration(Math.round(progress / 1000f)));
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                playerSeekDragging = true;
+                showPlayerChromeTemporarily();
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                playerSeekDragging = false;
+                if (activeVideoView != null) {
+                    activeVideoView.seekTo(seekBar.getProgress());
+                    resetHighlightIndexForPosition(seekBar.getProgress());
+                }
+                showPlayerChromeTemporarily();
+            }
+        });
+        LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(0, dp(34), 1);
+        seekParams.leftMargin = dp(8);
+        seekParams.rightMargin = dp(8);
+        progressRow.addView(activePlayerSeekBar, seekParams);
+
+        activePlayerDuration = text("0:00", 12, Color.argb(220, 236, 242, 255), Typeface.BOLD);
+        activePlayerDuration.setGravity(Gravity.CENTER);
+        progressRow.addView(activePlayerDuration, new LinearLayout.LayoutParams(dp(46), dp(30)));
+
         LinearLayout modeRow = new LinearLayout(this);
         modeRow.setOrientation(LinearLayout.HORIZONTAL);
         modeRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -3036,10 +3105,16 @@ public class MainActivity extends Activity {
         actionRowParams.topMargin = dp(8);
         bottomControls.addView(actionRow, actionRowParams);
 
+        activePlayPauseButton = playerActionButton("暂停", false);
+        activePlayPauseButton.setOnClickListener(v -> togglePlayerPlayback());
+        actionRow.addView(activePlayPauseButton, weightHeight(1, dp(42)));
+
         activeRemixEntryButton = playerActionButton("片尾 AI", true);
         activeRemixEntryButton.setEnabled(false);
         activeRemixEntryButton.setOnClickListener(v -> showRemixEntry(false));
-        actionRow.addView(activeRemixEntryButton, weightHeight(1, dp(42)));
+        LinearLayout.LayoutParams remixEntryParams = weightHeight(1, dp(42));
+        remixEntryParams.leftMargin = dp(8);
+        actionRow.addView(activeRemixEntryButton, remixEntryParams);
 
         if (activePlayerRoomCode.isEmpty()) {
             activeStartWatchRoomButton = playerActionButton("同看", false);
@@ -3109,6 +3184,8 @@ public class MainActivity extends Activity {
         stopWatchRoomEvents();
         stopHighlightTapWatcher();
         stopStickerWatcher();
+        stopPlayerChromeAutoHide();
+        stopPlayerProgressUi();
         stopRemixAudio();
         postCurrentWatchHistoryProgress(false);
         cancelVoiceRecording("");
@@ -3123,6 +3200,65 @@ public class MainActivity extends Activity {
             return;
         }
         postWatchHistoryProgress(activeEpisodeId, activeVideoView.getCurrentPosition(), force);
+    }
+
+    private void startPlayerProgressUi() {
+        stopPlayerProgressUi();
+        updatePlayerProgressUi();
+        playerProgressUiRunnable = () -> {
+            updatePlayerProgressUi();
+            if (activeVideoView != null && videoPrepared) {
+                progressHandler.postDelayed(playerProgressUiRunnable, 700);
+            }
+        };
+        progressHandler.postDelayed(playerProgressUiRunnable, 700);
+    }
+
+    private void stopPlayerProgressUi() {
+        if (playerProgressUiRunnable != null) {
+            progressHandler.removeCallbacks(playerProgressUiRunnable);
+            playerProgressUiRunnable = null;
+        }
+    }
+
+    private void updatePlayerProgressUi() {
+        if (activeVideoView == null || activePlayerSeekBar == null) {
+            return;
+        }
+        int duration = Math.max(0, activeVideoView.getDuration());
+        int position = Math.max(0, activeVideoView.getCurrentPosition());
+        if (duration > 0 && activePlayerSeekBar.getMax() != duration) {
+            activePlayerSeekBar.setMax(duration);
+        }
+        if (!playerSeekDragging) {
+            activePlayerSeekBar.setProgress(Math.min(position, Math.max(duration, 1)));
+        }
+        if (activePlayerCurrentTime != null) {
+            activePlayerCurrentTime.setText(formatDuration(Math.round(position / 1000f)));
+        }
+        if (activePlayerDuration != null) {
+            activePlayerDuration.setText(duration > 0 ? formatDuration(Math.round(duration / 1000f)) : "0:00");
+        }
+        updatePlayerPlayPauseButton();
+    }
+
+    private void togglePlayerPlayback() {
+        if (activeVideoView == null) {
+            return;
+        }
+        if (activeVideoView.isPlaying()) {
+            activeVideoView.pause();
+        } else {
+            activeVideoView.start();
+        }
+        updatePlayerPlayPauseButton();
+        showPlayerChromeTemporarily();
+    }
+
+    private void updatePlayerPlayPauseButton() {
+        if (activePlayPauseButton != null && activeVideoView != null) {
+            activePlayPauseButton.setText(activeVideoView.isPlaying() ? "暂停" : "播放");
+        }
     }
 
     private void postWatchHistoryProgress(int episodeId, int positionMs, boolean force) {
@@ -3851,6 +3987,8 @@ public class MainActivity extends Activity {
         stopWatchRoomEvents();
         stopHighlightTapWatcher();
         stopStickerWatcher();
+        stopPlayerChromeAutoHide();
+        stopPlayerProgressUi();
         videoPrepared = false;
         highlightTimeline = new JSONArray();
         danmakuTimeline = new JSONArray();
@@ -3869,6 +4007,8 @@ public class MainActivity extends Activity {
         activeDanmakuOverlay = null;
         activeHighlightEffectLayer = null;
         activePlayerFrame = null;
+        activePlayerTopScrim = null;
+        activePlayerTopBar = null;
         activeRemixPanel = null;
         activeWatchRoomStrip = null;
         activeWatchRoomAvatars = null;
@@ -3877,6 +4017,12 @@ public class MainActivity extends Activity {
         activeWatchRoomStatus = null;
         activeWatchRoomBoardStatus = null;
         activePlayerControls = null;
+        activePlayerCurrentTime = null;
+        activePlayerDuration = null;
+        activePlayerSeekBar = null;
+        activePlayPauseButton = null;
+        playerSeekDragging = false;
+        playerChromeVisible = true;
         lightDanmakuButton = null;
         carnivalDanmakuButton = null;
         immersiveDanmakuButton = null;
@@ -4543,10 +4689,8 @@ public class MainActivity extends Activity {
         if (activeRemixPanel != null) {
             activeRemixPanel.setVisibility(View.GONE);
         }
-        if (activePlayerControls != null) {
-            activePlayerControls.setVisibility(View.VISIBLE);
-        }
         setPlayerOverlayChromeVisible(true);
+        showPlayerChromeTemporarily();
         resetHighlightIndexToCurrent();
         updatePlayerStatus();
         scheduleNextHighlight();
@@ -4562,6 +4706,72 @@ public class MainActivity extends Activity {
         }
         if (activeDanmakuOverlay != null) {
             activeDanmakuOverlay.setVisibility(state);
+        }
+    }
+
+    private void togglePlayerChrome() {
+        if (isRemixOverlayVisible()) {
+            return;
+        }
+        if (playerChromeVisible) {
+            setPlayerChromeVisible(false);
+        } else {
+            showPlayerChromeTemporarily();
+        }
+    }
+
+    private void showPlayerChromeTemporarily() {
+        if (isRemixOverlayVisible()) {
+            return;
+        }
+        setPlayerChromeVisible(true);
+        schedulePlayerChromeAutoHide();
+    }
+
+    private void setPlayerChromeVisible(boolean visible) {
+        playerChromeVisible = visible;
+        setPlayerChromeViewVisible(activePlayerTopScrim, visible);
+        setPlayerChromeViewVisible(activePlayerTopBar, visible);
+        setPlayerChromeViewVisible(activePlayerControls, visible);
+        setPlayerChromeViewVisible(activeWatchRoomStrip, visible);
+        setPlayerChromeViewVisible(activeWatchRoomBoardStatus, visible);
+        if (!visible) {
+            stopPlayerChromeAutoHide();
+        }
+    }
+
+    private void setPlayerChromeViewVisible(View view, boolean visible) {
+        if (view == null) {
+            return;
+        }
+        view.animate().cancel();
+        if (visible) {
+            view.setAlpha(0f);
+            view.setVisibility(View.VISIBLE);
+            view.animate().alpha(1f).setDuration(180).start();
+        } else {
+            view.animate().alpha(0f).setDuration(180).withEndAction(() -> {
+                if (!playerChromeVisible) {
+                    view.setVisibility(View.GONE);
+                }
+            }).start();
+        }
+    }
+
+    private void schedulePlayerChromeAutoHide() {
+        stopPlayerChromeAutoHide();
+        playerChromeHideRunnable = () -> {
+            if (activeVideoView != null && videoPrepared && !isRemixOverlayVisible()) {
+                setPlayerChromeVisible(false);
+            }
+        };
+        progressHandler.postDelayed(playerChromeHideRunnable, 3000);
+    }
+
+    private void stopPlayerChromeAutoHide() {
+        if (playerChromeHideRunnable != null) {
+            progressHandler.removeCallbacks(playerChromeHideRunnable);
+            playerChromeHideRunnable = null;
         }
     }
 
