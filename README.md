@@ -1,5 +1,19 @@
 # 半句：基于短剧剧情理解的即时互动激发系统
 
+## 项目展示
+
+项目流程演示：[Bilibili 观看](https://www.bilibili.com/video/BV1KJEz6BEiW/?spm_id_from=333.1387.homepage.video_card.click&vd_source=1e173b313bd91925408feaa275abf67b)
+
+> 本地项目流程视频约 316MB，超过 GitHub 单文件限制，因此 README 使用外部展示链接。
+
+Android 端演示：
+
+<video src="docs/media/android-demo.mp4" controls width="320"></video>
+
+[如果当前页面无法直接播放，请点这里查看 Android 演示视频](docs/media/android-demo.mp4)
+
+Android 端功能与 Web 主线类似，当前视频展示登录、选剧、播放和部分互动能力；完整高光弹层、弹幕治理、片尾 AI 二创和复核能力仍以 Web 主线为准。
+
 半句是一套面向短剧观看场景的 AI 全栈产品原型。系统通过“大模型理解剧情 + 人工复核 + 服务端配置 + Web 客户端互动 + Android 壳 App 支线”的方式，把短剧中的冲突、反转、爽点、甜蜜、虐心、悬念等剧情高光转化成低门槛互动体验。
 
 当前主线是电脑端 Web 展示版；Android 端作为支线保留，用于验证 App 壳、安装包、公网访问和后续原生迁移。

@@ -1960,3 +1960,15 @@
   - main 快进到 Web 稳定提交，并推送 main、web-product 和 tag 到 GitHub。
 - 下一步：
   - 继续以 main 作为稳定展示分支，Android 原生实验保留在 native-android-migration 分支独立推进。
+
+## 2026-06-11 23:22:18
+
+- 目标：在 README 标题下增加项目展示区：项目流程 B 站链接和 Android 演示视频。
+- Git：`0284278` / `main`
+- 数据：10 部短剧，20 集，65 个高光，4 集已复核，1282 条弹幕，20 条体验配置，150 条片尾 AI 二创，6 条社交动态，22 条好友申请，21 条聊天消息。
+- 变更：
+  - 项目流程演示本地视频约 316MB，超过 GitHub 单文件限制，README 使用用户提供的 Bilibili 链接。
+  - 将 Android 演示视频复制到 docs/media/android-demo.mp4，并在 README 顶部嵌入 video 展示和备用链接。
+  - 补充说明 Android 端功能与 Web 主线类似，当前展示登录、选剧、播放和部分互动能力。
+- 下一步：
+  - 如需正式发布展示页，可后续为 README 增加封面图或 GIF 预览，提升 GitHub 首屏可读性。
