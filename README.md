@@ -8,9 +8,13 @@
 
 Android 端演示：
 
-<video src="docs/media/android-demo.mp4" controls width="320"></video>
+<a href="https://github.com/leoelio/Understanding-Short-Dramas/raw/main/docs/media/android-demo.mp4">
+  <img src="docs/media/android-demo-cover.jpg" width="320" alt="Android 端演示封面" />
+</a>
 
-[如果当前页面无法直接播放，请点这里查看 Android 演示视频](docs/media/android-demo.mp4)
+[点击播放/下载 Android 演示视频（MP4）](https://github.com/leoelio/Understanding-Short-Dramas/raw/main/docs/media/android-demo.mp4)
+
+[仓库内视频文件](docs/media/android-demo.mp4)
 
 Android 端功能与 Web 主线类似，当前视频展示登录、选剧、播放和部分互动能力；完整高光弹层、弹幕治理、片尾 AI 二创和复核能力仍以 Web 主线为准。
 

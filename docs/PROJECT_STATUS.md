@@ -1,22 +1,22 @@
 # Project Status
 
-更新时间：2026-06-11 23:22:18
+更新时间：2026-06-11 23:31:05
 
 ## 当前目标
 
-在 README 标题下增加项目展示区：项目流程 B 站链接和 Android 演示视频。
+修复 README 中 Android 演示视频在 GitHub 上无法直接观看的问题。
 
 ## Git 状态
 
 - 分支：`main`
-- 最新提交：`0284278`
+- 最新提交：`5bf58e4`
 - 远端：`https://github.com/leoelio/Understanding-Short-Dramas.git`
 - 工作区：
 - `M README.md`
 - `?? .tmp-edge-report-companion/`
 - `?? b8d3320d5ebed7b3ead172dc207378a3.mp4`
 - `?? data/backups/`
-- `?? docs/media/`
+- `?? docs/media/android-demo-cover.jpg`
 - `?? "\345\256\211\345\215\223.mp4"`
 - `?? "\351\241\271\347\233\256\346\265\201\347\250\213\346\274\224\347\244\272.mp4"`
 
@@ -58,13 +58,12 @@
 
 ## 本次变更摘要
 
-- 项目流程演示本地视频约 316MB，超过 GitHub 单文件限制，README 使用用户提供的 Bilibili 链接。
-- 将 Android 演示视频复制到 docs/media/android-demo.mp4，并在 README 顶部嵌入 video 展示和备用链接。
-- 补充说明 Android 端功能与 Web 主线类似，当前展示登录、选剧、播放和部分互动能力。
+- 将 README 的本地 video 标签替换为封面图点击跳转 raw mp4 链接，提升 GitHub 展示稳定性。
+- 新增 docs/media/android-demo-cover.jpg 作为 Android 演示封面。
 
 ## 下一步建议
 
-- 如需正式发布展示页，可后续为 README 增加封面图或 GIF 预览，提升 GitHub 首屏可读性。
+- 如 GitHub raw 链接仍受网络影响，可后续补充 B 站或 Releases 附件地址作为第二播放源。
 
 ## 安全提醒
 
