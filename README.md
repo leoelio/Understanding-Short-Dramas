@@ -47,7 +47,7 @@
 | 主分支 | `main`，用于 Web 展示和交付 |
 | Web 开发分支 | `web-product` |
 | Android 支线 | `native-android-migration`，用于原生迁移实验 |
-| Android 壳 App | `mobile/banju-android` |
+| Android 支线工程 | `mobile/banju-android` |
 | 默认本地地址 | `http://127.0.0.1:8000/` |
 
 ## 核心能力
@@ -66,7 +66,7 @@
 ```text
 backend/        FastAPI 服务端
 frontend/       Web 客户端、复核页、后台页和静态资源
-mobile/         Android 壳 App 和原生迁移支线代码
+mobile/         Android 支线和原生迁移支线代码
 scripts/        导入、标注、训练、构建、隧道和维护脚本
 docs/           项目文档、答辩材料、部署说明、接口说明
 data/           本地数据库、模型缓存、声音缓存等运行数据
@@ -94,7 +94,7 @@ flowchart TD
     W2 --> W5["同看房间与战报"]
 
     API --> M["Android 客户端支线"]
-    M --> M1["Capacitor WebView 壳 App"]
+    M --> M1["Android 支线工程"]
     M --> M2["原生迁移实验分支"]
 
     E --> G["弹幕治理闭环"]
@@ -238,12 +238,12 @@ Android 当前有两条路线：
 
 | 路线 | 位置 | 用途 | 当前建议 |
 | --- | --- | --- | --- |
-| WebView 壳 App | `mobile/banju-android` | 打包成 APK，加载公网 Web 地址 | 可用于安装包演示 |
+| Android 支线 | `mobile/banju-android` | 打包成 APK，连接公网 Web 地址 | 可用于安装包演示 |
 | 原生迁移实验 | `native-android-migration` 分支 | 验证原生登录、选片、播放、高光、弹幕 | 继续实验，不影响 Web 主线 |
 
-当前最稳定的演示方式仍然是电脑端 Web。Android 壳 App 适合证明“可以安装到手机”，但播放体验、全屏交互和复杂二创仍以 Web 主线为准。
+当前最稳定的演示方式仍然是电脑端 Web。Android 支线适合证明“可以安装到手机”，但播放体验、全屏交互和复杂二创仍以 Web 主线为准。
 
-### Android 壳 App 从 0 构建
+### Android 支线从 0 构建
 
 前置要求：
 
@@ -294,7 +294,7 @@ mobile\banju-android\android\app\build\outputs\apk\debug\app-debug.apk
 ```mermaid
 flowchart LR
     A["电脑或云服务器<br/>启动 FastAPI Web 服务"] --> B["公网 HTTPS 地址"]
-    B --> C["Android 壳 App<br/>WebView 加载该地址"]
+    B --> C["Android 支线<br/>加载该地址"]
     C --> D["登录、选片、播放、互动"]
     D --> E["通过 API 回传互动、弹幕、声音、二创数据"]
     E --> A
