@@ -11,13 +11,6 @@
 </p>
 
 <p align="center">
-  <img alt="Web MVP" src="https://img.shields.io/badge/Web-Desktop%20MVP-0A84FF?style=for-the-badge" />
-  <img alt="AI Full Stack" src="https://img.shields.io/badge/AI-Full%20Stack-6E56CF?style=for-the-badge" />
-  <img alt="Android Branch" src="https://img.shields.io/badge/Android-Companion%20Branch-34C759?style=for-the-badge" />
-  <img alt="License" src="https://img.shields.io/badge/License-AGPL--3.0-111827?style=for-the-badge" />
-</p>
-
-<p align="center">
   把短剧里的冲突、反转、甜蜜、虐心和名场面，转化成可以被模型理解、被人工复核、被客户端即时触发的低门槛互动体验。
 </p>
 
