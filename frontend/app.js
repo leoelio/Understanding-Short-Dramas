@@ -6191,19 +6191,10 @@ function stopRemixAudio(options = {}) {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
 }
 
-function playOriginalRemixText(text) {
-  const trimmed = String(text || "").trim();
-  if (!trimmed || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return false;
-  stopRemixAudio({ invalidate: false });
-  const utterance = new SpeechSynthesisUtterance(trimmed);
-  utterance.lang = "zh-CN";
-  utterance.rate = 0.98;
-  utterance.pitch = 1;
-  const voice = window.speechSynthesis
-    .getVoices()
-    .find((item) => /zh|Chinese|Mandarin|中文/i.test(`${item.lang} ${item.name}`));
-  if (voice) utterance.voice = voice;
-  window.speechSynthesis.speak(utterance);
+function playCachedOriginalRemixVoice(frame) {
+  const src = frame?.dataset.audioSrc;
+  if (!src || frame.dataset.audioReady !== "true") return false;
+  playAudioSrc(src);
   return true;
 }
 
@@ -6219,7 +6210,7 @@ async function generateAndPlayRemixVoice(frame, voiceMode) {
     return;
   }
   if (isUserVoice && !state.voiceProfile?.profile) {
-    if (requestSerial === state.remixVoiceRequestSerial) playOriginalRemixText(text);
+    if (requestSerial === state.remixVoiceRequestSerial) playCachedOriginalRemixVoice(frame);
     return;
   }
   frame.classList.add("voice-generating");
@@ -6239,9 +6230,7 @@ async function generateAndPlayRemixVoice(frame, voiceMode) {
     }
   } catch {
     if (requestSerial !== state.remixVoiceRequestSerial) return;
-    const src = frame.dataset.audioSrc;
-    if (src && frame.dataset.audioReady === "true") playAudioSrc(src);
-    else playOriginalRemixText(text);
+    playCachedOriginalRemixVoice(frame);
   } finally {
     if (requestSerial === state.remixVoiceRequestSerial) state.voiceClipLoading = false;
     frame.classList.remove("voice-generating");
