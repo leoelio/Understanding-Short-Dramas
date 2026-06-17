@@ -105,6 +105,7 @@ VOICE_CLIP_DIR = VOICE_ASSET_DIR / "clips"
 VOICE_TTS_SPEED = 1.18
 VOICE_MODEL_VERSION = "cosyvoice-local-v2-fast"
 REMIX_AUDIO_DIR = FRONTEND_DIR / "assets" / "remix_audio" / "beiwang_ep1"
+ORIGINAL_REMIX_AUDIO_DIR = REMIX_AUDIO_DIR / "original"
 AVATAR_ASSET_DIR = DATA_DIR / "avatar_assets"
 AVATAR_POOL_DIR = ROOT_DIR / "avatars"
 AVATAR_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
@@ -121,6 +122,7 @@ def ensure_voice_dirs() -> None:
     VOICE_PROMPT_DIR.mkdir(parents=True, exist_ok=True)
     VOICE_CLIP_DIR.mkdir(parents=True, exist_ok=True)
     REMIX_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+    ORIGINAL_REMIX_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def ensure_avatar_dirs() -> None:
@@ -321,6 +323,11 @@ def normalize_tts_line(value: str) -> str:
     text = re.sub(r"[，,、；;：:]+", "", text)
     text = re.sub(r"[。.!！?？…]+", "", text)
     return text.strip() or (value or "").strip()
+
+
+def original_remix_voice_filename(variant_slot: str, shot_index: int, text: str) -> str:
+    text_hash = sha256_text(normalize_tts_line(text))[:12]
+    return f"{variant_slot}_shot_{shot_index}_{text_hash}.mp3"
 
 
 def generate_voice_clip_file_with_gradio(text: str, prompt_text: str, prompt_wav_path: Path, output_path: Path) -> dict:
@@ -1426,12 +1433,13 @@ def remix_image_plan(choice: dict, variant: dict | None) -> dict | None:
     shots = []
     for index, shot in enumerate(variant.get("video_shots") or [], start=1):
         storage_hint = f"/assets/remix_images/beiwang_ep1/{slot}_shot_{index}.png"
-        audio_storage_hint = f"/assets/remix_audio/beiwang_ep1/{slot}_shot_{index}.mp3"
         asset_path = FRONTEND_DIR / storage_hint.lstrip("/")
-        audio_path = FRONTEND_DIR / audio_storage_hint.lstrip("/")
         storyboard = (variant.get("storyboard") or [{}])[index - 1] if index <= len(variant.get("storyboard") or []) else {}
         prompt = shot.get("video_prompt") or storyboard.get("visual") or variant.get("summary") or ""
         audio_text = storyboard.get("subtitle") or shot.get("caption") or ""
+        audio_filename = original_remix_voice_filename(slot, index, audio_text)
+        audio_storage_hint = f"/assets/remix_audio/beiwang_ep1/original/{audio_filename}"
+        audio_path = ORIGINAL_REMIX_AUDIO_DIR / audio_filename
         shots.append(
             {
                 "index": index,
@@ -1466,9 +1474,9 @@ def ensure_original_remix_voice_clip(variant_slot: str, shot_index: int, text: s
     prompt_path = VOICE_PROMPT_DIR / "system" / "beiwang_ep1_main_prompt.wav"
     if not prompt_path.exists():
         raise HTTPException(status_code=503, detail="缺少北往原版参考音频，请先截取主角台词样本")
-    filename = f"{variant_slot}_shot_{shot_index}.mp3"
-    output_path = REMIX_AUDIO_DIR / filename
-    audio_url = f"/assets/remix_audio/beiwang_ep1/{filename}"
+    filename = original_remix_voice_filename(variant_slot, shot_index, text)
+    output_path = ORIGINAL_REMIX_AUDIO_DIR / filename
+    audio_url = f"/assets/remix_audio/beiwang_ep1/original/{filename}"
     if output_path.exists():
         return {
             "voice_mode": "original",

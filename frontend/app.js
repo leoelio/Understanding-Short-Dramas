@@ -6153,7 +6153,7 @@ function renderRemixImageSequence(imagePlan) {
           }>我的声音</button>
         </div>
         <button class="ghost-button remix-voice-button" type="button" data-remix-action="voice-current">
-          播放这一句
+          ${activeVoiceMode === "user" ? "播放我的声音" : "播放原版声音"}
         </button>
       </div>
       ${sceneChoiceHTML}
@@ -9480,6 +9480,10 @@ endingRemixLayer?.addEventListener("click", (event) => {
     endingRemixLayer
       .querySelectorAll(".remix-voice-switch [data-voice-mode]")
       .forEach((button) => button.classList.toggle("active", button.dataset.voiceMode === state.voiceUsageMode));
+    const remixVoiceButton = endingRemixLayer.querySelector(".remix-voice-button");
+    if (remixVoiceButton) {
+      remixVoiceButton.textContent = state.voiceUsageMode === "user" ? "播放我的声音" : "播放原版声音";
+    }
     return;
   }
   const variant = event.target.closest("[data-remix-variant]");
