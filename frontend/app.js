@@ -21,6 +21,165 @@ const BEIWANG_REMIX_TOPIC_TITLE = "北往二创音卡";
 const BEIWANG_REMIX_TOPIC_TAG = "#北往二创音卡";
 const WINTER_VOICE_TOPIC_KEY = "winter_voice_match";
 const WINTER_VOICE_TOPIC_TITLE = "那年冬至主角模仿赛";
+const CHAT_CLIP_MATCH_THRESHOLD = 0.6;
+const CHAT_HOT_CLIPS = [
+  {
+    id: "beiwang_ep1_debt_opening",
+    dramaTitle: "北往",
+    episodeTitle: "第1集",
+    episodeId: 3,
+    firstEpisodeId: 3,
+    startSec: 0,
+    endSec: 8,
+    label: "要债堵门",
+    quote: "开头要债，冲突直接压上来。",
+    videoUrl: "/assets/hot_clips/beiwang_ep1_debt_opening.mp4",
+    keywords: ["北往", "要债", "欠钱", "堵门", "讨薪", "冲突", "开头"],
+  },
+  {
+    id: "beiwang_ep1_no_money_home",
+    dramaTitle: "北往",
+    episodeTitle: "第1集",
+    episodeId: 3,
+    firstEpisodeId: 3,
+    startSec: 58,
+    endSec: 66,
+    label: "没钱回家",
+    quote: "年三十，最难受的是没钱回家。",
+    videoUrl: "/assets/hot_clips/beiwang_ep1_no_money_home.mp4",
+    keywords: ["北往", "没钱", "回家", "心酸", "虐心", "年三十", "买票"],
+  },
+  {
+    id: "beiwang_ep1_rock_motor",
+    dramaTitle: "北往",
+    episodeTitle: "第1集",
+    episodeId: 3,
+    firstEpisodeId: 3,
+    startSec: 268,
+    endSec: 277,
+    label: "贼摇滚",
+    quote: "到底咋回去？答案突然摇滚起来。",
+    videoUrl: "/assets/hot_clips/beiwang_ep1_rock_motor.mp4",
+    keywords: ["北往", "贼摇滚", "摩托", "骑车", "怎么回家", "回东北", "反转"],
+  },
+  {
+    id: "beiwang_ep1_motor_depart",
+    dramaTitle: "北往",
+    episodeTitle: "第1集",
+    episodeId: 3,
+    firstEpisodeId: 3,
+    startSec: 288,
+    endSec: 296,
+    label: "骑车返乡",
+    quote: "两个人骑上摩托，往家的方向冲。",
+    videoUrl: "/assets/hot_clips/beiwang_ep1_motor_depart.mp4",
+    keywords: ["北往", "摩托回家", "骑车返乡", "回东北", "上路", "返乡"],
+  },
+  {
+    id: "winter_ep1_euthanasia",
+    dramaTitle: "那年冬至",
+    episodeTitle: "第1集",
+    episodeId: 19,
+    firstEpisodeId: 19,
+    startSec: 25,
+    endSec: 33,
+    label: "安乐死请求",
+    quote: "一句安乐死，把情绪压到最低。",
+    videoUrl: "/assets/hot_clips/winter_ep1_euthanasia.mp4",
+    keywords: ["那年冬至", "那年冬天", "安乐死", "伤心", "心疼", "虐点"],
+  },
+  {
+    id: "winter_ep1_undress_shock",
+    dramaTitle: "那年冬至",
+    episodeTitle: "第1集",
+    episodeId: 19,
+    firstEpisodeId: 19,
+    startSec: 48,
+    endSec: 57,
+    label: "脱衣震惊",
+    quote: "女主突然上手，弹幕直接炸开。",
+    videoUrl: "/assets/hot_clips/winter_ep1_undress_shock.mp4",
+    keywords: ["那年冬至", "那年冬天", "脱衣服", "震惊", "突然", "名场面"],
+  },
+  {
+    id: "winter_ep1_choice",
+    dramaTitle: "那年冬至",
+    episodeTitle: "第1集",
+    episodeId: 19,
+    firstEpisodeId: 19,
+    startSec: 110,
+    endSec: 119,
+    label: "男主二选一",
+    quote: "男主到底选哪一个？竞猜点来了。",
+    videoUrl: "/assets/hot_clips/winter_ep1_choice.mp4",
+    keywords: ["那年冬至", "选择", "二选一", "男主选择", "竞猜", "第二个"],
+  },
+  {
+    id: "winter_ep1_kiss_heart",
+    dramaTitle: "那年冬至",
+    episodeTitle: "第1集",
+    episodeId: 19,
+    firstEpisodeId: 19,
+    startSec: 174,
+    endSec: 182,
+    label: "亲吻爱心弹幕",
+    quote: "2分55秒亲上了，适合发爱心弹幕。",
+    videoUrl: "/assets/hot_clips/winter_ep1_kiss_heart.mp4",
+    keywords: ["那年冬至", "那年冬天", "亲嘴", "亲吻", "亲上了", "爱心", "磕到了", "甜"],
+  },
+  {
+    id: "treasure_ep1_secret",
+    dramaTitle: "北派寻宝",
+    episodeTitle: "第63集",
+    episodeId: 5,
+    firstEpisodeId: 5,
+    startSec: 32,
+    endSec: 40,
+    label: "寻宝疑云",
+    quote: "北派寻宝的悬疑味开始起来。",
+    videoUrl: "/assets/hot_clips/treasure_ep1_secret.mp4",
+    keywords: ["北派寻宝", "寻宝", "机关", "古董", "悬疑", "疑云"],
+  },
+  {
+    id: "yunmiao_ep1_power",
+    dramaTitle: "云渺",
+    episodeTitle: "第1集",
+    episodeId: 1,
+    firstEpisodeId: 1,
+    startSec: 12,
+    endSec: 20,
+    label: "强亿点",
+    quote: "修仙多年，确实强亿点。",
+    videoUrl: "/assets/hot_clips/yunmiao_ep1_power.mp4",
+    keywords: ["云渺", "修仙", "强亿点", "实力", "爽点", "仙"],
+  },
+  {
+    id: "grandma_ep1_arrives",
+    dramaTitle: "十八岁太奶奶",
+    episodeTitle: "第1集",
+    episodeId: 7,
+    firstEpisodeId: 7,
+    startSec: 18,
+    endSec: 26,
+    label: "太奶奶驾到",
+    quote: "十八岁太奶奶出场，家族局面开始变。",
+    videoUrl: "/assets/hot_clips/grandma_ep1_arrives.mp4",
+    keywords: ["十八岁太奶奶", "太奶奶", "驾到", "家族", "重整", "荣耀"],
+  },
+  {
+    id: "famine_ep1_system_meat",
+    dramaTitle: "荒年全村",
+    episodeTitle: "第1集",
+    episodeId: 17,
+    firstEpisodeId: 17,
+    startSec: 28,
+    endSec: 36,
+    label: "系统满仓肉",
+    quote: "荒年开局，系统直接给满仓肉。",
+    videoUrl: "/assets/hot_clips/famine_ep1_system_meat.mp4",
+    keywords: ["荒年", "全村", "啃树皮", "系统", "满仓肉", "粮食", "爽点"],
+  },
+];
 
 const SPECIAL_DANMAKU_EVENTS = [
   {
@@ -355,6 +514,7 @@ const state = {
   chatThread: { friend: null, messages: [] },
   chatStatus: "",
   chatStatusError: false,
+  activeChatClipSuggestion: null,
   roomInvitations: { received: [], sent: [] },
   roomSocialStatus: "",
   roomSocialStatusError: false,
@@ -1110,7 +1270,7 @@ function hideRouteTransition() {
 function pressEffect(event) {
   if (!(event.target instanceof Element)) return;
   const button = event.target.closest(
-    ".primary-button, .ghost-button, .danger-button, .tab, .mode-button, .ai-mode-button, .theme-icon-button, .drama-action-button, .chat-tool-button, .chat-inline-button, .remix-choice-card, .remix-variant-card, .remix-scene-choice-options button, .interaction-options button, .danmaku-actions button, .voice-mode-toggle button, .demo-accounts button"
+    ".primary-button, .ghost-button, .danger-button, .tab, .mode-button, .ai-mode-button, .theme-icon-button, .drama-action-button, .chat-tool-button, .chat-inline-button, .chat-clip-action, .remix-choice-card, .remix-variant-card, .remix-scene-choice-options button, .interaction-options button, .danmaku-actions button, .voice-mode-toggle button, .demo-accounts button"
   );
   if (!button) return;
   if (button.disabled || button.getAttribute("aria-disabled") === "true") return;
@@ -4612,9 +4772,122 @@ async function loadChatThread(friendUserId, options = {}) {
   renderChatWorkspace();
 }
 
+function chatClipById(clipId) {
+  return CHAT_HOT_CLIPS.find((clip) => clip.id === clipId) || null;
+}
+
+function normalizeClipText(text = "") {
+  return String(text)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function uniqueChars(text) {
+  return new Set(Array.from(normalizeClipText(text)));
+}
+
+function charOverlapScore(a, b) {
+  const left = uniqueChars(a);
+  const right = uniqueChars(b);
+  if (!left.size || !right.size) return 0;
+  let overlap = 0;
+  left.forEach((char) => {
+    if (right.has(char)) overlap += 1;
+  });
+  return overlap / Math.max(left.size, right.size);
+}
+
+function clipMatchScore(input, clip) {
+  const query = normalizeClipText(input);
+  if (query.length < 2) return 0;
+  const candidates = [clip.label, clip.quote, clip.dramaTitle, ...(clip.keywords || [])].map(normalizeClipText).filter(Boolean);
+  const bestDirect = candidates.reduce((best, item) => {
+    if (!item) return best;
+    if (item.includes(query) || query.includes(item)) return Math.max(best, Math.min(1, 0.72 + Math.min(query.length, item.length) / 40));
+    return Math.max(best, charOverlapScore(query, item));
+  }, 0);
+  const hitCount = candidates.filter((item) => item.length >= 2 && (query.includes(item) || item.includes(query))).length;
+  return Math.max(bestDirect, hitCount ? Math.min(1, 0.56 + hitCount * 0.12) : 0);
+}
+
+function findChatClipSuggestion(text) {
+  const matches = CHAT_HOT_CLIPS.map((clip) => ({ clip, score: clipMatchScore(text, clip) }))
+    .filter((item) => item.score >= CHAT_CLIP_MATCH_THRESHOLD)
+    .sort((a, b) => b.score - a.score);
+  return matches[0] || null;
+}
+
+function chatClipPayload(clip) {
+  return {
+    clip_id: clip.id,
+    label: clip.label,
+    quote: clip.quote,
+    drama_title: clip.dramaTitle,
+    episode_title: clip.episodeTitle,
+    episode_id: clip.episodeId,
+    first_episode_id: clip.firstEpisodeId || clip.episodeId,
+    start_sec: clip.startSec,
+    end_sec: clip.endSec,
+    video_url: clip.videoUrl,
+    source_url: `/?episode=${clip.episodeId}&resume=${Math.max(0, Math.floor(clip.startSec || 0))}`,
+    first_episode_url: `/?episode=${clip.firstEpisodeId || clip.episodeId}`,
+  };
+}
+
+function renderChatClipCard(payload = {}, options = {}) {
+  const clip = payload.clip_id ? chatClipById(payload.clip_id) : null;
+  const data = { ...(clip ? chatClipPayload(clip) : {}), ...payload };
+  const matchPercent = options.score ? `<em>匹配度 ${Math.round(options.score * 100)}%</em>` : "";
+  return `
+    <section class="chat-clip-card">
+      <div class="chat-clip-video-shell">
+        <video src="${escapeHTML(data.video_url || "")}" controls preload="metadata" playsinline></video>
+      </div>
+      <div class="chat-clip-copy">
+        <span>${escapeHTML(data.drama_title || "热门片段")} · ${escapeHTML(data.episode_title || "")}</span>
+        <strong>${escapeHTML(data.label || "剧情片段")}</strong>
+        <p>${escapeHTML(data.quote || "")}</p>
+        <div class="chat-clip-meta">
+          ${matchPercent}
+          <button type="button" data-chat-open-clip="${escapeHTML(data.clip_id || "")}">去出处</button>
+          <button type="button" data-chat-open-drama="${Number(data.first_episode_id || data.episode_id || 0)}">看第1集</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderChatClipSuggestion() {
+  const target = $("#chatClipSuggestion");
+  if (!target) return;
+  const suggestion = state.activeChatClipSuggestion;
+  if (!suggestion) {
+    target.hidden = true;
+    target.innerHTML = "";
+    return;
+  }
+  target.hidden = false;
+  const payload = chatClipPayload(suggestion.clip);
+  target.innerHTML = `
+    ${renderChatClipCard(payload, { score: suggestion.score })}
+    <div class="chat-clip-actions">
+      <button class="ghost-button chat-clip-action" type="button" data-chat-preview-clip="${escapeHTML(suggestion.clip.id)}">打开出处</button>
+      <button class="primary-button chat-clip-action" type="button" data-chat-send-clip="${escapeHTML(suggestion.clip.id)}">发送片段</button>
+      <button class="ghost-button chat-clip-action compact" type="button" data-chat-dismiss-clip>收起</button>
+    </div>
+  `;
+}
+
+function updateChatClipSuggestion() {
+  const text = $("#chatMessageInput")?.value || "";
+  state.activeChatClipSuggestion = findChatClipSuggestion(text);
+  renderChatClipSuggestion();
+}
+
 function renderChatMessage(message) {
   const isOutgoing = message.direction === "outgoing";
   const payload = message.payload || {};
+  const clipCard = message.message_type === "clip_card" ? renderChatClipCard(payload) : "";
   const watchLink =
     message.message_type === "watch_link" && payload.room_code
       ? `<button class="chat-watch-link" type="button" data-chat-join-room="${escapeHTML(payload.room_code)}">进入同看 ${escapeHTML(payload.room_code)}</button>`
@@ -4623,6 +4896,7 @@ function renderChatMessage(message) {
     <article class="chat-bubble ${isOutgoing ? "outgoing" : "incoming"} ${escapeHTML(message.message_type || "text")}">
       <div>
         <p>${escapeHTML(message.text || "")}</p>
+        ${clipCard}
         ${watchLink}
       </div>
       <time>${formatDateTime(message.created_at)}</time>
@@ -4661,6 +4935,8 @@ function renderChatWorkspace() {
   if (!friend) {
     header.innerHTML = `<div><span>Chat</span><strong>选择一个好友开始聊天</strong><p>支持文字、表情包和同看链接。</p></div>`;
     messageList.innerHTML = `<div class="chat-empty">好友通过申请后，可以在这里直接聊天和约同看。</div>`;
+    state.activeChatClipSuggestion = null;
+    renderChatClipSuggestion();
     setChatStatus(state.chatStatus, state.chatStatusError);
     return;
   }
@@ -4677,6 +4953,7 @@ function renderChatWorkspace() {
     ? messages.map(renderChatMessage).join("")
     : `<div class="chat-empty">还没有消息。发一句“这段太上头了”开始聊天。</div>`;
   messageList.scrollTop = messageList.scrollHeight;
+  renderChatClipSuggestion();
   setChatStatus(state.chatStatus, state.chatStatusError);
 }
 
@@ -4696,7 +4973,11 @@ async function sendChatMessage(type = "text", textOverride = "") {
       method: "POST",
       body: JSON.stringify({ to_user_id: state.activeChatUserId, message_type: type, text, payload: {} }),
     });
-    if (input && !textOverride) input.value = "";
+    if (input && !textOverride) {
+      input.value = "";
+      state.activeChatClipSuggestion = null;
+      renderChatClipSuggestion();
+    }
     await loadChatThread(state.activeChatUserId, { silent: true });
     setChatStatus("已发送。");
   } catch (error) {
@@ -4731,6 +5012,48 @@ async function sendWatchLinkMessage() {
   } catch (error) {
     setChatStatus(errorMessage(error), true);
   }
+}
+
+async function sendChatClipCard(clipId) {
+  if (!state.activeChatUserId) {
+    setChatStatus("请先选择一个好友会话。", true);
+    return;
+  }
+  const clip = chatClipById(clipId);
+  if (!clip) {
+    setChatStatus("片段不存在或已下线。", true);
+    return;
+  }
+  try {
+    await fetchJSON("/api/chat/messages", {
+      method: "POST",
+      body: JSON.stringify({
+        to_user_id: state.activeChatUserId,
+        message_type: "clip_card",
+        text: `分享热门片段：${clip.label}`,
+        payload: chatClipPayload(clip),
+      }),
+    });
+    const input = $("#chatMessageInput");
+    if (input) input.value = "";
+    state.activeChatClipSuggestion = null;
+    renderChatClipSuggestion();
+    await loadChatThread(state.activeChatUserId, { silent: true });
+    setChatStatus("热门片段已发送。");
+  } catch (error) {
+    setChatStatus(errorMessage(error), true);
+  }
+}
+
+function openChatClipSource(clipId) {
+  const clip = chatClipById(clipId);
+  if (!clip) return;
+  openEpisodeFromUrl(clip.episodeId, clip.startSec || 0);
+}
+
+function openChatClipFirstEpisode(episodeId) {
+  const safeEpisodeId = Number(episodeId || 0);
+  if (safeEpisodeId > 0) openEpisodeFromUrl(safeEpisodeId);
 }
 
 async function joinChatWatchRoom(code) {
@@ -9786,10 +10109,31 @@ $("#chatMessageInput")?.addEventListener("keydown", (event) => {
     sendChatMessage();
   }
 });
+$("#chatMessageInput")?.addEventListener("input", updateChatClipSuggestion);
+$("#chatClipSuggestion")?.addEventListener("click", (event) => {
+  const sendButton = event.target.closest("[data-chat-send-clip]");
+  if (sendButton) {
+    sendChatClipCard(sendButton.dataset.chatSendClip);
+    return;
+  }
+  const previewButton = event.target.closest("[data-chat-preview-clip]");
+  if (previewButton) {
+    openChatClipSource(previewButton.dataset.chatPreviewClip);
+    return;
+  }
+  if (event.target.closest("[data-chat-dismiss-clip]")) {
+    state.activeChatClipSuggestion = null;
+    renderChatClipSuggestion();
+  }
+});
 $("#sendWatchLinkMessage")?.addEventListener("click", sendWatchLinkMessage);
 $("#chatMessageList")?.addEventListener("click", (event) => {
   const joinButton = event.target.closest("[data-chat-join-room]");
   if (joinButton) joinChatWatchRoom(joinButton.dataset.chatJoinRoom);
+  const clipButton = event.target.closest("[data-chat-open-clip]");
+  if (clipButton) openChatClipSource(clipButton.dataset.chatOpenClip);
+  const dramaButton = event.target.closest("[data-chat-open-drama]");
+  if (dramaButton) openChatClipFirstEpisode(dramaButton.dataset.chatOpenDrama);
 });
 $("#chatEmojiPanel")?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-chat-emoji]");

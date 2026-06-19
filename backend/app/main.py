@@ -882,7 +882,7 @@ def latest_friend_request(db: Session, user_id: int, target_user_id: int) -> Use
     )
 
 
-CHAT_MESSAGE_TYPES = {"text", "emoji", "watch_link"}
+CHAT_MESSAGE_TYPES = {"text", "emoji", "watch_link", "clip_card"}
 
 
 def chat_message_payload(message: ChatMessage, viewer: User) -> dict:
@@ -2339,6 +2339,8 @@ def create_chat_message(
     if message_type == "watch_link" and not text:
         room_code = str((payload.payload or {}).get("room_code") or "").strip().upper()
         text = f"同看房间 {room_code}" if room_code else "发起了同看邀请"
+    if message_type == "clip_card" and not text:
+        text = str((payload.payload or {}).get("label") or "分享了一个热门片段").strip()
     message = ChatMessage(
         from_user_id=user.id,
         to_user_id=friend.id,
