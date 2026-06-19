@@ -4680,6 +4680,71 @@ function socialTopicLabel(value) {
   }[value] || "日常分享";
 }
 
+const SOCIAL_TOPIC_PAGE_CONFIG = {
+  beiwang_voice: {
+    eyebrow: "Road Sound Card",
+    title: BEIWANG_REMIX_TOPIC_TITLE,
+    lead: "把北往第一集的返乡高光、二创分镜和声音资产做成可分享的剧情音卡。",
+    className: "road",
+    primaryLabel: "去看北往第1集",
+    episodeId: 3,
+    resumeSec: 268,
+    chips: ["贼摇滚", "摩托返乡", "二创音卡"],
+    panels: [
+      { label: "声纹", value: "原版 / 我的声音" },
+      { label: "剧情", value: "车坏半路 / 借票 / 帮人返乡" },
+      { label: "分享", value: "#北往二创音卡" },
+    ],
+  },
+  winter_voice_match: {
+    eyebrow: "Voice Match Arena",
+    title: WINTER_VOICE_TOPIC_TITLE,
+    lead: "围绕那年冬至的心动台词、亲吻弹幕和角色语气，形成可挑战的声音模仿赛。",
+    className: "winter",
+    primaryLabel: "跳到亲吻高光",
+    episodeId: 19,
+    resumeSec: 174,
+    chips: ["心动台词", "亲吻弹幕", "声音挑战"],
+    panels: [
+      { label: "高光", value: "2:55 亲吻爱心弹幕" },
+      { label: "榜单", value: "点赞排行 / 声音对比" },
+      { label: "氛围", value: "冬日、心跳、柔光" },
+    ],
+  },
+  story_bottle: {
+    eyebrow: "Story Bottle",
+    title: "剧情漂流瓶",
+    lead: "把 AI 剧情卡、文字感受和二创图片扔进公开广场，让陌生人接住、评论和继续扩写。",
+    className: "bottle",
+    primaryLabel: "发布剧情漂流瓶",
+    episodeId: null,
+    resumeSec: 0,
+    chips: ["公开评论", "陌生人接住", "AI 剧情卡"],
+    panels: [
+      { label: "权限", value: "公开 / 好友 / 仅自己" },
+      { label: "内容", value: "AI 图片 / AI 剧情 / 文字" },
+      { label: "治理", value: "禁低俗、可删评" },
+    ],
+  },
+};
+
+function socialTopicPageConfig(key) {
+  const fallbackTitle = socialTopicLabel(key);
+  return (
+    SOCIAL_TOPIC_PAGE_CONFIG[key] || {
+      eyebrow: "Topic",
+      title: fallbackTitle,
+      lead: "围绕同一个短剧主题沉淀动态、评论和 AI 内容资产。",
+      className: "story",
+      primaryLabel: "发布到专题",
+      episodeId: null,
+      resumeSec: 0,
+      chips: [fallbackTitle],
+      panels: [],
+    }
+  );
+}
+
 function setSocialStatus(message, isError = false) {
   state.socialStatus = message;
   state.socialStatusError = isError;
@@ -5227,12 +5292,8 @@ function renderSocialPost(post) {
   `;
 }
 
-function renderDiscoverView() {
-  const topics = $("#discoverTopics");
-  const feed = $("#socialFeedList");
-  if (!topics || !feed) return;
-  syncSocialChoiceGroups();
-  topics.innerHTML = (state.socialFeed.topics || [])
+function renderSocialTopicCards(topicsList) {
+  return (topicsList || [])
     .map(
       (item) => `
         <article class="social-topic-card tone-${escapeHTML(item.tone || "story")} ${
@@ -5248,12 +5309,116 @@ function renderDiscoverView() {
       `
     )
     .join("");
+}
+
+function renderSocialTopicPortal(topicItem, posts, ranking) {
+  const config = socialTopicPageConfig(topicItem.key);
+  const topRanking = (ranking || []).slice(0, 3);
+  return `
+    <section class="social-topic-portal topic-${escapeHTML(config.className)}">
+      <div class="social-topic-portal-head">
+        <button class="ghost-button compact" type="button" data-close-topic>返回广场</button>
+        <span>${escapeHTML(config.eyebrow)}</span>
+      </div>
+      <div class="social-topic-portal-grid">
+        <div class="social-topic-portal-copy">
+          <h3>${escapeHTML(config.title)}</h3>
+          <p>${escapeHTML(config.lead)}</p>
+          <div class="social-topic-chip-row">
+            ${config.chips.map((chip) => `<b>${escapeHTML(chip)}</b>`).join("")}
+          </div>
+          <div class="social-topic-actions">
+            ${
+              config.episodeId
+                ? `<button class="primary-button" type="button" data-topic-episode-id="${Number(config.episodeId)}" data-topic-resume="${Number(
+                    config.resumeSec || 0
+                  )}">${escapeHTML(config.primaryLabel)}</button>`
+                : ""
+            }
+            <button class="ghost-button" type="button" data-topic-focus-composer="${escapeHTML(topicItem.key)}">发布到本专题</button>
+          </div>
+        </div>
+        <div class="social-topic-visual" aria-hidden="true">
+          <div class="topic-orbit one"></div>
+          <div class="topic-orbit two"></div>
+          <div class="topic-device">
+            <i></i>
+            <strong>${escapeHTML(config.chips[0] || "AI")}</strong>
+            <span>${escapeHTML(config.chips[1] || config.title)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="social-topic-panel-row">
+        ${config.panels
+          .map(
+            (panel) => `
+              <article>
+                <span>${escapeHTML(panel.label)}</span>
+                <strong>${escapeHTML(panel.value)}</strong>
+              </article>
+            `
+          )
+          .join("")}
+        <article>
+          <span>动态</span>
+          <strong>${Number(posts?.length || 0)} 条内容正在本专题展示</strong>
+        </article>
+      </div>
+      ${
+        topRanking.length
+          ? `<div class="social-topic-rank-strip">
+              ${topRanking
+                .map(
+                  (post, index) => `
+                    <article>
+                      <b>${index + 1}</b>
+                      <span>${escapeHTML(post.title || "热门内容")}</span>
+                      <em>${Number(post.like_count || 0)} 赞</em>
+                    </article>
+                  `
+                )
+                .join("")}
+            </div>`
+          : ""
+      }
+      <div class="social-topic-mini-nav">
+        ${(state.socialFeed.topics || [])
+          .map(
+            (item) => `
+              <button class="${item.key === topicItem.key ? "active" : ""}" type="button" data-open-topic="${escapeHTML(item.key)}">
+                ${escapeHTML(item.title)}
+              </button>
+            `
+          )
+          .join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderDiscoverView() {
+  const topics = $("#discoverTopics");
+  const feed = $("#socialFeedList");
+  if (!topics || !feed) return;
+  syncSocialChoiceGroups();
+  const topicItems = state.socialFeed.topics || [];
+  const activeTopic = topicItems.find((item) => item.key === state.socialFeed.topic);
+  const posts = state.socialFeed.posts || [];
+  const ranking = state.socialFeed.ranking || [];
+  const topicSelect = $("#socialTopic");
+  if (topicSelect && activeTopic) topicSelect.value = activeTopic.key;
+  syncSocialChoiceGroups();
+  topics.classList.toggle("topic-page-mode", Boolean(activeTopic));
+  topics.innerHTML = activeTopic ? renderSocialTopicPortal(activeTopic, posts, ranking) : renderSocialTopicCards(topicItems);
   document.querySelectorAll("[data-social-scope]").forEach((button) => {
     button.classList.toggle("active", button.dataset.socialScope === state.socialFeed.scope);
   });
-  const posts = state.socialFeed.posts || [];
   feed.innerHTML = posts.length
-    ? `${renderSocialRanking()}${posts.map(renderSocialPost).join("")}`
+    ? `${
+        activeTopic
+          ? `<section class="social-topic-feed-head"><span>Topic Feed</span><strong>${escapeHTML(activeTopic.title)}动态</strong></section>`
+          : ""
+      }${renderSocialRanking()}${posts.map(renderSocialPost).join("")}`
     : `<div class="social-empty">还没有动态。先发布一条 AI 声音、AI 图片或 AI 剧情卡，逛逛页就会形成第一条展示内容。</div>`;
   setSocialStatus(state.socialStatus, state.socialStatusError);
 }
@@ -10176,9 +10341,28 @@ document.querySelectorAll("[data-social-scope]").forEach((button) => {
   button.addEventListener("click", () => loadSocialFeed(button.dataset.socialScope));
 });
 $("#discoverTopics")?.addEventListener("click", (event) => {
+  if (event.target.closest("[data-close-topic]")) {
+    state.socialFeed.topic = "";
+    loadSocialFeed(state.socialFeed.scope || "all");
+    return;
+  }
+  const episodeButton = event.target.closest("[data-topic-episode-id]");
+  if (episodeButton) {
+    openEpisodeFromUrl(Number(episodeButton.dataset.topicEpisodeId), Number(episodeButton.dataset.topicResume || 0));
+    return;
+  }
+  const focusButton = event.target.closest("[data-topic-focus-composer]");
+  if (focusButton) {
+    const select = $("#socialTopic");
+    if (select) select.value = focusButton.dataset.topicFocusComposer;
+    syncSocialChoiceGroups();
+    document.querySelector(".social-composer")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    $("#socialPostTitle")?.focus();
+    return;
+  }
   const button = event.target.closest("[data-open-topic]");
   if (!button) return;
-  state.socialFeed.topic = state.socialFeed.topic === button.dataset.openTopic ? "" : button.dataset.openTopic;
+  state.socialFeed.topic = button.dataset.openTopic;
   loadSocialFeed(state.socialFeed.scope || "all");
 });
 document.querySelectorAll("[data-social-select-target]").forEach((group) => {
