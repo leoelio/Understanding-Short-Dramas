@@ -16,6 +16,8 @@ const VOICE_PREVIEW_TEXTS = {
   original: "片尾拓展已开启，我会陪你猜下一段剧情。",
   user: "片尾拓展已开启，我会用你的声音陪你猜下一段剧情。",
 };
+const WINTER_VOICE_TOPIC_KEY = "winter_voice_match";
+const WINTER_VOICE_TOPIC_TITLE = "那年冬至主角模仿赛";
 
 const SPECIAL_DANMAKU_EVENTS = [
   {
@@ -357,9 +359,22 @@ const state = {
   friendHubStatus: "",
   friendHubStatusError: false,
   socialInbox: { unread_count: 0, room_invitations: [], notifications: [] },
-  socialFeed: { scope: "all", topics: [], posts: [] },
+  socialFeed: { scope: "all", topic: "", topics: [], posts: [], ranking: [] },
   socialStatus: "",
   socialStatusError: false,
+  voiceImitationActivity: null,
+  voiceImitationStatus: "",
+  voiceImitationStatusError: false,
+  voiceImitationLineKey: "",
+  voiceImitationRecordedBlob: null,
+  voiceImitationRecordedUrl: "",
+  voiceImitationRecordChunks: [],
+  voiceImitationRecorder: null,
+  voiceImitationRecordStream: null,
+  voiceImitationRecording: false,
+  voiceImitationAiClip: null,
+  voiceImitationManualAsset: null,
+  voiceImitationShareMode: "ai",
   avatarPool: [],
   avatarFilter: "featured",
   avatarSearch: "",
@@ -789,9 +804,17 @@ function clearAuth() {
   state.friendHubStatus = "";
   state.friendHubStatusError = false;
   state.socialInbox = { unread_count: 0, room_invitations: [], notifications: [] };
-  state.socialFeed = { scope: "all", topics: [], posts: [] };
+  state.socialFeed = { scope: "all", topic: "", topics: [], posts: [], ranking: [] };
   state.socialStatus = "";
   state.socialStatusError = false;
+  clearVoiceImitationRecording();
+  state.voiceImitationActivity = null;
+  state.voiceImitationStatus = "";
+  state.voiceImitationStatusError = false;
+  state.voiceImitationLineKey = "";
+  state.voiceImitationAiClip = null;
+  state.voiceImitationManualAsset = null;
+  state.voiceImitationShareMode = "ai";
   state.avatarPool = [];
   state.avatarFilter = "featured";
   state.avatarSearch = "";
@@ -904,6 +927,7 @@ async function routeAfterAuth() {
   const episodeId = Number(params.get("episode"));
   const resumeTime = Number(params.get("resume") || 0);
   const openRemix = params.get("remix") === "1";
+  const openVoiceActivity = params.get("voice") === "1";
   if (location.hash === "#admin") {
     setView("admin");
   } else if (location.hash === "#review") {
@@ -916,7 +940,7 @@ async function routeAfterAuth() {
     setView("profile");
   } else if (Number.isFinite(episodeId) && episodeId > 0) {
     syncTabsForView("watch");
-    await openEpisodeFromUrl(episodeId, Number.isFinite(resumeTime) ? resumeTime : 0, { openRemix });
+    await openEpisodeFromUrl(episodeId, Number.isFinite(resumeTime) ? resumeTime : 0, { openRemix, openVoiceActivity });
   } else {
     setView("home");
   }
@@ -2744,11 +2768,6 @@ function renderDramas() {
         return `
         <article class="drama-card premium-drama-card" data-id="${drama.id}" style="--card-hue:${dramaHue(drama)}deg; --progress:${progress}%">
           <div class="thumb">
-            ${
-              drama.preview_video_url
-                ? `<video src="${drama.preview_video_url}" muted playsinline preload="metadata"></video>`
-                : `<div class="thumb-empty">暂无视频</div>`
-            }
             ${renderDramaPoster(drama, signals)}
             <div class="thumb-shade"></div>
             <div class="thumb-meta">
@@ -4493,7 +4512,7 @@ function socialVisibilityLabel(value) {
 function socialTopicLabel(value) {
   return {
     beiwang_voice: "北往 AI 声音专题",
-    winter_voice_match: "冬天男主模仿赛",
+    winter_voice_match: WINTER_VOICE_TOPIC_TITLE,
     story_bottle: "剧情漂流瓶",
   }[value] || "日常分享";
 }
@@ -4530,10 +4549,13 @@ async function loadSocialInbox() {
 async function loadSocialFeed(scope = "all") {
   if (!state.currentUser) return;
   state.socialFeed.scope = scope;
+  const topic = state.socialFeed.topic || "";
   try {
-    state.socialFeed = await fetchJSON(`/api/social/feed?scope=${encodeURIComponent(scope)}`);
+    state.socialFeed = await fetchJSON(
+      `/api/social/feed?scope=${encodeURIComponent(scope)}${topic ? `&topic=${encodeURIComponent(topic)}` : ""}`
+    );
   } catch (error) {
-    state.socialFeed = { scope, topics: [], posts: [] };
+    state.socialFeed = { scope, topic, topics: [], posts: [], ranking: [] };
     setSocialStatus(errorMessage(error), true);
   }
   renderDiscoverView();
@@ -4807,10 +4829,12 @@ function renderChatInbox() {
 
 function renderSocialAsset(post) {
   if (post.asset_kind === "voice") {
+    const payload = post.asset_payload || {};
     return `
       <div class="social-asset voice">
-        <b>VOICE</b>
-        <span>${post.asset_url ? "可播放声音资产" : "AI 声音占位，可绑定已生成 mp3"}</span>
+        <b>${escapeHTML(payload.line_speaker || "VOICE")}</b>
+        <span>${escapeHTML(payload.line_text || (post.asset_url ? "可播放声音资产" : "AI 声音占位，可绑定已生成 mp3"))}</span>
+        ${post.asset_url ? `<audio controls preload="none" src="${escapeHTML(post.asset_url)}"></audio>` : ""}
       </div>
     `;
   }
@@ -4875,10 +4899,15 @@ function renderDiscoverView() {
   topics.innerHTML = (state.socialFeed.topics || [])
     .map(
       (item) => `
-        <article class="social-topic-card tone-${escapeHTML(item.tone || "story")}">
+        <article class="social-topic-card tone-${escapeHTML(item.tone || "story")} ${
+          state.socialFeed.topic === item.key ? "active" : ""
+        }" data-topic-key="${escapeHTML(item.key)}">
           <span>Topic</span>
           <strong>${escapeHTML(item.title)}</strong>
           <p>${escapeHTML(item.subtitle)}</p>
+          <button class="ghost-button compact" type="button" data-open-topic="${escapeHTML(item.key)}">
+            ${state.socialFeed.topic === item.key ? "正在查看" : "进入专题"}
+          </button>
         </article>
       `
     )
@@ -4888,9 +4917,37 @@ function renderDiscoverView() {
   });
   const posts = state.socialFeed.posts || [];
   feed.innerHTML = posts.length
-    ? posts.map(renderSocialPost).join("")
+    ? `${renderSocialRanking()}${posts.map(renderSocialPost).join("")}`
     : `<div class="social-empty">还没有动态。先发布一条 AI 声音、AI 图片或 AI 剧情卡，逛逛页就会形成第一条展示内容。</div>`;
   setSocialStatus(state.socialStatus, state.socialStatusError);
+}
+
+function renderSocialRanking() {
+  const ranking = state.socialFeed.ranking || [];
+  if (state.socialFeed.topic !== WINTER_VOICE_TOPIC_KEY || !ranking.length) return "";
+  return `
+    <section class="social-ranking-card">
+      <div>
+        <span>Hot Ranking</span>
+        <strong>${WINTER_VOICE_TOPIC_TITLE}</strong>
+      </div>
+      <ol>
+        ${ranking
+          .slice(0, 5)
+          .map(
+            (post, index) => `
+              <li>
+                <b>${index + 1}</b>
+                ${avatarHTML(post.user || {}, "social-rank-avatar")}
+                <span>${escapeHTML(post.title)}</span>
+                <em>${Number(post.like_count || 0)} 赞</em>
+              </li>
+            `
+          )
+          .join("")}
+      </ol>
+    </section>
+  `;
 }
 
 function syncSocialChoiceGroups() {
@@ -5345,6 +5402,9 @@ async function openEpisodeFromUrl(episodeId, resumeTime = 0, options = {}) {
   if (options.openRemix) {
     window.setTimeout(() => showEndingRemix(), 320);
   }
+  if (options.openVoiceActivity) {
+    window.setTimeout(() => showWinterVoiceActivity(), 420);
+  }
 }
 
 function renderTimeline() {
@@ -5698,6 +5758,7 @@ function renderEpisodeReportCard(payload = state.remixOptions) {
         ? "这集你的选择已经记录，下一次可以冲一下正确预判。"
         : "这集以观看为主，我会把片尾二创入口留给你。";
   const featuredCount = payload?.featured_remixes?.length || 0;
+  const voiceActivity = state.voiceImitationActivity?.enabled ? state.voiceImitationActivity : null;
   setEndingRemixLayerHost(true);
   endingRemixLayer.className = "ending-remix-layer episode-report-layer";
   endingRemixLayer.innerHTML = `
@@ -5745,6 +5806,13 @@ function renderEpisodeReportCard(payload = state.remixOptions) {
         </section>
       </div>
       <div class="episode-report-actions">
+        ${
+          voiceActivity
+            ? `<button class="primary-button winter-voice-entry-button" type="button" data-remix-action="voice-activity">
+                ${escapeHTML(voiceActivity.topic_title || WINTER_VOICE_TOPIC_TITLE)}
+              </button>`
+            : ""
+        }
         <button class="primary-button" type="button" data-remix-action="start">
           ${featuredCount ? `进入 AI 二创 · ${featuredCount} 个精选` : "进入 AI 二创"}
         </button>
@@ -5760,6 +5828,9 @@ function renderEpisodeReportCard(payload = state.remixOptions) {
 function clearEndingRemix() {
   clearRemixChoiceTimer();
   stopRemixAudio();
+  if (state.voiceImitationRecording) {
+    stopVoiceImitationRecording();
+  }
   reportCompanionPointerAbort?.abort();
   reportCompanionPointerAbort = null;
   exitRemixPresentationMode();
@@ -5778,6 +5849,318 @@ function clearEndingRemix() {
     endingRemixLayer.className = "ending-remix-layer hidden";
     endingRemixLayer.innerHTML = "";
     setEndingRemixLayerHost(false);
+  }
+}
+
+function selectedVoiceImitationLine() {
+  const lines = state.voiceImitationActivity?.lines || [];
+  return lines.find((line) => line.key === state.voiceImitationLineKey) || preferredVoiceImitationLine(lines);
+}
+
+function preferredVoiceImitationLine(lines) {
+  return lines.find((line) => line.key === "male_soft") || lines[0] || null;
+}
+
+function setVoiceImitationStatus(message, isError = false) {
+  state.voiceImitationStatus = message || "";
+  state.voiceImitationStatusError = isError;
+  const status = endingRemixLayer?.querySelector("[data-voice-activity-status]");
+  if (status) {
+    status.textContent = state.voiceImitationStatus;
+    status.classList.toggle("error", isError);
+  }
+}
+
+function clearVoiceImitationRecording() {
+  if (state.voiceImitationRecordedUrl) URL.revokeObjectURL(state.voiceImitationRecordedUrl);
+  state.voiceImitationRecordedBlob = null;
+  state.voiceImitationRecordedUrl = "";
+  state.voiceImitationRecordChunks = [];
+  state.voiceImitationManualAsset = null;
+}
+
+function renderWinterVoiceActivityLayer() {
+  const activity = state.voiceImitationActivity;
+  if (!endingRemixLayer || !activity?.enabled) return;
+  const lines = activity.lines || [];
+  const preferred = preferredVoiceImitationLine(lines);
+  if (!state.voiceImitationLineKey && preferred) state.voiceImitationLineKey = preferred.key;
+  const selected = selectedVoiceImitationLine();
+  const hasVoiceProfile = Boolean(state.voiceProfile?.profile || activity.has_voice_profile);
+  setEndingRemixLayerHost(true);
+  enterRemixPresentationMode();
+  endingRemixLayer.className = "ending-remix-layer ending-remix-immersive-layer winter-voice-activity-layer";
+  alignEndingRemixLayerToViewport();
+  endingRemixLayer.innerHTML = `
+    <section class="ending-remix-panel winter-voice-activity-panel">
+      <div class="remix-head">
+        <span>片尾 AI 二创 · 声音模仿</span>
+        <button class="close-button remix-close-button" type="button" data-remix-action="close" aria-label="关闭">×</button>
+      </div>
+      <div class="winter-voice-hero">
+        <div>
+          <b>${escapeHTML(activity.topic_title || WINTER_VOICE_TOPIC_TITLE)}</b>
+          <h3>${escapeHTML(activity.title || "片尾主角模仿赛")}</h3>
+          <p>${escapeHTML(activity.subtitle || "")}</p>
+        </div>
+        <em>${Number(activity.post_count || 0)} 条参赛声音</em>
+      </div>
+      <div class="winter-voice-layout">
+        <aside class="winter-voice-lines" aria-label="高光台词">
+          ${lines
+            .map(
+              (line) => `
+                <button class="${line.key === state.voiceImitationLineKey ? "active" : ""}" type="button" data-voice-activity-action="select-line" data-line-key="${escapeHTML(
+                  line.key
+                )}">
+                  <span>${escapeHTML(line.speaker)} · ${escapeHTML(line.role)}</span>
+                  <strong>${escapeHTML(line.text)}</strong>
+                  <em>${escapeHTML(line.emotion || "")}</em>
+                </button>
+              `
+            )
+            .join("")}
+        </aside>
+        <section class="winter-voice-workbench">
+          <div class="winter-voice-line-card">
+            <span>${escapeHTML(selected?.speaker || "主角")} · ${escapeHTML(selected?.emotion || "高光情绪")}</span>
+            <strong>${escapeHTML(selected?.text || "请选择一句台词")}</strong>
+            <p>${escapeHTML(selected?.hint || "先听原片，再录制或生成你的版本。")}</p>
+            <div class="winter-voice-actions">
+              <button class="ghost-button" type="button" data-voice-activity-action="preview-original">听原片片段</button>
+              <button class="ghost-button" type="button" data-voice-activity-action="${state.voiceImitationRecording ? "stop-record" : "start-record"}">
+                ${state.voiceImitationRecording ? "停止录音" : "录自己的模仿"}
+              </button>
+              <button class="primary-button" type="button" data-voice-activity-action="generate-ai" ${hasVoiceProfile ? "" : "disabled"}>
+                用我的声线生成
+              </button>
+            </div>
+          </div>
+          <div class="winter-voice-preview-grid">
+            <article>
+              <span>我的录音</span>
+              ${
+                state.voiceImitationRecordedUrl
+                  ? `<audio controls preload="metadata" src="${escapeHTML(state.voiceImitationRecordedUrl)}"></audio>`
+                  : `<p>点击“录自己的模仿”，读出当前台词。</p>`
+              }
+              <button class="${state.voiceImitationShareMode === "manual" ? "active" : ""}" type="button" data-voice-activity-action="share-mode" data-share-mode="manual" ${
+                state.voiceImitationRecordedBlob ? "" : "disabled"
+              }>分享我的录音</button>
+            </article>
+            <article>
+              <span>AI 声线版</span>
+              ${
+                state.voiceImitationAiClip?.audio_url
+                  ? `<audio controls preload="metadata" src="${escapeHTML(state.voiceImitationAiClip.audio_url)}"></audio>`
+                  : `<p>${hasVoiceProfile ? "点击生成后，会缓存为你的声音版本。" : "请先在“我的空间”录入声音样本。"}</p>`
+              }
+              <button class="${state.voiceImitationShareMode === "ai" ? "active" : ""}" type="button" data-voice-activity-action="share-mode" data-share-mode="ai" ${
+                state.voiceImitationAiClip?.audio_url ? "" : "disabled"
+              }>分享 AI 声线版</button>
+            </article>
+          </div>
+          <div class="winter-voice-publish">
+            <button class="primary-button" type="button" data-voice-activity-action="publish">发布到${WINTER_VOICE_TOPIC_TITLE}</button>
+            <button class="ghost-button" type="button" data-voice-activity-action="open-topic">去逛逛看排行榜</button>
+          </div>
+          <div class="voice-imitation-status ${state.voiceImitationStatusError ? "error" : ""}" data-voice-activity-status>${escapeHTML(
+            state.voiceImitationStatus || "建议先听原片片段，再录一版自己的情绪。"
+          )}</div>
+        </section>
+      </div>
+    </section>
+  `;
+}
+
+async function showWinterVoiceActivity() {
+  if (!state.currentEpisode) return;
+  try {
+    if (state.currentUser && !state.voiceProfile) await loadVoiceProfile();
+    state.voiceImitationActivity =
+      state.voiceImitationActivity || (await fetchJSON(`/api/episodes/${state.currentEpisode.id}/voice-imitation-activity`));
+    state.voiceImitationAiClip = null;
+    state.voiceImitationManualAsset = null;
+    state.voiceImitationShareMode = "ai";
+    renderWinterVoiceActivityLayer();
+  } catch (error) {
+    renderEndingRemixError(errorMessage(error));
+  }
+}
+
+async function startVoiceImitationRecording() {
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    setVoiceImitationStatus("当前浏览器不支持直接录音，请换支持麦克风的浏览器。", true);
+    return;
+  }
+  if (state.voiceImitationRecording) return;
+  clearVoiceImitationRecording();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+    const recorder = new MediaRecorder(stream, { mimeType });
+    state.voiceImitationRecordStream = stream;
+    state.voiceImitationRecorder = recorder;
+    state.voiceImitationRecordChunks = [];
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data?.size) state.voiceImitationRecordChunks.push(event.data);
+    });
+    recorder.addEventListener("stop", () => {
+      state.voiceImitationRecordStream?.getTracks().forEach((track) => track.stop());
+      state.voiceImitationRecordStream = null;
+      state.voiceImitationRecording = false;
+      state.voiceImitationRecorder = null;
+      state.voiceImitationRecordedBlob = new Blob(state.voiceImitationRecordChunks, { type: mimeType });
+      state.voiceImitationRecordedUrl = URL.createObjectURL(state.voiceImitationRecordedBlob);
+      state.voiceImitationShareMode = "manual";
+      setVoiceImitationStatus("录音已完成，可以试听并发布到模仿赛。");
+      renderWinterVoiceActivityLayer();
+    });
+    recorder.start();
+    state.voiceImitationRecording = true;
+    setVoiceImitationStatus("正在录音，请读出当前台词。");
+    renderWinterVoiceActivityLayer();
+  } catch {
+    state.voiceImitationRecording = false;
+    state.voiceImitationRecorder = null;
+    state.voiceImitationRecordStream?.getTracks().forEach((track) => track.stop());
+    state.voiceImitationRecordStream = null;
+    setVoiceImitationStatus("无法开启麦克风，请检查浏览器权限。", true);
+  }
+}
+
+function stopVoiceImitationRecording() {
+  if (state.voiceImitationRecorder && state.voiceImitationRecording) {
+    state.voiceImitationRecorder.stop();
+  }
+}
+
+function previewVoiceImitationOriginal() {
+  const line = selectedVoiceImitationLine();
+  if (!line) return;
+  const targetTime = Math.max(0, Number(line.time_sec || 0) - 1);
+  setVoiceImitationStatus(`已跳到原片 ${formatTime(targetTime)}，请听这一句的情绪。`);
+  player.currentTime = targetTime;
+  playPlayer(true);
+}
+
+async function generateVoiceImitationAiClip() {
+  const line = selectedVoiceImitationLine();
+  if (!line || !state.currentEpisode) return;
+  try {
+    setVoiceImitationStatus("正在用你的声线生成这句台词...");
+    const clip = await fetchJSON(`/api/episodes/${state.currentEpisode.id}/remix-voice-clips`, {
+      method: "POST",
+      body: JSON.stringify({
+        choice_key: line.key,
+        variant_key: "voice_match",
+        shot_index: 1,
+        voice_mode: "user",
+        session_id: state.sessionId,
+      }),
+    });
+    state.voiceImitationAiClip = clip;
+    state.voiceImitationShareMode = "ai";
+    renderWinterVoiceActivityLayer();
+    playAudioSrc(clip.audio_url);
+    setVoiceImitationStatus("AI 声线版已生成，可试听或发布到模仿赛。");
+  } catch (error) {
+    setVoiceImitationStatus(errorMessage(error), true);
+  }
+}
+
+async function uploadVoiceImitationManualAsset() {
+  if (state.voiceImitationManualAsset?.asset_url) return state.voiceImitationManualAsset;
+  if (!state.voiceImitationRecordedBlob) throw new Error("请先录一段自己的模仿。");
+  const form = new FormData();
+  form.append("voice_file", state.voiceImitationRecordedBlob, `winter_voice_match_${Date.now()}.webm`);
+  state.voiceImitationManualAsset = await fetchJSON("/api/social/voice-assets", { method: "POST", body: form });
+  return state.voiceImitationManualAsset;
+}
+
+async function publishVoiceImitationPost() {
+  const line = selectedVoiceImitationLine();
+  if (!line) return;
+  try {
+    setVoiceImitationStatus("正在发布到逛逛专题...");
+    const useManual = state.voiceImitationShareMode === "manual";
+    const asset = useManual ? await uploadVoiceImitationManualAsset() : state.voiceImitationAiClip;
+    if (!asset?.audio_url && !asset?.asset_url) {
+      throw new Error(useManual ? "请先录制自己的模仿。" : "请先生成 AI 声线版。");
+    }
+    const assetUrl = asset.audio_url || asset.asset_url;
+    await fetchJSON("/api/social/posts", {
+      method: "POST",
+      body: JSON.stringify({
+        visibility: "public",
+        source_type: "voice",
+        title: `${line.speaker}台词挑战：${line.role}`,
+        text: `${line.text}｜${useManual ? "本人录音模仿" : "AI 用我的声线生成"}`,
+        asset_kind: "voice",
+        asset_url: assetUrl,
+        topic: WINTER_VOICE_TOPIC_KEY,
+        asset_payload: {
+          source_hint: "winter_voice_match",
+          generation_type: useManual ? "manual_recording" : "user_voice_ai",
+          episode_id: state.currentEpisode?.id,
+          line_key: line.key,
+          line_speaker: line.speaker,
+          line_role: line.role,
+          line_text: line.text,
+          line_emotion: line.emotion,
+        },
+      }),
+    });
+    setVoiceImitationStatus("已发布。正在打开逛逛专题排行榜...");
+    await openWinterVoiceTopic();
+  } catch (error) {
+    setVoiceImitationStatus(errorMessage(error), true);
+  }
+}
+
+async function openWinterVoiceTopic() {
+  state.socialFeed.topic = WINTER_VOICE_TOPIC_KEY;
+  await loadSocialFeed("all");
+  setView("discover");
+}
+
+async function handleVoiceImitationAction(button) {
+  const action = button.dataset.voiceActivityAction;
+  if (action === "select-line") {
+    state.voiceImitationLineKey = button.dataset.lineKey || state.voiceImitationLineKey;
+    state.voiceImitationAiClip = null;
+    state.voiceImitationShareMode = state.voiceImitationRecordedBlob ? "manual" : "ai";
+    setVoiceImitationStatus("已切换台词。可以先听原片，再录制或生成你的声线版本。");
+    renderWinterVoiceActivityLayer();
+    return;
+  }
+  if (action === "preview-original") {
+    previewVoiceImitationOriginal();
+    return;
+  }
+  if (action === "start-record") {
+    await startVoiceImitationRecording();
+    return;
+  }
+  if (action === "stop-record") {
+    stopVoiceImitationRecording();
+    return;
+  }
+  if (action === "generate-ai") {
+    await generateVoiceImitationAiClip();
+    return;
+  }
+  if (action === "share-mode") {
+    state.voiceImitationShareMode = button.dataset.shareMode || state.voiceImitationShareMode;
+    renderWinterVoiceActivityLayer();
+    return;
+  }
+  if (action === "publish") {
+    await publishVoiceImitationPost();
+    return;
+  }
+  if (action === "open-topic") {
+    await openWinterVoiceTopic();
   }
 }
 
@@ -6458,10 +6841,18 @@ async function showEndingRemixEntry() {
     player.pause();
   }
   try {
-    const payload = await fetchJSON(`/api/episodes/${state.currentEpisode.id}/remix-options`);
+    const [payload, activity] = await Promise.all([
+      fetchJSON(`/api/episodes/${state.currentEpisode.id}/remix-options`),
+      fetchJSON(`/api/episodes/${state.currentEpisode.id}/voice-imitation-activity`).catch(() => null),
+    ]);
     state.remixOptions = payload;
+    state.voiceImitationActivity = activity?.enabled ? activity : null;
+    if (state.voiceImitationActivity?.lines?.length && !state.voiceImitationLineKey) {
+      state.voiceImitationLineKey = preferredVoiceImitationLine(state.voiceImitationActivity.lines)?.key || "";
+    }
     renderEpisodeReportCard(payload);
   } catch {
+    state.voiceImitationActivity = null;
     renderEpisodeReportCard(null);
   }
 }
@@ -9332,6 +9723,12 @@ $("#chatInboxList")?.addEventListener("click", (event) => {
 document.querySelectorAll("[data-social-scope]").forEach((button) => {
   button.addEventListener("click", () => loadSocialFeed(button.dataset.socialScope));
 });
+$("#discoverTopics")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-open-topic]");
+  if (!button) return;
+  state.socialFeed.topic = state.socialFeed.topic === button.dataset.openTopic ? "" : button.dataset.openTopic;
+  loadSocialFeed(state.socialFeed.scope || "all");
+});
 document.querySelectorAll("[data-social-select-target]").forEach((group) => {
   group.addEventListener("click", (event) => {
     const button = event.target.closest("[data-value]");
@@ -9461,6 +9858,11 @@ endingRemixLayer?.addEventListener("click", (event) => {
     setReportCompanionMode(companionModeButton.dataset.companionMode || "eyes");
     return;
   }
+  const voiceActivityButton = event.target.closest("[data-voice-activity-action]");
+  if (voiceActivityButton) {
+    handleVoiceImitationAction(voiceActivityButton);
+    return;
+  }
   const voiceModeButton = event.target.closest("[data-voice-mode]");
   if (voiceModeButton && !voiceModeButton.disabled) {
     stopRemixAudio();
@@ -9506,6 +9908,10 @@ endingRemixLayer?.addEventListener("click", (event) => {
   const action = actionButton.dataset.remixAction;
   if (action === "start") {
     showEndingRemix();
+    return;
+  }
+  if (action === "voice-activity") {
+    showWinterVoiceActivity();
     return;
   }
   if (action === "next") {

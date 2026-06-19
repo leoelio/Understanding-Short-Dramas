@@ -102,6 +102,7 @@ VOICE_ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".aac", ".ogg", ".webm"}
 VOICE_MAX_BYTES = 12 * 1024 * 1024
 VOICE_PROMPT_DIR = VOICE_ASSET_DIR / "prompts"
 VOICE_CLIP_DIR = VOICE_ASSET_DIR / "clips"
+SOCIAL_VOICE_ASSET_DIR = VOICE_ASSET_DIR / "social"
 VOICE_TTS_SPEED = 1.18
 VOICE_MODEL_VERSION = "cosyvoice-local-v2-fast"
 REMIX_AUDIO_DIR = FRONTEND_DIR / "assets" / "remix_audio" / "beiwang_ep1"
@@ -121,6 +122,7 @@ WHITE_PADDED_AVATAR_FILES = {
 def ensure_voice_dirs() -> None:
     VOICE_PROMPT_DIR.mkdir(parents=True, exist_ok=True)
     VOICE_CLIP_DIR.mkdir(parents=True, exist_ok=True)
+    SOCIAL_VOICE_ASSET_DIR.mkdir(parents=True, exist_ok=True)
     REMIX_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     ORIGINAL_REMIX_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -982,6 +984,46 @@ SOCIAL_VISIBILITIES = {"public", "friends", "private"}
 SOCIAL_SOURCE_TYPES = {"voice", "image", "story", "thought"}
 SOCIAL_ASSET_KINDS = {"voice", "image", "story", "text"}
 SOCIAL_FORBIDDEN_TERMS = ["淫秽", "低俗", "色情", "裸聊", "约炮", "做爱", "黄片", "成人视频"]
+WINTER_VOICE_TOPIC_KEY = "winter_voice_match"
+WINTER_VOICE_TOPIC_TITLE = "那年冬至主角模仿赛"
+WINTER_VOICE_LINES = [
+    {
+        "key": "male_choice",
+        "speaker": "男主",
+        "role": "抉择",
+        "time_sec": 110,
+        "emotion": "压抑、犹豫、心动",
+        "text": "我选第二个。不是因为容易，是因为我想留下来。",
+        "hint": "前半句压低，后半句坚定，像终于说出了心里话。",
+    },
+    {
+        "key": "female_close",
+        "speaker": "女主",
+        "role": "主动靠近",
+        "time_sec": 50,
+        "emotion": "试探、紧张、强装镇定",
+        "text": "别动，我只是想确认你还会不会躲我。",
+        "hint": "语速稍慢，尾音轻一点，保留一点暧昧和试探。",
+    },
+    {
+        "key": "female_kiss",
+        "speaker": "女主",
+        "role": "心动爆发",
+        "time_sec": 170,
+        "emotion": "勇敢、甜、突然",
+        "text": "这次换我靠近你，你不许再退了。",
+        "hint": "声音要亮一些，像突然鼓起勇气，把心动说出口。",
+    },
+    {
+        "key": "male_soft",
+        "speaker": "男主",
+        "role": "低声回应",
+        "time_sec": 174,
+        "emotion": "克制、心软、被打动",
+        "text": "好，我不退。",
+        "hint": "短句不要用力，低声但清楚，重点在停顿后的确定感。",
+    },
+]
 
 
 def assert_social_text_safe(text: str) -> None:
@@ -1001,8 +1043,8 @@ def social_topic_cards() -> list[dict]:
         },
         {
             "key": "winter_voice_match",
-            "title": "冬天男主模仿赛",
-            "subtitle": "发一段心动台词，看看谁最像男主",
+            "title": WINTER_VOICE_TOPIC_TITLE,
+            "subtitle": "男主、女主高光台词都能挑战，听听谁最有冬至心动感",
             "tone": "winter",
         },
         {
@@ -1107,6 +1149,53 @@ def social_notification_payload(notification: SocialNotification) -> dict:
         "comment": social_comment_payload(notification.comment) if notification.comment else None,
         "created_at": notification.created_at.isoformat() if notification.created_at else None,
     }
+
+
+def is_winter_solstice_first_episode(episode: Episode) -> bool:
+    return "冬至" in (episode.drama.title or "") and int(episode.episode_no or 0) == 1
+
+
+def winter_voice_activity_payload(episode: Episode, db: Session, user: User | None = None) -> dict:
+    topic_posts = (
+        db.query(SocialPost)
+        .filter(SocialPost.topic == WINTER_VOICE_TOPIC_KEY, SocialPost.visibility == "public")
+        .count()
+    )
+    return {
+        "enabled": is_winter_solstice_first_episode(episode),
+        "episode_id": episode.id,
+        "drama_title": episode.drama.title,
+        "episode_title": episode.title,
+        "topic_key": WINTER_VOICE_TOPIC_KEY,
+        "topic_title": WINTER_VOICE_TOPIC_TITLE,
+        "trigger_time_sec": round(max(0, float(episode.duration_sec or 0) - 6), 2),
+        "title": "片尾主角模仿赛",
+        "subtitle": "选一句心动台词，自己录一版，或用你的声音生成一版，再分享到逛逛排行榜。",
+        "lines": WINTER_VOICE_LINES,
+        "post_count": topic_posts,
+        "has_voice_profile": bool(user and active_voice_profile(db, user)),
+    }
+
+
+def social_topic_ranking(topic: str, viewer: User, db: Session, limit: int = 10) -> list[dict]:
+    safe_limit = max(3, min(30, int(limit or 10)))
+    rows = (
+        db.query(SocialPost)
+        .filter(SocialPost.topic == topic)
+        .order_by(SocialPost.created_at.desc(), SocialPost.id.desc())
+        .limit(120)
+        .all()
+    )
+    visible = [post for post in rows if can_view_social_post(post, viewer, db)]
+    visible.sort(
+        key=lambda post: (
+            db.query(SocialReaction).filter(SocialReaction.post_id == post.id).count(),
+            db.query(SocialComment).filter(SocialComment.post_id == post.id, SocialComment.is_deleted.is_(False)).count(),
+            post.created_at or datetime.min,
+        ),
+        reverse=True,
+    )
+    return [social_post_payload(post, viewer, db) for post in visible[:safe_limit]]
 
 
 ROOM_EVENT_TYPES = {"danmaku", "danmaku_like", "danmaku_reply", "interaction"}
@@ -2314,12 +2403,15 @@ def mark_social_inbox_read(user: User = Depends(get_current_user), db: Session =
 @app.get("/api/social/feed")
 def social_feed(
     scope: str = "all",
+    topic: str = "",
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     rows = db.query(SocialPost).order_by(SocialPost.created_at.desc(), SocialPost.id.desc()).limit(80).all()
     visible_rows = []
     for post in rows:
+        if topic and post.topic != topic:
+            continue
         if scope == "mine" and post.user_id != user.id:
             continue
         if scope == "friends" and post.user_id != user.id and not are_friends(db, user.id, post.user_id):
@@ -2330,8 +2422,50 @@ def social_feed(
             break
     return {
         "scope": scope,
+        "topic": topic,
         "topics": social_topic_cards(),
+        "ranking": social_topic_ranking(topic, user, db) if topic else [],
         "posts": [social_post_payload(post, user, db) for post in visible_rows],
+    }
+
+
+@app.get("/api/social/topics/{topic}/ranking")
+def get_social_topic_ranking(
+    topic: str,
+    limit: int = 10,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    return {
+        "topic": topic,
+        "topic_label": next((item["title"] for item in social_topic_cards() if item["key"] == topic), topic),
+        "items": social_topic_ranking(topic, user, db, limit),
+    }
+
+
+@app.post("/api/social/voice-assets")
+async def upload_social_voice_asset(
+    voice_file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+) -> dict:
+    original_name = voice_file.filename or "voice_imitation.webm"
+    suffix = Path(original_name).suffix.lower() or ".webm"
+    if suffix not in VOICE_ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="声音素材仅支持 wav、mp3、m4a、aac、ogg 或 webm")
+    data = await voice_file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="声音素材不能为空")
+    if len(data) > VOICE_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="声音素材不能超过 12MB")
+    ensure_voice_dirs()
+    filename = f"user_{user.id}_{uuid4().hex}{suffix}"
+    path = SOCIAL_VOICE_ASSET_DIR / filename
+    path.write_bytes(data)
+    return {
+        "asset_url": f"/media/social-voice-assets/{filename}",
+        "asset_kind": "voice",
+        "filename": filename,
+        "size": len(data),
     }
 
 
@@ -2534,6 +2668,24 @@ def voice_clip_media(filename: str) -> FileResponse:
     return FileResponse(path, media_type="audio/mpeg", filename=filename)
 
 
+@app.get("/media/social-voice-assets/{filename}")
+def social_voice_asset_media(filename: str) -> FileResponse:
+    if not re.fullmatch(r"user_\d+_[a-f0-9]{32}\.(wav|mp3|m4a|aac|ogg|webm)", filename):
+        raise HTTPException(status_code=404, detail="声音素材不存在")
+    path = SOCIAL_VOICE_ASSET_DIR / filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="声音素材不存在")
+    media_type = {
+        ".mp3": "audio/mpeg",
+        ".m4a": "audio/mp4",
+        ".aac": "audio/aac",
+        ".ogg": "audio/ogg",
+        ".webm": "audio/webm",
+        ".wav": "audio/wav",
+    }.get(path.suffix.lower(), "application/octet-stream")
+    return FileResponse(path, media_type=media_type, filename=filename)
+
+
 @app.get("/media/avatars/{user_folder}/{filename}")
 def avatar_media(user_folder: str, filename: str) -> FileResponse:
     if not re.fullmatch(r"user_\d+", user_folder):
@@ -2638,6 +2790,21 @@ def get_episode_remix_options(episode_id: int, db: Session = Depends(get_db)) ->
     }
 
 
+@app.get("/api/episodes/{episode_id}/voice-imitation-activity")
+def get_episode_voice_imitation_activity(
+    episode_id: int,
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    episode = db.get(Episode, episode_id)
+    if not episode:
+        raise HTTPException(status_code=404, detail="剧集不存在")
+    payload = winter_voice_activity_payload(episode, db, user)
+    if not payload["enabled"]:
+        return {"enabled": False, "episode_id": episode.id, "drama_title": episode.drama.title, "lines": []}
+    return payload
+
+
 @app.post("/api/episodes/{episode_id}/ai-remix")
 def create_episode_ai_remix(
     episode_id: int,
@@ -2697,6 +2864,21 @@ def create_episode_remix_voice_clip(
     episode = db.get(Episode, episode_id)
     if not episode:
         raise HTTPException(status_code=404, detail="剧集不存在")
+    voice_mode = payload.voice_mode.strip().lower()
+    if is_winter_solstice_first_episode(episode):
+        line = next((item for item in WINTER_VOICE_LINES if item["key"] == payload.choice_key), None)
+        if not line:
+            raise HTTPException(status_code=400, detail="模仿台词不存在")
+        if voice_mode != "user":
+            raise HTTPException(status_code=400, detail="那年冬至模仿赛暂只支持用户声线生成")
+        if not user:
+            raise HTTPException(status_code=401, detail="请先登录后再生成我的声音版本")
+        profile = active_voice_profile(db, user)
+        if not profile:
+            raise HTTPException(status_code=400, detail="请先在个人主页上传或录入声音样本")
+        scene_key = f"winter_voice_match_{line['key']}"
+        result = ensure_voice_clip(db, user, profile, VoiceClipCreate(text=line["text"], scene_key=scene_key))
+        return {"voice_mode": "user", "line": line, **result}
     if not is_beiwang_first_episode(episode):
         raise HTTPException(status_code=400, detail="该剧集暂未配置片尾二创语音")
     options = remix_options_for_episode(episode)
@@ -2714,7 +2896,6 @@ def create_episode_remix_voice_clip(
     if not text:
         raise HTTPException(status_code=400, detail="该镜头没有可生成语音的台词")
 
-    voice_mode = payload.voice_mode.strip().lower()
     scene_key = f"{image_plan['variant_slot']}_shot_{payload.shot_index}"
     if voice_mode == "user":
         if not user:
