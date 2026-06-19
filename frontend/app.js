@@ -16,6 +16,9 @@ const VOICE_PREVIEW_TEXTS = {
   original: "片尾拓展已开启，我会陪你猜下一段剧情。",
   user: "片尾拓展已开启，我会用你的声音陪你猜下一段剧情。",
 };
+const BEIWANG_REMIX_TOPIC_KEY = "beiwang_voice";
+const BEIWANG_REMIX_TOPIC_TITLE = "北往二创音卡";
+const BEIWANG_REMIX_TOPIC_TAG = "#北往二创音卡";
 const WINTER_VOICE_TOPIC_KEY = "winter_voice_match";
 const WINTER_VOICE_TOPIC_TITLE = "那年冬至主角模仿赛";
 
@@ -4511,7 +4514,7 @@ function socialVisibilityLabel(value) {
 
 function socialTopicLabel(value) {
   return {
-    beiwang_voice: "北往 AI 声音专题",
+    beiwang_voice: BEIWANG_REMIX_TOPIC_TITLE,
     winter_voice_match: WINTER_VOICE_TOPIC_TITLE,
     story_bottle: "剧情漂流瓶",
   }[value] || "日常分享";
@@ -4844,7 +4847,17 @@ function renderSocialAsset(post) {
       : `<div class="social-asset image empty"><b>IMAGE</b><span>AI 图片占位</span></div>`;
   }
   if (post.asset_kind === "story") {
-    return `<div class="social-asset story"><b>STORY</b><span>剧情分镜卡 · 点击后续可扩展为详情页</span></div>`;
+    const payload = post.asset_payload || {};
+    return `
+      <div class="social-asset story ${payload.source_hint === "beiwang_remix_sound_card" ? "beiwang-remix-sound-card" : ""}">
+        ${post.asset_url ? `<img src="${escapeHTML(post.asset_url)}" alt="${escapeHTML(post.title)}" />` : ""}
+        <div class="social-story-card-copy">
+          <b>${escapeHTML(payload.tag || "STORY")}</b>
+          <span>${escapeHTML(payload.choice_label || payload.variant_label || "剧情分镜卡 · 点击后续可扩展为详情页")}</span>
+          ${payload.audio_text ? `<p>${escapeHTML(payload.audio_text)}</p>` : ""}
+        </div>
+        ${payload.audio_url ? `<audio controls preload="none" src="${escapeHTML(payload.audio_url)}"></audio>` : ""}
+      </div>`;
   }
   return `<div class="social-asset thought"><b>TEXT</b><span>文字感受</span></div>`;
 }
@@ -6653,6 +6666,93 @@ function stepRemixImage(delta) {
   plan.querySelectorAll(".remix-image-dots i").forEach((dot, index) => dot.classList.toggle("active", index === next));
 }
 
+function isBeiwangFirstEpisode() {
+  return (state.currentEpisode?.drama?.title || "").includes("北往") && Number(state.currentEpisode?.episode_no || 0) === 1;
+}
+
+function compactShareText(text, maxLength = 500) {
+  const value = String(text || "").replace(/\s+/g, " ").trim();
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
+}
+
+function currentRemixSharePayload() {
+  const result = state.remixResult || {};
+  const choice = result.choice || {};
+  const variant = result.variant || result.prompt_trace?.variant || {};
+  const imagePlan = result.image_plan || result.prompt_trace?.image_plan || {};
+  const firstShot = imagePlan.shots?.[0] || {};
+  const frame = endingRemixLayer?.querySelector(".remix-image-frame.active");
+  const imageUrl = frame?.querySelector("img")?.getAttribute("src") || firstShot.storage_hint || "";
+  const audioUrl =
+    frame?.dataset.userAudioSrc ||
+    (frame?.dataset.audioReady === "true" ? frame.dataset.audioSrc : "") ||
+    firstShot.audio_storage_hint ||
+    "";
+  const audioText = frame?.dataset.audioText || firstShot.audio_text || "";
+  const title = compactShareText(`北往二创音卡：${result.title || choice.label || "片尾番外"}`, 120);
+  const summary = compactShareText(result.share_copy || result.logline || result.story_text || "我生成了一张北往片尾二创音卡。", 210);
+  return {
+    title,
+    text: compactShareText(`${BEIWANG_REMIX_TOPIC_TAG} ${summary}\n${result.story_text || ""}`, 500),
+    imageUrl,
+    audioUrl,
+    audioText,
+    choice,
+    variant,
+    imagePlan,
+  };
+}
+
+function setRemixShareStatus(message, isError = false) {
+  const status = endingRemixLayer?.querySelector("[data-remix-share-status]");
+  if (!status) return;
+  status.textContent = message || "";
+  status.classList.toggle("error", isError);
+}
+
+async function shareCurrentBeiwangRemix() {
+  if (!isBeiwangFirstEpisode()) return;
+  const payload = currentRemixSharePayload();
+  if (!payload.title) return;
+  try {
+    setRemixShareStatus("正在发布到逛逛...");
+    await fetchJSON("/api/social/posts", {
+      method: "POST",
+      body: JSON.stringify({
+        visibility: "public",
+        source_type: "story",
+        title: payload.title,
+        text: payload.text,
+        asset_kind: "story",
+        asset_url: payload.imageUrl,
+        topic: BEIWANG_REMIX_TOPIC_KEY,
+        asset_payload: {
+          source_hint: "beiwang_remix_sound_card",
+          tag: BEIWANG_REMIX_TOPIC_TAG,
+          episode_id: state.currentEpisode?.id,
+          choice_key: payload.choice?.key || "",
+          choice_label: payload.choice?.label || "",
+          variant_key: payload.variant?.variant_key || "",
+          variant_label: payload.variant?.label || "",
+          variable_label: payload.variant?.variable_label || "",
+          audio_url: payload.audioUrl,
+          audio_text: payload.audioText,
+          image_plan_slot: payload.imagePlan?.variant_slot || "",
+        },
+      }),
+    });
+    setRemixShareStatus(`已发布到${BEIWANG_REMIX_TOPIC_TAG}`);
+  } catch (error) {
+    setRemixShareStatus(errorMessage(error), true);
+  }
+}
+
+async function openBeiwangRemixTopic() {
+  state.socialFeed.topic = BEIWANG_REMIX_TOPIC_KEY;
+  await loadSocialFeed("all");
+  setView("discover");
+}
+
 function renderEndingRemixResult(result) {
   if (!endingRemixLayer) return;
   const storyboard = result.storyboard || [];
@@ -6695,6 +6795,7 @@ function renderEndingRemixResult(result) {
     )
     .join("");
   const imageSequenceHTML = renderRemixImageSequence(imagePlan);
+  const canShareBeiwangRemix = isBeiwangFirstEpisode();
   const videoFallbackHTML =
     !imagePlan && videoPlan
       ? `<div class="remix-video-plan">
@@ -6773,6 +6874,13 @@ function renderEndingRemixResult(result) {
       </div>
       <div class="remix-footer remix-cinema-footer">
         <span>${escapeHTML(result.share_copy || "AI 已生成一个非正片番外走向。")}</span>
+        ${
+          canShareBeiwangRemix
+            ? `<button class="ghost-button" type="button" data-remix-action="open-beiwang-topic">去逛逛看音卡</button>
+               <button class="primary-button" type="button" data-remix-action="share-current">分享到逛逛</button>
+               <em class="remix-share-status" data-remix-share-status></em>`
+            : ""
+        }
         <button class="ghost-button" type="button" data-remix-action="back">换一个走向</button>
         <button class="primary-button" type="button" data-remix-action="close">收起</button>
       </div>
@@ -9929,6 +10037,14 @@ endingRemixLayer?.addEventListener("click", (event) => {
   }
   if (action === "voice-current") {
     playCurrentRemixFrameVoice();
+    return;
+  }
+  if (action === "share-current") {
+    shareCurrentBeiwangRemix();
+    return;
+  }
+  if (action === "open-beiwang-topic") {
+    openBeiwangRemixTopic();
     return;
   }
   if (action === "back" && state.remixOptions) {

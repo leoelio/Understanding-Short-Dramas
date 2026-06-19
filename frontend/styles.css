@@ -16679,6 +16679,62 @@ body[data-view="watch"] .danmaku-heart-bubble:nth-child(4n) {
   color: rgba(23, 27, 34, 0.64);
 }
 
+.social-asset.story.beiwang-remix-sound-card {
+  display: grid;
+  gap: 12px;
+  min-height: auto;
+  padding: 12px;
+  color: #f7f4ef;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 122, 48, 0.28), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+    #121417;
+}
+
+.social-asset.story.beiwang-remix-sound-card img {
+  width: 100%;
+  height: min(320px, 36vw);
+  min-height: 190px;
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.social-story-card-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.social-story-card-copy b {
+  color: #ffb16f;
+  letter-spacing: 0;
+}
+
+.social-story-card-copy span {
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 900;
+}
+
+.social-story-card-copy p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.social-asset.story.beiwang-remix-sound-card audio {
+  width: 100%;
+}
+
+.remix-share-status {
+  min-width: 120px;
+  color: rgba(255, 226, 192, 0.86);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.remix-share-status.error {
+  color: #ffd1d1;
+}
+
 @media (max-width: 900px) {
   .winter-voice-layout,
   .winter-voice-preview-grid {

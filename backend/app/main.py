@@ -1037,8 +1037,8 @@ def social_topic_cards() -> list[dict]:
     return [
         {
             "key": "beiwang_voice",
-            "title": "北往 AI 声音专题",
-            "subtitle": "用自己的声音讲返乡路上的下一幕",
+            "title": "北往二创音卡",
+            "subtitle": "把北往第一集片尾二创做成可听、可看、可分享的音卡",
             "tone": "road",
         },
         {
